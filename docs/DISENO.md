@@ -1,6 +1,6 @@
 # Diseño: registro global de lazadores
 
-- La app (Roadmaster) es offline-first. Cada lazador local tiene `local_id` (UUID) y un
+- La app (Ropemaster) es offline-first. Cada lazador local tiene `local_id` (UUID) y un
   `global_id` nullable que asigna este servidor al sincronizar. El ID de crossplay es un alias.
 - El teléfono (E.164) es obligatorio al crear un lazador y es la llave de coincidencia.
   Nunca se fusiona automáticamente: el sistema sugiere y el organizador confirma.

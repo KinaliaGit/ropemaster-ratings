@@ -1,4 +1,4 @@
-# Roadmaster Ratings
+# Ropemaster Ratings
 
 Web con el registro global de lazadores: perfil, rating e historial de eventos.
 Next.js + Supabase. Diseño en [docs/DISENO.md](docs/DISENO.md).

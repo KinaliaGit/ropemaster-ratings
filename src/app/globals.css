@@ -1,26 +1,35 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ink: #0a0908;
+  --ink-soft: #1a1714;
+  --cream: #f7f3ea;
+  --sand: #ece4d4;
+  --line: #d8cfc0;
+  --muted: #5a5049;
+  --orange: #ff7a00;
+  --orange-hot: #ea6a00;
+  --orange-soft: #fff4e6;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-cream: var(--cream);
+  --color-sand: var(--sand);
+  --color-line: var(--line);
+  --color-muted: var(--muted);
+  --color-brand: var(--orange);
+  --color-brand-hot: var(--orange-hot);
+  --color-brand-soft: var(--orange-soft);
+  --font-display: var(--font-poppins);
+  --font-sans: var(--font-karla);
+  --font-mono: var(--font-plex-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--font-karla), sans-serif;
 }
+h1, h2, h3 { font-family: var(--font-poppins), sans-serif; letter-spacing: -0.02em; }

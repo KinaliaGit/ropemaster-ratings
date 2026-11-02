@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { events, mxn } from "@/lib/mock";
+import { PayButton } from "@/components/PayButton";
 
 async function InscribirseInner({ params }: { params: PageProps<"/eventos/[id]/inscribirse">["params"] }) {
   const { id } = await params;
@@ -27,8 +28,8 @@ async function InscribirseInner({ params }: { params: PageProps<"/eventos/[id]/i
             {e.disciplines.map((d) => <label key={d} className="mr-4 text-sm"><input type="checkbox" defaultChecked className="mr-1 accent-brand" />{d}</label>)}
           </fieldset>
         )}
-        <button type="button" className="w-full rounded-full bg-brand py-3 font-semibold text-ink hover:bg-brand-hot">Pagar inscripción</button>
-        <p className="text-center text-xs text-muted">Vista de ejemplo: el pago real se conecta con el proveedor de pagos en el siguiente paso.</p>
+        <PayButton eventId={e.id} />
+        <p className="text-center text-xs text-muted">El pago se procesa de forma segura con Stripe.</p>
       </form>
       <p className="mt-4 text-center text-sm text-muted">¿Sin cuenta? <Link href="/registro" className="font-semibold text-brand-hot underline">Crea una</Link> o <Link href="/entrar" className="font-semibold text-brand-hot underline">inicia sesión</Link>.</p>
     </div>

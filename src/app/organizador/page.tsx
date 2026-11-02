@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { StripeConnectButton } from "@/components/StripeConnectButton";
 import { events, fmtDate } from "@/lib/mock";
 
 export default function Panel() {
@@ -13,6 +14,7 @@ export default function Panel() {
         </div>
         <Link href="/organizador/eventos/nuevo" className="rounded-full bg-brand px-5 py-3 font-semibold text-ink hover:bg-brand-hot">+ Nuevo evento</Link>
       </div>
+      <StripeConnectButton />
       <div className="mt-6 overflow-x-auto rounded-2xl border border-line bg-white">
         <table className="w-full text-left text-sm">
           <thead className="bg-sand font-mono text-xs uppercase text-muted"><tr><th className="p-3">Evento</th><th>Fecha</th><th>Estado</th><th>Inscritos</th></tr></thead>

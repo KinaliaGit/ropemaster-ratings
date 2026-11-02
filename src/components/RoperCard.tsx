@@ -1,13 +1,11 @@
 import Link from "next/link";
-import type { Roper } from "@/lib/mock";
+import { initials, type Roper } from "@/lib/mock";
 
 export function RoperCard({ r, rank }: { r: Roper; rank?: number }) {
   return (
-    <Link href={`/lazadores/${r.id}`} className="group flex items-center gap-4 rounded-2xl border border-line bg-white p-4 transition hover:border-brand hover:shadow-md">
+    <Link href={`/participantes/${r.id}`} className="group flex items-center gap-4 rounded-2xl border border-line bg-white p-4 transition hover:border-brand hover:shadow-md">
       {rank && <span className="w-6 font-mono text-sm text-muted">{rank}</span>}
-      <div className="grid size-12 shrink-0 place-items-center rounded-full bg-ink font-display font-bold text-brand">
-        {r.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
-      </div>
+      <div className="grid size-12 shrink-0 place-items-center rounded-full bg-ink font-display font-bold text-brand">{initials(r.name)}</div>
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold">{r.name}{r.verified && <span title="Perfil verificado" className="ml-1 text-brand">✓</span>}</p>
         <p className="font-mono text-xs text-muted">{r.events} eventos · {r.wins} victorias</p>

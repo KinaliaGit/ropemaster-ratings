@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { ropers } from "@/lib/mock";
 
-async function PerfilInner({ params }: { params: PageProps<"/lazadores/[id]">["params"] }) {
+async function PerfilInner({ params }: { params: PageProps<"/participantes/[id]">["params"] }) {
   const { id } = await params;
   const r = ropers.find((x) => x.id === id);
   if (!r) notFound();
@@ -35,12 +35,12 @@ async function PerfilInner({ params }: { params: PageProps<"/lazadores/[id]">["p
           </table>
         </div>
       )}
-      <p className="mt-6 text-xs text-muted">Los datos de contacto no son públicos. ¿No eres tú o es un error? <a href="/reclamar" className="underline">Reportar</a>.</p>
+      <p className="mt-6 text-xs text-muted">Los datos de contacto no son públicos. ¿No eres tú o es un error? <a href="/registro" className="underline">Reportar</a>.</p>
     </div>
   );
 }
 
-export default function Perfil(props: PageProps<"/lazadores/[id]">) {
+export default function Perfil(props: PageProps<"/participantes/[id]">) {
   return (
     <Suspense fallback={<p className="mx-auto max-w-4xl px-5 py-12 text-muted">Cargando…</p>}>
       <PerfilInner params={props.params} />

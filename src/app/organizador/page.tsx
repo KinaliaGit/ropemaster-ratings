@@ -1,35 +1,58 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { GateSession } from "@/components/Gate";
+import { OrgNav } from "@/components/OrgNav";
 import { StripeConnectButton } from "@/components/StripeConnectButton";
-import { events, fmtDate } from "@/lib/mock";
+import { events, fmtDate, mxn } from "@/lib/mock";
+
+const badge: Record<string, string> = { publicado: "bg-brand-soft text-brand-hot", borrador: "bg-sand text-muted", finalizado: "bg-ink text-cream" };
 
 export default function Panel() {
-  // TODO: filtrar por el organizador autenticado.
-  const mine = events.filter((e) => e.organizer === "Rodeo Norte");
   return (
-    <div className="mx-auto max-w-6xl px-5 py-10">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-3xl font-extrabold">Panel del organizador</h1>
-          <p className="mt-1 text-muted">Crea, publica y administra tus eventos.</p>
-        </div>
-        <Link href="/organizador/eventos/nuevo" className="rounded-full bg-brand px-5 py-3 font-semibold text-ink hover:bg-brand-hot">+ Nuevo evento</Link>
-      </div>
-      <StripeConnectButton />
-      <div className="mt-6 overflow-x-auto rounded-2xl border border-line bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-sand font-mono text-xs uppercase text-muted"><tr><th className="p-3">Evento</th><th>Fecha</th><th>Estado</th><th>Inscritos</th></tr></thead>
-          <tbody>
-            {mine.map((e) => (
-              <tr key={e.id} className="border-t border-line">
-                <td className="p-3 font-semibold"><Link href={`/eventos/${e.id}`} className="hover:text-brand-hot">{e.name}</Link></td>
-                <td className="font-mono">{fmtDate(e.date)}</td>
-                <td className="capitalize">{e.status}</td>
-                <td className="font-mono">{e.registered.length}/{e.capacity}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <Suspense fallback={<p className="mx-auto max-w-6xl px-5 py-10 text-muted">Cargando…</p>}>
+      <GateSession role="organizador" next="/organizador">
+        {(s) => {
+          const mine = events.filter((e) => e.organizer === s.id);
+          const inscritos = mine.reduce((n, e) => n + e.registered.length, 0);
+          const ingresos = mine.reduce((n, e) => n + e.registered.filter((r) => !e.unpaid?.includes(r)).length * e.categories[0].fee, 0);
+          const stats = [["Eventos", mine.length], ["Inscritos", inscritos], ["Cobrado", mxn(ingresos)]];
+          return (
+            <>
+              <OrgNav />
+              <div className="mx-auto max-w-6xl px-5 py-10">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-xs uppercase text-brand-hot">Cuenta de organizador</p>
+                    <h1 className="font-display text-3xl font-extrabold">{s.name}</h1>
+                  </div>
+                  <Link href="/organizador/eventos/nuevo" className="rounded-full bg-brand px-5 py-3 font-semibold text-ink hover:bg-brand-hot">+ Nuevo evento</Link>
+                </div>
+                <dl className="mt-6 grid gap-3 sm:grid-cols-3">
+                  {stats.map(([l, v]) => <div key={l} className="rounded-2xl border border-line bg-white p-4"><dd className="font-display text-3xl font-extrabold">{v}</dd><dt className="font-mono text-xs uppercase text-muted">{l}</dt></div>)}
+                </dl>
+                <StripeConnectButton />
+                <h2 className="mt-8 font-display text-xl font-bold">Mis eventos</h2>
+                <div className="mt-3 overflow-x-auto rounded-2xl border border-line bg-white">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-sand font-mono text-xs uppercase text-muted"><tr><th className="p-3">Evento</th><th>Fecha</th><th>Estado</th><th>Inscritos</th><th></th></tr></thead>
+                    <tbody>
+                      {mine.map((e) => (
+                        <tr key={e.id} className="border-t border-line">
+                          <td className="p-3 font-semibold">{e.name}</td>
+                          <td className="font-mono">{fmtDate(e.date)}</td>
+                          <td><span className={`rounded-full px-2.5 py-0.5 font-mono text-[10px] uppercase ${badge[e.status]}`}>{e.status}</span></td>
+                          <td className="font-mono">{e.registered.length}/{e.capacity}</td>
+                          <td className="pr-3 text-right"><Link href={`/organizador/eventos/${e.id}`} className="font-semibold text-brand-hot hover:underline">Gestionar →</Link></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          );
+        }}
+      </GateSession>
+    </Suspense>
   );
 }

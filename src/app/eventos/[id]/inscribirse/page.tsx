@@ -2,10 +2,10 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { events, mxn } from "@/lib/mock";
+import { Gate } from "@/components/Gate";
 import { PayButton } from "@/components/PayButton";
 
-async function InscribirseInner({ params }: { params: PageProps<"/eventos/[id]/inscribirse">["params"] }) {
-  const { id } = await params;
+function InscribirseInner({ id }: { id: string }) {
   const e = events.find((x) => x.id === id);
   if (!e) notFound();
   return (
@@ -31,15 +31,23 @@ async function InscribirseInner({ params }: { params: PageProps<"/eventos/[id]/i
         <PayButton eventId={e.id} />
         <p className="text-center text-xs text-muted">El pago se procesa de forma segura con Stripe.</p>
       </form>
-      <p className="mt-4 text-center text-sm text-muted">¿Sin cuenta? <Link href="/registro" className="font-semibold text-brand-hot underline">Crea una</Link> o <Link href="/entrar" className="font-semibold text-brand-hot underline">inicia sesión</Link>.</p>
     </div>
+  );
+}
+
+async function Resolver({ params }: { params: PageProps<"/eventos/[id]/inscribirse">["params"] }) {
+  const { id } = await params;
+  return (
+    <Gate role="participante" next={`/eventos/${id}/inscribirse`}>
+      <InscribirseInner id={id} />
+    </Gate>
   );
 }
 
 export default function Inscribirse(props: PageProps<"/eventos/[id]/inscribirse">) {
   return (
     <Suspense fallback={<p className="mx-auto max-w-6xl px-5 py-10 text-muted">Cargando…</p>}>
-      <InscribirseInner params={props.params} />
+      <Resolver params={props.params} />
     </Suspense>
   );
 }

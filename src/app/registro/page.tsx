@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { login } from "@/lib/auth-actions";
 
 type Role = "participante" | "organizador";
 
@@ -42,8 +43,14 @@ export default function Registro() {
           </label>
           <button className="w-full rounded-full bg-ink py-3 font-semibold text-cream hover:bg-ink-soft">Verificar</button>
         </>)}
-        {step === "listo" && <p className="rounded-xl bg-brand-soft p-4 font-semibold">Vista de ejemplo: el registro real se conecta en el siguiente paso.</p>}
       </form>
+      {step === "listo" && (
+        <form action={login} className="mt-4 space-y-3">
+          <p className="rounded-xl bg-brand-soft p-4 text-sm font-semibold">Vista de ejemplo: el registro real se conecta con Supabase. Continúa en modo demostración.</p>
+          <input type="hidden" name="role" value={role} />
+          <button className="w-full rounded-full bg-brand py-3 font-semibold text-ink hover:bg-brand-hot">Continuar</button>
+        </form>
+      )}
     </div>
   );
 }

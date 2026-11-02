@@ -1,39 +1,40 @@
 // Datos de ejemplo mientras se conecta Supabase.
 // Reemplazar por consultas a public_ropers, events y registrations.
 export type Result = { event: string; date: string; discipline: string; time: string; place: number; verified: boolean };
-export type Roper = { id: string; name: string; rating: number; events: number; wins: number; verified: boolean; results: Result[] };
+// phone es PRIVADO: solo se muestra en el área de organizadores y en la API de la app, nunca en páginas públicas.
+export type Roper = { id: string; name: string; phone: string; rating: number; events: number; wins: number; verified: boolean; results: Result[] };
 export type Category = { name: string; fee: number };
 export type EventItem = {
   id: string; name: string; date: string; city: string; venue: string;
   disciplines: string[]; categories: Category[]; capacity: number; registered: string[];
-  organizer: string; description: string; status: "publicado" | "borrador" | "finalizado";
+  organizer: string; unpaid?: string[]; updatedAt: string; description: string; status: "publicado" | "borrador" | "finalizado";
 };
 
 export const ropers: Roper[] = [
-  { id: "r1", name: "Ana Estrada", rating: 94, events: 18, wins: 6, verified: true, results: [
+  { id: "r1", phone: "+52 81 1234 5678", name: "Ana Estrada", rating: 94, events: 18, wins: 6, verified: true, results: [
     { event: "Serie El Silencio 2026", date: "2026-10-12", discipline: "Lazo", time: "8.42", place: 1, verified: true },
     { event: "Jaripeo Regional Norte", date: "2026-09-03", discipline: "Barriles", time: "15.87", place: 3, verified: true },
   ] },
-  { id: "r2", name: "Mateo Villarreal", rating: 88, events: 24, wins: 5, verified: true, results: [
+  { id: "r2", phone: "+52 81 8765 4321", name: "Mateo Villarreal", rating: 88, events: 24, wins: 5, verified: true, results: [
     { event: "Serie El Silencio 2026", date: "2026-10-12", discipline: "Lazo", time: "8.91", place: 2, verified: true },
   ] },
-  { id: "r3", name: "Sofía Ramírez", rating: 81, events: 11, wins: 2, verified: false, results: [
+  { id: "r3", phone: "+52 662 555 0101", name: "Sofía Ramírez", rating: 81, events: 11, wins: 2, verified: false, results: [
     { event: "Copa Noroeste", date: "2026-08-21", discipline: "Barriles", time: "16.20", place: 2, verified: false },
   ] },
-  { id: "r4", name: "Luis Cantú", rating: 76, events: 9, wins: 1, verified: false, results: [] },
+  { id: "r4", phone: "+52 844 555 0199", name: "Luis Cantú", rating: 76, events: 9, wins: 1, verified: false, results: [] },
 ];
 
 export const events: EventItem[] = [
   { id: "e1", name: "Gran Serie de Lazo Invierno", date: "2026-12-06", city: "Monterrey, NL", venue: "Arena San Pedro",
-    disciplines: ["Lazo"], capacity: 100, registered: ["r1", "r2", "r4"], organizer: "Rodeo Norte",
+    disciplines: ["Lazo"], capacity: 100, registered: ["r1", "r2", "r4"], unpaid: ["r4"], updatedAt: "2026-11-01T18:30:00Z", organizer: "Rodeo Norte",
     description: "Serie de tres fechas con premio acumulado. Cupo limitado, cierre de inscripciones 3 días antes.",
     categories: [{ name: "Libre", fee: 800 }, { name: "Amateur", fee: 500 }], status: "publicado" },
   { id: "e2", name: "Copa de Barriles Noroeste", date: "2026-11-22", city: "Hermosillo, SON", venue: "Lienzo Charro Hermosillo",
-    disciplines: ["Barriles"], capacity: 60, registered: ["r3"], organizer: "Asociación Noroeste",
+    disciplines: ["Barriles"], capacity: 60, registered: ["r3"], updatedAt: "2026-10-28T12:00:00Z", organizer: "Asociación Noroeste",
     description: "Copa abierta para barrileras de todas las categorías.",
     categories: [{ name: "Abierta", fee: 600 }, { name: "Juvenil", fee: 350 }], status: "publicado" },
   { id: "e3", name: "Serie El Silencio 2026", date: "2026-10-12", city: "Saltillo, COAH", venue: "Rancho El Silencio",
-    disciplines: ["Lazo", "Barriles"], capacity: 80, registered: ["r1", "r2"], organizer: "Rodeo Norte",
+    disciplines: ["Lazo", "Barriles"], capacity: 80, registered: ["r1", "r2"], updatedAt: "2026-10-13T09:00:00Z", organizer: "Rodeo Norte",
     description: "Evento finalizado. Consulta los resultados en el perfil de cada participante.",
     categories: [{ name: "Libre", fee: 700 }], status: "finalizado" },
 ];

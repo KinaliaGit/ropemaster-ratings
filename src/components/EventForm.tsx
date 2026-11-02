@@ -7,7 +7,7 @@ export function EventForm() {
   const [cats, setCats] = useState([{ name: "Libre", fee: 800 }]);
   // TODO: guardar en Supabase (events + categories) como borrador o publicado.
   return (
-    <form className="mt-6 space-y-5 rounded-2xl border border-line bg-white p-6" onSubmit={(e) => e.preventDefault()}>
+    <form className="mt-6 space-y-5 card p-6" onSubmit={(e) => e.preventDefault()}>
         <label className="block text-sm font-semibold">Nombre del evento<input required className={input} /></label>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm font-semibold">Fecha<input required type="date" className={input} /></label>
@@ -32,7 +32,7 @@ export function EventForm() {
         <label className="block text-sm font-semibold">Descripción<textarea rows={4} className={input} /></label>
         <div className="flex gap-3">
           <button className="flex-1 rounded-full bg-sand py-3 font-semibold">Guardar borrador</button>
-          <button className="flex-1 rounded-full bg-brand py-3 font-semibold text-ink hover:bg-brand-hot">Publicar</button>
+          <button className="flex-1 rounded-full bg-brand py-3 font-semibold text-white hover:bg-brand-hot">Publicar</button>
         </div>
     </form>
   );

@@ -16,16 +16,16 @@ export default function MiCuenta() {
           const top = [...ropers].sort((a, b) => b.rating - a.rating).slice(0, 4);
           return (
             <div className="mx-auto max-w-6xl px-5 py-10">
-              <div className="flex flex-wrap items-center gap-5 rounded-3xl bg-ink p-6 text-cream">
-                <div className="grid size-16 place-items-center rounded-full bg-brand font-display text-xl font-extrabold text-ink">{initials(me.name)}</div>
+              <div className="hero-card flex flex-wrap items-center gap-5 p-6 sm:p-8">
+                <div className="grid size-16 place-items-center rounded-full bg-white/90 font-display text-xl font-extrabold text-brand-hot">{initials(me.name)}</div>
                 <div className="flex-1">
-                  <p className="font-mono text-xs uppercase text-brand">Cuenta de participante</p>
+                  <p className="text-[0.7rem] font-bold uppercase tracking-[0.2em] text-white/80">Cuenta de participante</p>
                   <h1 className="font-display text-2xl font-extrabold">{me.name}</h1>
-                  <p className="font-mono text-xs text-cream/70">{me.phone} · {me.verified ? "celular verificado ✓" : "celular sin verificar"}</p>
+                  <p className="text-sm text-white/85">{me.phone} · {me.verified ? "celular verificado ✓" : "celular sin verificar"}</p>
                 </div>
                 <dl className="flex gap-6 text-center">
                   {[["Rating", me.rating], ["Eventos", me.events], ["Victorias", me.wins]].map(([l, v]) => (
-                    <div key={l}><dd className="font-display text-3xl font-extrabold text-brand">{v}</dd><dt className="font-mono text-[10px] uppercase">{l}</dt></div>
+                    <div key={l}><dd className="font-display text-4xl font-bold text-white">{v}</dd><dt className="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-white/80">{l}</dt></div>
                   ))}
                 </dl>
               </div>
@@ -36,7 +36,7 @@ export default function MiCuenta() {
                 {mine.map((e) => {
                   const paid = !e.unpaid?.includes(me.id);
                   return (
-                    <Link key={e.id} href={`/eventos/${e.id}`} className="flex items-center justify-between rounded-2xl border border-line bg-white p-4 hover:border-brand">
+                    <Link key={e.id} href={`/eventos/${e.id}`} className="flex items-center justify-between card p-4 hover:border-brand">
                       <span><span className="font-semibold">{e.name}</span><span className="block font-mono text-xs text-muted">{fmtDate(e.date)} · {e.city}</span></span>
                       <span className="text-right text-sm"><span className="block font-mono">{mxn(e.categories[0].fee)}</span>
                         <span className={`text-xs font-semibold ${paid ? "text-brand-hot" : "text-red-700"}`}>{paid ? "Pagado ✓" : "Pago pendiente"}</span></span>

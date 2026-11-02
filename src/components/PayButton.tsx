@@ -17,7 +17,7 @@ export function PayButton({ eventId }: { eventId: string }) {
 
   return (
     <>
-      <button type="button" onClick={pay} disabled={busy} className="w-full rounded-full bg-brand py-3 font-semibold text-ink hover:bg-brand-hot disabled:opacity-60">
+      <button type="button" onClick={pay} disabled={busy} className="w-full rounded-full bg-brand py-3 font-semibold text-white hover:bg-brand-hot disabled:opacity-60">
         {busy ? "Redirigiendo a Stripe…" : "Pagar inscripción"}
       </button>
       {error && <p role="alert" className="text-center text-sm text-red-700">{error}</p>}

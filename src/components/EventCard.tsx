@@ -1,25 +1,22 @@
 import Link from "next/link";
 import { fmtDate, mxn, type EventItem } from "@/lib/mock";
+import { Ring } from "@/components/Ring";
 
 export function EventCard({ e }: { e: EventItem }) {
   const min = Math.min(...e.categories.map((c) => c.fee));
   const full = e.registered.length >= e.capacity;
+  const tag = e.status === "finalizado" ? ["Finalizado", "bg-[#e5dcc9] text-muted"] : full ? ["Cupo lleno", "bg-[#fbd9cf] text-label"] : ["Abierto", "bg-[#d6e6fa] text-[#1e4a8c]"];
   return (
-    <Link href={`/eventos/${e.id}`} className="group flex flex-col rounded-2xl border border-line bg-white p-5 transition hover:border-brand hover:shadow-md">
-      <div className="flex items-start justify-between gap-3">
-        <p className="font-mono text-xs uppercase text-brand-hot">{fmtDate(e.date)}</p>
-        <span className={`rounded-full px-2.5 py-0.5 font-mono text-[10px] uppercase ${e.status === "finalizado" ? "bg-sand text-muted" : full ? "bg-ink text-cream" : "bg-brand-soft text-brand-hot"}`}>
-          {e.status === "finalizado" ? "Finalizado" : full ? "Cupo lleno" : "Inscripciones abiertas"}
-        </span>
-      </div>
-      <h2 className="mt-2 font-display text-xl font-bold group-hover:text-brand-hot">{e.name}</h2>
-      <p className="mt-1 text-sm text-muted">{e.venue} · {e.city}</p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {e.disciplines.map((d) => <span key={d} className="rounded-full bg-sand px-3 py-1 text-xs font-semibold">{d}</span>)}
-      </div>
-      <div className="mt-4 flex items-end justify-between border-t border-line pt-3 text-sm">
-        <span className="font-mono text-xs text-muted">{e.registered.length}/{e.capacity} inscritos</span>
-        <span className="font-semibold">{e.status === "finalizado" ? "Ver resultados" : `desde ${mxn(min)}`}</span>
+    <Link href={`/eventos/${e.id}`} className="card card-link flex min-h-[250px] flex-col p-6">
+      <h3 className="font-display text-2xl font-bold leading-tight">{e.name}</h3>
+      <span className={`mt-2 w-fit rounded-md px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] ${tag[1]}`}>{tag[0]}</span>
+      <div className="mt-auto flex items-end justify-between gap-3 pt-6">
+        <div className="min-w-0">
+          <p className="text-sm text-muted">{e.disciplines.join(" · ")}</p>
+          <p className="font-semibold">{e.city} · {fmtDate(e.date)}</p>
+          <p className="mt-1 text-sm text-muted">{e.registered.length} {e.registered.length === 1 ? "inscrito" : "inscritos"} · {e.status === "finalizado" ? "ver resultados" : mxn(min)}</p>
+        </div>
+        <Ring value={(e.registered.length / e.capacity) * 100} />
       </div>
     </Link>
   );

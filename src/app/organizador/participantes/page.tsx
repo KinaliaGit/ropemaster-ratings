@@ -14,7 +14,7 @@ export default function ParticipantesOrg() {
             <div className="mx-auto max-w-6xl px-5 py-10">
               <h1 className="font-display text-3xl font-extrabold">Participantes</h1>
               <p className="mt-1 text-sm text-muted">Directorio global con datos de contacto, visible solo para organizadores. Úsalo para registrar participantes en tus eventos.</p>
-              <div className="mt-6 overflow-x-auto rounded-2xl border border-line bg-white">
+              <div className="mt-6 overflow-x-auto card">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-sand font-mono text-xs uppercase text-muted"><tr><th className="p-3">Nombre</th><th>Celular</th><th>Rating</th><th>Eventos</th><th>Victorias</th><th>Perfil</th></tr></thead>
                   <tbody>

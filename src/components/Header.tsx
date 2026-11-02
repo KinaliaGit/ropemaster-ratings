@@ -3,14 +3,14 @@ import { Suspense } from "react";
 import { getSession } from "@/lib/session";
 import { logout } from "@/lib/auth-actions";
 
-const link = "rounded-full px-3 py-2 hover:bg-white/10";
+const link = "px-3 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-ink/80 transition hover:text-brand-hot";
 
 async function AuthNav() {
   const s = await getSession();
-  if (!s) return <Link href="/entrar" className="rounded-full bg-brand px-4 py-2 font-semibold text-ink hover:bg-brand-hot">Entrar</Link>;
+  if (!s) return <Link href="/entrar" className="rounded-full bg-ink px-5 py-2.5 text-[0.8rem] font-bold uppercase tracking-[0.14em] text-cream transition hover:bg-brand-hot">Entrar</Link>;
   return (
     <>
-      <Link href={s.role === "organizador" ? "/organizador" : "/mi-cuenta"} className="rounded-full bg-brand px-4 py-2 font-semibold text-ink hover:bg-brand-hot">
+      <Link href={s.role === "organizador" ? "/organizador" : "/mi-cuenta"} className="rounded-full bg-ink px-5 py-2.5 text-[0.8rem] font-bold uppercase tracking-[0.14em] text-cream transition hover:bg-brand-hot">
         {s.role === "organizador" ? "Mi panel" : "Mi cuenta"}
       </Link>
       <form action={logout}><button className={link}>Salir</button></form>
@@ -18,18 +18,19 @@ async function AuthNav() {
   );
 }
 
+// Navbar sin fondo (solo desenfoque) como el de Kinalia: flota sobre la página.
 export function Header() {
   return (
-    <header className="sticky top-0 z-10 bg-ink text-cream">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
-        <Link href="/" className="flex items-center gap-2 font-display text-lg font-bold">
-          <span className="grid size-8 place-items-center rounded-lg bg-brand text-ink">R</span>
-          Rope Master <span className="hidden font-mono text-xs font-medium text-brand sm:inline">RATINGS</span>
+    <header className="fixed inset-x-0 top-0 z-50 backdrop-blur-md">
+      <div className="mx-auto flex h-20 max-w-6xl items-center justify-between gap-4 px-5">
+        <Link href="/" className="flex items-baseline gap-2">
+          <span className="font-display text-2xl font-bold">Rope Master</span>
+          <span className="label hidden sm:inline">Ratings</span>
         </Link>
-        <nav className="flex items-center gap-1 text-sm sm:gap-3">
+        <nav className="flex items-center gap-1 sm:gap-3">
           <Link href="/" className={link}>Eventos</Link>
           <Link href="/participantes" className={link}>Participantes</Link>
-          <Suspense fallback={<span className="h-9 w-20" />}><AuthNav /></Suspense>
+          <Suspense fallback={<span className="h-9 w-24" />}><AuthNav /></Suspense>
         </nav>
       </div>
     </header>

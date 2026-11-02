@@ -27,18 +27,18 @@ async function Resolver({ params }: { params: PageProps<"/organizador/eventos/[i
                 <div className="flex gap-2">
                   <Link href={`/eventos/${e.id}`} className="rounded-full bg-sand px-4 py-2 text-sm font-semibold hover:bg-line">Ver página pública</Link>
                   {/* TODO: server actions que cambian events.status en Supabase. */}
-                  <button className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-ink hover:bg-brand-hot">{e.status === "borrador" ? "Publicar" : "Pasar a borrador"}</button>
+                  <button className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hot">{e.status === "borrador" ? "Publicar" : "Pasar a borrador"}</button>
                 </div>
               </div>
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-line bg-white p-4"><p className="font-display text-2xl font-extrabold">{e.registered.length}/{e.capacity}</p><p className="font-mono text-xs uppercase text-muted">Inscritos</p></div>
-                <div className="rounded-2xl border border-line bg-white p-4"><p className="font-display text-2xl font-extrabold">{rows.filter((x) => x.paid).length}</p><p className="font-mono text-xs uppercase text-muted">Pagados</p></div>
-                <div className="rounded-2xl border border-line bg-white p-4"><p className="font-display text-2xl font-extrabold capitalize">{e.status}</p><p className="font-mono text-xs uppercase text-muted">Estado · disponible en la app al sincronizar</p></div>
+                <div className="card p-4"><p className="font-display text-2xl font-extrabold">{e.registered.length}/{e.capacity}</p><p className="label">Inscritos</p></div>
+                <div className="card p-4"><p className="font-display text-2xl font-extrabold">{rows.filter((x) => x.paid).length}</p><p className="label">Pagados</p></div>
+                <div className="card p-4"><p className="font-display text-2xl font-extrabold capitalize">{e.status}</p><p className="label">Estado · disponible en la app al sincronizar</p></div>
               </div>
               <h2 className="mt-8 font-display text-xl font-bold">Inscritos</h2>
-              <div className="mt-3 overflow-x-auto rounded-2xl border border-line bg-white">
+              <div className="mt-3 overflow-x-auto card">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-sand font-mono text-xs uppercase text-muted"><tr><th className="p-3">Participante</th><th>Celular</th><th>Rating</th><th>Categoría</th><th>Pago</th></tr></thead>
+                  <thead className="bg-sand label"><tr><th className="p-3">Participante</th><th>Celular</th><th>Rating</th><th>Categoría</th><th>Pago</th></tr></thead>
                   <tbody>
                     {rows.map(({ r, paid }) => (
                       <tr key={r.id} className="border-t border-line">

@@ -10,7 +10,7 @@ async function Lista({ searchParams }: { searchParams: PageProps<"/participantes
     <>
       <form className="mt-6 flex gap-3">
         <input name="q" defaultValue={q} placeholder="Buscar por nombre" className="flex-1 rounded-full border border-line bg-white px-5 py-3" />
-        <button className="rounded-full bg-brand px-6 py-3 font-semibold text-ink hover:bg-brand-hot">Buscar</button>
+        <button className="rounded-full bg-brand px-6 py-3 font-semibold text-white hover:bg-brand-hot">Buscar</button>
       </form>
       <div className="mt-6 grid gap-3 md:grid-cols-2">
         {list.length ? list.map((r, i) => <RoperCard key={r.id} r={r} rank={q ? undefined : i + 1} />) : <p className="text-muted">Sin resultados para “{q}”.</p>}

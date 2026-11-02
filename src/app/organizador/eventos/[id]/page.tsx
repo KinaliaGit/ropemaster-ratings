@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { GateSession } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
+import { PhotoUploader } from "@/components/PhotoUploader";
 import { events, ropers, fmtDate, mxn } from "@/lib/mock";
 
 async function Resolver({ params }: { params: PageProps<"/organizador/eventos/[id]">["params"] }) {
@@ -21,7 +22,7 @@ async function Resolver({ params }: { params: PageProps<"/organizador/eventos/[i
               <Link href="/organizador" className="text-sm text-muted hover:underline">← Mis eventos</Link>
               <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h1 className="font-display text-3xl font-extrabold">{e.name}</h1>
+                  <h1 className="text-3xl font-semibold">{e.name}</h1>
                   <p className="text-muted">{fmtDate(e.date)} · {e.venue}, {e.city}</p>
                 </div>
                 <div className="flex gap-2">
@@ -31,11 +32,12 @@ async function Resolver({ params }: { params: PageProps<"/organizador/eventos/[i
                 </div>
               </div>
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                <div className="card p-4"><p className="font-display text-2xl font-extrabold">{e.registered.length}/{e.capacity}</p><p className="label">Inscritos</p></div>
-                <div className="card p-4"><p className="font-display text-2xl font-extrabold">{rows.filter((x) => x.paid).length}</p><p className="label">Pagados</p></div>
-                <div className="card p-4"><p className="font-display text-2xl font-extrabold capitalize">{e.status}</p><p className="label">Estado · disponible en la app al sincronizar</p></div>
+                <div className="card p-4"><p className="text-2xl font-semibold">{e.registered.length}/{e.capacity}</p><p className="label">Inscritos</p></div>
+                <div className="card p-4"><p className="text-2xl font-semibold">{rows.filter((x) => x.paid).length}</p><p className="label">Pagados</p></div>
+                <div className="card p-4"><p className="text-2xl font-semibold capitalize">{e.status}</p><p className="label">Estado · disponible en la app al sincronizar</p></div>
               </div>
-              <h2 className="mt-8 font-display text-xl font-bold">Inscritos</h2>
+              <div className="card mt-8 p-6"><PhotoUploader /></div>
+              <h2 className="mt-8 text-xl font-semibold">Inscritos</h2>
               <div className="mt-3 overflow-x-auto card">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-sand label"><tr><th className="p-3">Participante</th><th>Celular</th><th>Rating</th><th>Categoría</th><th>Pago</th></tr></thead>

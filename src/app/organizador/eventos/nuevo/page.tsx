@@ -11,7 +11,7 @@ export default function NuevoEvento() {
           <>
             <OrgNav />
             <div className="mx-auto max-w-2xl px-5 py-10">
-              <h1 className="font-display text-3xl font-extrabold">Nuevo evento</h1>
+              <h1 className="text-3xl font-semibold">Nuevo evento</h1>
               <p className="mt-1 text-sm text-muted">Al publicarlo aparece en la web y tu app Rope Master lo descarga al sincronizar.</p>
               <EventForm />
             </div>

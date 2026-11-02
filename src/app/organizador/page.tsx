@@ -22,16 +22,16 @@ export default function Panel() {
               <div className="mx-auto max-w-6xl px-5 py-10">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="font-mono text-xs uppercase text-brand-hot">Cuenta de organizador</p>
-                    <h1 className="font-display text-3xl font-extrabold">{s.name}</h1>
+                    <p className="label text-brand-hot">Cuenta de organizador</p>
+                    <h1 className="text-3xl font-semibold">{s.name}</h1>
                   </div>
                   <Link href="/organizador/eventos/nuevo" className="rounded-full bg-brand px-5 py-3 font-semibold text-white hover:bg-brand-hot">+ Nuevo evento</Link>
                 </div>
                 <dl className="mt-6 grid gap-3 sm:grid-cols-3">
-                  {stats.map(([l, v]) => <div key={l} className="card p-4"><dd className="font-display text-3xl font-extrabold">{v}</dd><dt className="label">{l}</dt></div>)}
+                  {stats.map(([l, v]) => <div key={l} className="card p-4"><dd className="text-3xl font-semibold">{v}</dd><dt className="label">{l}</dt></div>)}
                 </dl>
                 <StripeConnectButton />
-                <h2 className="mt-8 font-display text-xl font-bold">Mis eventos</h2>
+                <h2 className="mt-8 text-xl font-semibold">Mis eventos</h2>
                 <div className="mt-3 overflow-x-auto card">
                   <table className="w-full text-left text-sm">
                     <thead className="bg-sand label"><tr><th className="p-3">Evento</th><th>Fecha</th><th>Estado</th><th>Inscritos</th><th></th></tr></thead>

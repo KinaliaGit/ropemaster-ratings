@@ -7,7 +7,7 @@ export type Category = { name: string; fee: number };
 export type EventItem = {
   id: string; name: string; date: string; city: string; venue: string;
   disciplines: string[]; categories: Category[]; capacity: number; registered: string[];
-  organizer: string; unpaid?: string[]; updatedAt: string; description: string; status: "publicado" | "borrador" | "finalizado";
+  organizer: string; tone: number; cover?: string; photos: string[]; unpaid?: string[]; updatedAt: string; description: string; status: "publicado" | "borrador" | "finalizado";
 };
 
 export const ropers: Roper[] = [
@@ -26,15 +26,15 @@ export const ropers: Roper[] = [
 
 export const events: EventItem[] = [
   { id: "e1", name: "Gran Serie de Lazo Invierno", date: "2026-12-06", city: "Monterrey, NL", venue: "Arena San Pedro",
-    disciplines: ["Lazo"], capacity: 100, registered: ["r1", "r2", "r4"], unpaid: ["r4"], updatedAt: "2026-11-01T18:30:00Z", organizer: "Rodeo Norte",
+    disciplines: ["Lazo"], capacity: 100, registered: ["r1", "r2", "r4"], unpaid: ["r4"], updatedAt: "2026-11-01T18:30:00Z", organizer: "Rodeo Norte", tone: 0, photos: [],
     description: "Serie de tres fechas con premio acumulado. Cupo limitado, cierre de inscripciones 3 días antes.",
     categories: [{ name: "Libre", fee: 800 }, { name: "Amateur", fee: 500 }], status: "publicado" },
   { id: "e2", name: "Copa de Barriles Noroeste", date: "2026-11-22", city: "Hermosillo, SON", venue: "Lienzo Charro Hermosillo",
-    disciplines: ["Barriles"], capacity: 60, registered: ["r3"], updatedAt: "2026-10-28T12:00:00Z", organizer: "Asociación Noroeste",
+    disciplines: ["Barriles"], capacity: 60, registered: ["r3"], updatedAt: "2026-10-28T12:00:00Z", organizer: "Asociación Noroeste", tone: 1, photos: [],
     description: "Copa abierta para barrileras de todas las categorías.",
     categories: [{ name: "Abierta", fee: 600 }, { name: "Juvenil", fee: 350 }], status: "publicado" },
   { id: "e3", name: "Serie El Silencio 2026", date: "2026-10-12", city: "Saltillo, COAH", venue: "Rancho El Silencio",
-    disciplines: ["Lazo", "Barriles"], capacity: 80, registered: ["r1", "r2"], updatedAt: "2026-10-13T09:00:00Z", organizer: "Rodeo Norte",
+    disciplines: ["Lazo", "Barriles"], capacity: 80, registered: ["r1", "r2"], updatedAt: "2026-10-13T09:00:00Z", organizer: "Rodeo Norte", tone: 2, photos: [],
     description: "Evento finalizado. Consulta los resultados en el perfil de cada participante.",
     categories: [{ name: "Libre", fee: 700 }], status: "finalizado" },
 ];

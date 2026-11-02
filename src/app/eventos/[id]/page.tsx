@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { events, ropers, fmtDate, mxn } from "@/lib/mock";
 import { RoperCard } from "@/components/RoperCard";
+import { EventCover } from "@/components/EventCover";
 
 async function EventoInner({ params }: { params: PageProps<"/eventos/[id]">["params"] }) {
   const { id } = await params;
@@ -11,27 +12,48 @@ async function EventoInner({ params }: { params: PageProps<"/eventos/[id]">["par
   const inscritos = ropers.filter((r) => e.registered.includes(r.id));
   const open = e.status === "publicado" && e.registered.length < e.capacity;
   return (
-    <div className="mx-auto grid max-w-6xl gap-8 px-5 py-10 lg:grid-cols-[1fr_340px]">
-      <div>
-        <p className="font-mono text-xs uppercase text-brand-hot">{fmtDate(e.date)} · {e.city}</p>
-        <h1 className="mt-2 font-display text-3xl font-extrabold sm:text-4xl">{e.name}</h1>
-        <p className="mt-1 text-muted">{e.venue} · Organiza {e.organizer}</p>
-        <p className="mt-5 max-w-2xl">{e.description}</p>
-        <h2 className="mt-10 font-display text-xl font-bold">Inscritos ({inscritos.length}/{e.capacity})</h2>
-        <div className="mt-4 space-y-3">
-          {inscritos.length ? inscritos.map((r) => <RoperCard key={r.id} r={r} />) : <p className="text-muted">Aún no hay inscritos.</p>}
+    <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
+      <div className="relative h-64 overflow-hidden rounded-[28px] bg-sand sm:h-80">
+        <EventCover e={e} />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-8">
+          <h1 className="text-3xl font-semibold sm:text-5xl">{e.name}</h1>
+          <p className="mt-2 text-white/85">{e.city} · {fmtDate(e.date)}</p>
         </div>
       </div>
-      <aside className="card h-fit p-6">
-        <h2 className="font-display text-lg font-bold">Inscripción</h2>
-        <ul className="mt-4 space-y-2">
-          {e.categories.map((c) => <li key={c.name} className="flex justify-between border-b border-line pb-2 text-sm"><span>{c.name}</span><span className="font-mono">{mxn(c.fee)}</span></li>)}
-        </ul>
-        {open
-          ? <Link href={`/eventos/${e.id}/inscribirse`} className="mt-5 block rounded-full bg-ink py-3 text-center text-xs font-bold uppercase tracking-[0.2em] text-cream hover:bg-brand-hot">Inscribirme</Link>
-          : <p className="mt-5 rounded-xl bg-sand p-3 text-center text-sm">{e.status === "finalizado" ? "Evento finalizado" : "Cupo lleno"}</p>}
-        <p className="mt-3 text-center text-xs text-muted">Necesitas una cuenta de participante para inscribirte.</p>
-      </aside>
+
+      <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_320px]">
+        <div>
+          <p className="text-sm text-muted">{e.venue} · Organiza {e.organizer}</p>
+          <p className="mt-3 max-w-2xl text-lg">{e.description}</p>
+
+          <h2 className="mt-12 text-xl font-semibold">Fotos</h2>
+          {e.photos.length ? (
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {e.photos.map((src) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={src} src={src} alt="" className="aspect-square w-full rounded-2xl object-cover" />
+              ))}
+            </div>
+          ) : <p className="mt-3 text-muted">El organizador aún no ha subido fotos.</p>}
+
+          <h2 className="mt-12 text-xl font-semibold">Inscritos <span className="font-normal text-muted">{inscritos.length}/{e.capacity}</span></h2>
+          <div className="mt-2">
+            {inscritos.length ? inscritos.map((r) => <RoperCard key={r.id} r={r} />) : <p className="mt-3 text-muted">Aún no hay inscritos.</p>}
+          </div>
+        </div>
+
+        <aside className="card h-fit p-6 lg:sticky lg:top-24">
+          <h2 className="text-lg font-semibold">Inscripción</h2>
+          <ul className="mt-4">
+            {e.categories.map((c) => <li key={c.name} className="flex justify-between border-b border-line py-3 text-sm last:border-0"><span>{c.name}</span><span className="tabular-nums">{mxn(c.fee)}</span></li>)}
+          </ul>
+          {open
+            ? <Link href={`/eventos/${e.id}/inscribirse`} className="mt-4 block rounded-full bg-ink py-3 text-center text-sm font-medium text-white transition hover:bg-brand-hot">Inscribirme</Link>
+            : <p className="mt-4 rounded-full bg-sand py-3 text-center text-sm text-muted">{e.status === "finalizado" ? "Evento finalizado" : "Cupo lleno"}</p>}
+          <p className="mt-3 text-center text-xs text-muted">Necesitas una cuenta de participante.</p>
+        </aside>
+      </div>
     </div>
   );
 }

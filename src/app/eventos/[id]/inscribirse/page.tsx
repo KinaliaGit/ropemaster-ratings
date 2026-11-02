@@ -11,7 +11,7 @@ function InscribirseInner({ id }: { id: string }) {
   return (
     <div className="mx-auto max-w-lg px-5 py-12">
       <Link href={`/eventos/${e.id}`} className="text-sm text-muted hover:underline">← {e.name}</Link>
-      <h1 className="mt-3 font-display text-3xl font-extrabold">Inscripción</h1>
+      <h1 className="mt-3 text-3xl font-semibold">Inscripción</h1>
       <form className="mt-6 space-y-5 card p-6">
         <fieldset>
           <legend className="text-sm font-semibold">Categoría</legend>

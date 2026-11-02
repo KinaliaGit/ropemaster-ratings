@@ -10,7 +10,7 @@ export default function Registro() {
   // TODO: Supabase Auth. Participante: verifica celular por código y reclama el perfil existente.
   return (
     <div className="mx-auto max-w-md px-5 py-14">
-      <h1 className="font-display text-3xl font-extrabold">Crear cuenta</h1>
+      <h1 className="text-3xl font-semibold">Crear cuenta</h1>
       <div className="mt-6 grid grid-cols-2 gap-2 rounded-full bg-sand p-1 text-sm font-semibold">
         {(["participante", "organizador"] as Role[]).map((r) => (
           <button key={r} type="button" onClick={() => { setRole(r); setStep("datos"); }}

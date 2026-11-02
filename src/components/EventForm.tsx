@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { PhotoUploader } from "@/components/PhotoUploader";
 
 const input = "mt-1 w-full rounded-xl border border-line bg-white px-4 py-3";
 
@@ -29,6 +30,7 @@ export function EventForm() {
           ))}
           <button type="button" onClick={() => setCats([...cats, { name: "", fee: 0 }])} className="mt-2 text-sm font-semibold text-brand-hot">+ Agregar categoría</button>
         </fieldset>
+        <PhotoUploader label="Foto de portada" single />
         <label className="block text-sm font-semibold">Descripción<textarea rows={4} className={input} /></label>
         <div className="flex gap-3">
           <button className="flex-1 rounded-full bg-sand py-3 font-semibold">Guardar borrador</button>

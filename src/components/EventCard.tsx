@@ -1,22 +1,20 @@
 import Link from "next/link";
-import { fmtDate, mxn, type EventItem } from "@/lib/mock";
-import { Ring } from "@/components/Ring";
+import { fmtDate, type EventItem } from "@/lib/mock";
+import { EventCover } from "@/components/EventCover";
 
+// Tarjeta de foto a todo el tamaño con el texto encima (estilo galería).
 export function EventCard({ e }: { e: EventItem }) {
-  const min = Math.min(...e.categories.map((c) => c.fee));
   const full = e.registered.length >= e.capacity;
-  const tag = e.status === "finalizado" ? ["Finalizado", "bg-[#e5dcc9] text-muted"] : full ? ["Cupo lleno", "bg-[#fbd9cf] text-label"] : ["Abierto", "bg-[#d6e6fa] text-[#1e4a8c]"];
+  const tag = e.status === "finalizado" ? "Finalizado" : full ? "Cupo lleno" : "Inscripciones abiertas";
   return (
-    <Link href={`/eventos/${e.id}`} className="card card-link flex min-h-[250px] flex-col p-6">
-      <h3 className="font-display text-2xl font-bold leading-tight">{e.name}</h3>
-      <span className={`mt-2 w-fit rounded-md px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] ${tag[1]}`}>{tag[0]}</span>
-      <div className="mt-auto flex items-end justify-between gap-3 pt-6">
-        <div className="min-w-0">
-          <p className="text-sm text-muted">{e.disciplines.join(" · ")}</p>
-          <p className="font-semibold">{e.city} · {fmtDate(e.date)}</p>
-          <p className="mt-1 text-sm text-muted">{e.registered.length} {e.registered.length === 1 ? "inscrito" : "inscritos"} · {e.status === "finalizado" ? "ver resultados" : mxn(min)}</p>
-        </div>
-        <Ring value={(e.registered.length / e.capacity) * 100} />
+    <Link href={`/eventos/${e.id}`} className="group relative block aspect-[4/5] overflow-hidden rounded-[28px] bg-sand">
+      <div className="absolute inset-0 transition duration-500 group-hover:scale-[1.03]"><EventCover e={e} /></div>
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+      <span className="absolute left-4 top-4 rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur-md">{tag}</span>
+      <div className="absolute inset-x-0 bottom-0 p-6 text-white">
+        <h3 className="text-xl font-semibold leading-tight">{e.name}</h3>
+        <p className="mt-1 text-white/75">{e.city}</p>
+        <p className="text-white/90">{fmtDate(e.date)}</p>
       </div>
     </Link>
   );

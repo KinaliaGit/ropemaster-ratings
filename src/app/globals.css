@@ -1,66 +1,46 @@
 @import "tailwindcss";
 
 :root {
-  --ink: #2b1b0e;
-  --cream: #f3eada;
-  --sand: #eadfc6;
-  --line: rgba(43, 27, 14, 0.12);
-  --card: rgba(255, 246, 232, 0.72);
-  --muted: #7a6652;
+  --ink: #141311;
+  --paper: #fbfaf7;
+  --sand: #f2f0ea;
+  --line: #e9e6df;
+  --muted: #77736a;
   --orange: #f26b0f;
   --orange-hot: #d9570a;
-  --orange-soft: #fde6cc;
-  --label: #8e2c12;
+  --orange-soft: #fff1e5;
 }
 
 @theme inline {
   --color-ink: var(--ink);
-  --color-cream: var(--cream);
+  --color-cream: var(--paper);
   --color-sand: var(--sand);
   --color-line: var(--line);
-  --color-card: var(--card);
+  --color-card: #ffffff;
   --color-muted: var(--muted);
   --color-brand: var(--orange);
   --color-brand-hot: var(--orange-hot);
   --color-brand-soft: var(--orange-soft);
-  --color-label: var(--label);
-  --font-display: var(--font-playfair);
-  --font-sans: var(--font-dm-sans);
-  --font-mono: var(--font-dm-sans);
+  --color-label: var(--muted);
+  --font-display: var(--font-inter);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-inter);
 }
 
 body {
   min-height: 100vh;
   color: var(--ink);
-  font-family: var(--font-dm-sans), sans-serif;
-  background:
-    radial-gradient(900px 480px at 92% -4%, #ffc99d 0%, transparent 65%),
-    linear-gradient(180deg, #fbeedd 0%, #f3eada 45%, #eadfc6 100%);
-  background-attachment: fixed;
+  background: var(--paper);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
-h1, h2, h3, .font-display { font-family: var(--font-playfair), serif; letter-spacing: -0.01em; }
+h1, h2, h3, .font-display { font-family: var(--font-inter), sans-serif; letter-spacing: -0.03em; font-weight: 600; }
 .font-mono { font-variant-numeric: tabular-nums; }
-.font-mono.uppercase { letter-spacing: 0.14em; font-weight: 600; }
 
-/* Tarjeta translúcida, igual a la de la app de escritorio */
-.card {
-  background: var(--card);
-  border: 1px solid rgba(255, 255, 255, 0.75);
-  border-radius: 28px;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 16px 36px -20px rgba(120, 60, 10, 0.32);
-  backdrop-filter: blur(6px);
-}
-.card-link { transition: transform 0.2s, box-shadow 0.2s; }
-.card-link:hover { transform: translateY(-2px); box-shadow: 0 1px 0 rgba(255,255,255,.8) inset, 0 22px 40px -18px rgba(120, 60, 10, 0.4); }
+/* Superficie blanca con borde fino, sin sombras */
+.card { background: #fff; border: 1px solid var(--line); border-radius: 20px; }
+.card-link { transition: border-color 0.2s; }
+.card-link:hover { border-color: #cfcbc1; }
 
-.hero-card {
-  position: relative;
-  overflow: hidden;
-  color: #fff;
-  border-radius: 32px;
-  background: linear-gradient(135deg, #ff9a4a 0%, #f2700f 55%, #de560a 100%);
-  box-shadow: 0 26px 50px -26px rgba(222, 86, 10, 0.65);
-}
-
-/* Etiqueta pequeña en mayúsculas con espaciado, como "SERIES TOTALES" */
-.label { font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700; color: var(--label); }
+/* Etiqueta pequeña */
+.label { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; color: var(--muted); }

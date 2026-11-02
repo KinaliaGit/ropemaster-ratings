@@ -7,23 +7,24 @@ async function PerfilInner({ params }: { params: PageProps<"/participantes/[id]"
   const r = ropers.find((x) => x.id === id);
   if (!r) notFound();
   return (
-    <div className="mx-auto max-w-4xl px-5 py-12">
-      <div className="hero-card flex flex-wrap items-center gap-5 p-6 sm:p-8">
-        <div className="grid size-20 place-items-center rounded-full bg-white/90 font-display text-2xl font-extrabold text-brand-hot">
-          {r.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
-        </div>
+    <div className="mx-auto max-w-4xl px-5 pb-10 pt-12">
+      <div className="flex flex-wrap items-center gap-5">
+        <div className="grid size-20 place-items-center rounded-full bg-sand text-2xl font-semibold">{r.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>
         <div className="flex-1">
-          <h1 className="font-display text-3xl font-extrabold">{r.name}</h1>
-          <p className="text-sm text-white/85">{r.verified ? "Perfil verificado ✓" : "Perfil sin reclamar"} · {r.events} eventos · {r.wins} victorias</p>
+          <h1 className="text-4xl font-semibold">{r.name}</h1>
+          <p className="text-muted">{r.verified ? "Perfil verificado ✓" : "Perfil sin reclamar"}</p>
         </div>
-        <div className="text-right"><p className="font-display text-6xl font-extrabold leading-none text-white">{r.rating}</p><p className="label mt-2 !text-white/80">Rating</p></div>
+        <div className="text-right"><p className="text-6xl font-semibold leading-none tabular-nums">{r.rating}</p><p className="label mt-2">Rating</p></div>
       </div>
+      <dl className="mt-8 grid grid-cols-3 border-y border-line py-5 text-center">
+        {[[r.events, "eventos"], [r.wins, "victorias"], [r.results.length, "resultados"]].map(([n, l]) => <div key={l}><dd className="text-2xl font-semibold tabular-nums">{n}</dd><dt className="text-sm text-muted">{l}</dt></div>)}
+      </dl>
 
-      <h2 className="mt-10 font-display text-xl font-bold">Historial de eventos</h2>
+      <h2 className="mt-10 text-xl font-semibold">Historial de eventos</h2>
       {r.results.length === 0 ? <p className="mt-3 text-muted">Aún no hay resultados registrados.</p> : (
         <div className="mt-4 overflow-x-auto card">
           <table className="w-full text-left text-sm">
-            <thead className="bg-sand font-mono text-xs uppercase text-muted"><tr><th className="p-3">Evento</th><th>Fecha</th><th>Disciplina</th><th>Tiempo</th><th>Lugar</th></tr></thead>
+            <thead className="bg-sand label text-muted"><tr><th className="p-3">Evento</th><th>Fecha</th><th>Disciplina</th><th>Tiempo</th><th>Lugar</th></tr></thead>
             <tbody>
               {r.results.map((x) => (
                 <tr key={x.event + x.date} className="border-t border-line">
@@ -42,7 +43,7 @@ async function PerfilInner({ params }: { params: PageProps<"/participantes/[id]"
 
 export default function Perfil(props: PageProps<"/participantes/[id]">) {
   return (
-    <Suspense fallback={<p className="mx-auto max-w-4xl px-5 py-12 text-muted">Cargando…</p>}>
+    <Suspense fallback={<p className="mx-auto max-w-4xl px-5 pb-10 pt-12 text-muted">Cargando…</p>}>
       <PerfilInner params={props.params} />
     </Suspense>
   );

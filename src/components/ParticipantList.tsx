@@ -2,8 +2,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { matchesName } from "@/lib/search";
+import { Avatar } from "@/components/Avatar";
 
-export type ParticipantRow = { id: string; href: string; name: string; initials: string; verified: boolean; sub: string; rating: string; rank: number };
+export type ParticipantRow = { id: string; href: string; name: string; initials: string; photo: string | null; verified: boolean; sub: string; rating: string; rank: number };
 export type RowSet = { id: string; label: string; rows: ParticipantRow[] };
 
 // Lista con búsqueda en vivo y pestañas por modalidad (las pestañas solo aparecen si hay más de una activa).
@@ -34,7 +35,7 @@ export function ParticipantList({ sets, labels }: { sets: RowSet[]; labels: { se
         {list.length ? list.map((r) => (
           <Link key={r.id} href={r.href} className="group flex items-center gap-4 border-b border-line py-4 transition hover:bg-sand/60 sm:px-2">
             <span className="w-6 text-sm tabular-nums text-muted">{r.rank}</span>
-            <div className="grid size-10 shrink-0 place-items-center rounded-full bg-sand text-sm font-semibold">{r.initials}</div>
+            <Avatar name={r.name} initials={r.initials} url={r.photo} />
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{r.name}{r.verified && <span title={labels.verified} className="ml-1 text-brand">✓</span>}</p>
               <p className="text-sm text-muted">{r.sub}</p>

@@ -5,6 +5,7 @@ import { logout } from "@/lib/auth-actions";
 import { NavLinks } from "@/components/NavLinks";
 import { AccountMenu } from "@/components/AccountMenu";
 import { initials } from "@/lib/mock";
+import { avatarUrl } from "@/lib/avatars";
 import type { Dict } from "@/dictionaries/es";
 import type { Lang } from "@/lib/format";
 
@@ -14,7 +15,7 @@ async function Account({ lang, t }: { lang: Lang; t: Dict }) {
   const org = s.role === "organizador";
   return (
     <AccountMenu
-      initials={initials(s.name)} name={s.name} roleLabel={org ? t.org.accountType : t.account.type} lang={lang}
+      initials={initials(s.name)} photo={org ? null : avatarUrl(s.id)} name={s.name} roleLabel={org ? t.org.accountType : t.account.type} lang={lang}
       dashboardHref={`/${lang}/${org ? "organizador" : "mi-cuenta"}`} dashboardLabel={org ? t.nav.myPanel : t.nav.myAccount}
       signOutLabel={t.nav.signOut} signOut={logout}
     />

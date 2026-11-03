@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
+import { AvatarUploader } from "@/components/AvatarUploader";
+import { avatarUrl } from "@/lib/avatars";
 import { EventCard } from "@/components/EventCard";
 import { RoperCard } from "@/components/RoperCard";
 import { events, ropers, rankedIn, statOf, fmtRating, initials } from "@/lib/mock";
@@ -22,7 +24,7 @@ async function Page({ params }: { params: PageProps<"/[lang]/mi-cuenta">["params
         return (
           <div className="mx-auto max-w-6xl px-5 pb-10 pt-10">
             <div className="flex flex-wrap items-center gap-5">
-              <div className="grid size-16 place-items-center rounded-full bg-sand text-xl font-semibold">{initials(me.name)}</div>
+              <AvatarUploader url={avatarUrl(me.id)} initials={initials(me.name)} name={me.name} l={t.account.photo} />
               <div className="flex-1">
                 <p className="label">{t.account.type}</p>
                 <h1 className="text-3xl font-semibold">{me.name}</h1>

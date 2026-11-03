@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
 import { ropers, fmtRating, initials } from "@/lib/mock";
+import { Avatar } from "@/components/Avatar";
+import { avatarUrl } from "@/lib/avatars";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { fmtDate } from "@/lib/format";
 import { LOCALES, getDictionary, resolveLang } from "@/lib/i18n";
@@ -25,7 +27,7 @@ async function PerfilInner({ params }: { params: PageProps<"/[lang]/participante
   return (
     <div className="mx-auto max-w-4xl px-5 pb-10 pt-12">
       <div className="flex flex-wrap items-center gap-5">
-        <div className="grid size-20 place-items-center rounded-full bg-sand text-2xl font-semibold">{initials(r.name)}</div>
+        <Avatar name={r.name} initials={initials(r.name)} url={avatarUrl(r.id)} className="size-20 text-2xl" />
         <div className="flex-1">
           <h1 className="text-4xl font-semibold">{r.name}</h1>
           <p className="text-muted">{r.verified ? `${t.people.verified} ✓` : t.people.unclaimed}</p>

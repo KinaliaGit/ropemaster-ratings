@@ -14,7 +14,11 @@ export const en: Dict = {
     ],
     sync: "What you publish here syncs with your app.", learn: "Discover Rope Master", licenses: "See licenses",
   },
-  footer: { tagline: "Rope Master Ratings", product: "Rope Master", licenses: "Licenses" },
+  legal: {
+    terms: "Terms and Conditions", privacy: "Privacy Notice", acceptPrefix: "I accept the", and: "and the", acceptError: "You must accept the terms and the privacy notice to create your account.",
+    phoneNote: "Your mobile number is used to verify your identity and link your history across events. Only organizers can see it; it is never public.",
+  },
+  footer: { tagline: "Rope Master Ratings", product: "Rope Master", licenses: "Licenses", terms: "Terms", privacy: "Privacy" },
   disc: {
     lazo: { label: "Roping", person: "Roper", persons: "Ropers" },
     barriles: { label: "Barrel racing", person: "Barrel racer", persons: "Barrel racers" },
@@ -53,6 +57,7 @@ export const en: Dict = {
     demoNote: "Sample view: real sign-up connects to Supabase. Continue in demo mode.", continue: "Continue",
   },
   account: {
+    photo: { add: "Add photo", change: "Change photo", remove: "Remove", saving: "Saving…", hint: "Shown on your public profile and in the ranking. JPG, PNG or WebP.", error: "Couldn't save the photo. Use a JPG, PNG or WebP image up to 10 MB." },
     type: "Participant account", phoneVerified: "phone verified", phoneUnverified: "phone not verified", myRegistrations: "My registrations",
     noRegistrations: "You haven't registered for any event yet.", available: "Available events", noneAvailable: "No new events right now.",
     ranking: "Ranking", seeAll: "See all", publicProfile: "View my public profile and history", paid: "Paid", pending: "Payment pending",

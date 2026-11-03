@@ -13,7 +13,11 @@ export const es = {
     ],
     sync: "Lo que publicas aquí se sincroniza con tu app.", learn: "Conocer Rope Master", licenses: "Ver licencias",
   },
-  footer: { tagline: "Rope Master Ratings", product: "Rope Master", licenses: "Licencias" },
+  legal: {
+    terms: "Términos y Condiciones", privacy: "Aviso de Privacidad", acceptPrefix: "Acepto los", and: "y el", acceptError: "Debes aceptar los términos y el aviso de privacidad para crear tu cuenta.",
+    phoneNote: "Tu celular se usa para verificar tu identidad y vincular tu historial entre eventos. Solo lo ven los organizadores; nunca es público.",
+  },
+  footer: { tagline: "Rope Master Ratings", product: "Rope Master", licenses: "Licencias", terms: "Términos", privacy: "Privacidad" },
   disc: {
     lazo: { label: "Lazo", person: "Lazador", persons: "Lazadores" },
     barriles: { label: "Barriles", person: "Barrilera", persons: "Barrileras" },
@@ -52,6 +56,7 @@ export const es = {
     demoNote: "Vista de ejemplo: el registro real se conecta con Supabase. Continúa en modo demostración.", continue: "Continuar",
   },
   account: {
+    photo: { add: "Agregar foto", change: "Cambiar foto", remove: "Quitar", saving: "Guardando…", hint: "Se muestra en tu perfil público y en el ranking. JPG, PNG o WebP.", error: "No se pudo guardar la foto. Usa una imagen JPG, PNG o WebP de hasta 10 MB." },
     type: "Cuenta de participante", phoneVerified: "celular verificado", phoneUnverified: "celular sin verificar", myRegistrations: "Mis inscripciones",
     noRegistrations: "Aún no te has inscrito a ningún evento.", available: "Eventos disponibles", noneAvailable: "No hay eventos nuevos por ahora.",
     ranking: "Ranking", seeAll: "Ver todos", publicProfile: "Ver mi perfil público e historial", paid: "Pagado", pending: "Pago pendiente",

@@ -1,4 +1,5 @@
 import { ropers, rankedIn, statOf, fmtRating, initials } from "@/lib/mock";
+import { avatarUrl } from "@/lib/avatars";
 import { ParticipantList } from "@/components/ParticipantList";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { getDictionary, resolveLang } from "@/lib/i18n";
@@ -14,7 +15,7 @@ export default async function Participantes({ params }: PageProps<"/[lang]/parti
     rows: rankedIn(ropers, d.id).map((r, i) => {
       const st = statOf(r, d.id)!;
       return {
-        id: r.id, href: `/${lang}/participantes/${r.id}`, name: r.name, initials: initials(r.name), verified: r.verified, rank: i + 1,
+        id: r.id, href: `/${lang}/participantes/${r.id}`, name: r.name, initials: initials(r.name), photo: avatarUrl(r.id), verified: r.verified, rank: i + 1,
         sub: `${st.events} ${t.plural.event(st.events)} · ${st.wins} ${t.plural.win(st.wins)}`, rating: fmtRating(st.rating),
       };
     }),

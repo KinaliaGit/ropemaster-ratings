@@ -7,7 +7,7 @@
 - Verificación por SMS/WhatsApp solo cuando el lazador reclama su cuenta en la web.
 - Subida: cola outbox en la app con UUID por registro (idempotente).
 - Bajada: la app busca e importa lazadores (nombre, rating, historial) y los guarda en caché.
-- El rating va de 1 a 10 (un decimal) y se calcula en el servidor. El teléfono nunca es público (ver vista `public_ropers`).
+- El rating va de 1 a 10 (un decimal) y se calcula en el servidor. El teléfono nunca es público: vive en la tabla privada `roper_contacts` (migración 0009), que solo leen su dueño y los organizadores verificados.
 - Modalidades: cada participante tiene un rating por modalidad (`lazo`, `barriles`, …). Hoy solo Lazo está activo en la web
   (`src/lib/disciplines.ts`); activar otra es cambiar un flag.
 - Idiomas: toda la web existe en español e inglés (`/es`, `/en`). Los textos viven en `src/dictionaries/{es,en}.ts`
@@ -20,3 +20,8 @@
   personas con su celular sin que ellas hayan aceptado nada todavía.
 - Foto de perfil: el participante la sube desde Mi cuenta; se recorta cuadrada a 256 px en el navegador y el servidor
   valida el tipo real por sus bytes. Es pública (perfil, ranking, inscritos). Migración 0007 (Storage).
+- Organizadores verificados: cualquiera puede crear una cuenta de organizador, pero solo los que un administrador marca como
+  `profiles.organizer_verified = true` ven celulares y registran participantes (evita que alguien se registre solo para llevarse
+  el directorio). Pendiente decidir el criterio: aprobación manual o licencia vigente de Rope Master.
+- Base de datos: las columnas sensibles de `ropers` (como `user_id`) están ocultas por privilegios de columna, así que las consultas
+  deben pedir las columnas por nombre (`select=id,full_name`), nunca `select=*`.

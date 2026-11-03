@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
 import { StripeConnectButton } from "@/components/StripeConnectButton";
@@ -61,5 +62,5 @@ async function Page({ params }: { params: PageProps<"/[lang]/organizador">["para
 }
 
 export default function Panel(props: PageProps<"/[lang]/organizador">) {
-  return <Suspense fallback={<p className="mx-auto max-w-6xl px-5 py-10 text-muted">…</p>}><Page params={props.params} /></Suspense>;
+  return <Suspense fallback={<PageSkeleton />}><Page params={props.params} /></Suspense>;
 }

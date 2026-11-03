@@ -28,7 +28,7 @@ export const ropers: Roper[] = [
   { id: "r4", phone: "+52 844 555 0199", name: "Luis Cantú", stats: { lazo: { rating: 7.6, events: 9, wins: 1 } }, verified: false, results: [] },
 ];
 
-export const events: EventItem[] = [
+const seedEvents: EventItem[] = [
   { id: "e1", name: "Gran Serie de Lazo Invierno", date: "2026-12-06", city: "Monterrey, NL", venue: "Arena San Pedro",
     disciplines: ["lazo"], capacity: 100, registered: ["r1", "r2", "r4"], unpaid: ["r4"], updatedAt: "2026-11-01T18:30:00Z", organizer: "Rodeo Norte", tone: 0, photos: [],
     description: "Serie de tres fechas con premio acumulado. Cupo limitado, cierre de inscripciones 3 días antes.",
@@ -42,6 +42,12 @@ export const events: EventItem[] = [
     description: "Evento finalizado. Consulta los resultados en el perfil de cada participante.",
     categories: [{ name: "Libre", fee: 700 }], status: "finalizado" },
 ];
+
+// Los eventos creados desde la web viven aquí mientras no haya base de datos (se pierden al reiniciar el servidor).
+// Se guardan en globalThis para que todas las capas de Next vean la misma lista.
+// TODO: reemplazar por la tabla events de Supabase.
+const g = globalThis as unknown as { __rmEvents?: EventItem[] };
+export const events: EventItem[] = (g.__rmEvents ??= seedEvents);
 
 // El rating va de 1 a 10 y se muestra siempre con un decimal.
 export const fmtRating = (n: number) => n.toFixed(1);

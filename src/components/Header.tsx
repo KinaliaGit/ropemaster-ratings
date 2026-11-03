@@ -3,38 +3,41 @@ import { Suspense } from "react";
 import { getSession } from "@/lib/session";
 import { logout } from "@/lib/auth-actions";
 import { LangSwitch } from "@/components/LangSwitch";
+import { NavLinks } from "@/components/NavLinks";
+import { AccountMenu } from "@/components/AccountMenu";
+import { initials } from "@/lib/mock";
 import type { Dict } from "@/dictionaries/es";
 import type { Lang } from "@/lib/format";
 
-const link = "px-3 py-2 text-sm font-medium text-ink/70 transition hover:text-ink";
-const cta = "rounded-full bg-ink px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-hot";
-
-async function AuthNav({ lang, t }: { lang: Lang; t: Dict }) {
+async function Account({ lang, t }: { lang: Lang; t: Dict }) {
   const s = await getSession();
-  if (!s) return <Link href={`/${lang}/entrar`} className={cta}>{t.nav.signIn}</Link>;
+  if (!s) return <Link href={`/${lang}/entrar`} className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-hot">{t.nav.signIn}</Link>;
+  const org = s.role === "organizador";
   return (
-    <>
-      <Link href={`/${lang}/${s.role === "organizador" ? "organizador" : "mi-cuenta"}`} className={cta}>{s.role === "organizador" ? t.nav.myPanel : t.nav.myAccount}</Link>
-      <form action={logout}><input type="hidden" name="lang" value={lang} /><button className={link}>{t.nav.signOut}</button></form>
-    </>
+    <AccountMenu
+      initials={initials(s.name)} name={s.name} roleLabel={org ? t.org.accountType : t.account.type} lang={lang}
+      dashboardHref={`/${lang}/${org ? "organizador" : "mi-cuenta"}`} dashboardLabel={org ? t.nav.myPanel : t.nav.myAccount}
+      signOutLabel={t.nav.signOut} signOut={logout}
+    />
   );
 }
 
-// Navbar sin fondo: solo desenfoque, flota sobre la página.
+// Navbar sin fondo (solo desenfoque): logo · enlaces centrados · idioma y cuenta.
 export function Header({ lang, t }: { lang: Lang; t: Dict }) {
+  const items = [{ href: `/${lang}`, label: t.nav.events }, { href: `/${lang}/participantes`, label: t.nav.participants }];
   return (
     <header className="fixed inset-x-0 top-0 z-50 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-5">
-        <Link href={`/${lang}`} className="flex items-center gap-2 text-[17px] font-semibold tracking-tight">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-5 md:grid md:grid-cols-[1fr_auto_1fr]">
+        <Link href={`/${lang}`} className="flex items-center gap-2.5 text-[17px] font-semibold tracking-tight">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="" width={32} height={32} className="size-8" /><span className="hidden sm:inline">{t.common.brand}</span><span className="hidden font-normal text-muted md:inline">{t.common.ratings}</span>
+          <img src="/logo.png" alt="" width={32} height={32} className="size-8" />
+          <span className="hidden sm:inline">{t.common.brand}</span>
         </Link>
-        <nav className="flex items-center gap-1 sm:gap-2">
-          <Link href={`/${lang}`} className={link}>{t.nav.events}</Link>
-          <Link href={`/${lang}/participantes`} className={link}>{t.nav.participants}</Link>
+        <div className="md:justify-self-center"><NavLinks items={items} /></div>
+        <div className="flex items-center justify-end gap-4">
           <LangSwitch lang={lang} label={t.nav.language} />
-          <Suspense fallback={<span className="h-9 w-20" />}><AuthNav lang={lang} t={t} /></Suspense>
-        </nav>
+          <Suspense fallback={<span className="size-9" />}><Account lang={lang} t={t} /></Suspense>
+        </div>
       </div>
     </header>
   );

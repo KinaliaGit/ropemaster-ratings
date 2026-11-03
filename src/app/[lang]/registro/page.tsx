@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { PageSkeleton } from "@/components/PageSkeleton";
 import { RegistroForm } from "./RegistroForm";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
@@ -9,5 +10,5 @@ async function Page({ params }: { params: PageProps<"/[lang]/registro">["params"
 }
 
 export default function Registro(props: PageProps<"/[lang]/registro">) {
-  return <Suspense fallback={null}><Page params={props.params} /></Suspense>;
+  return <Suspense fallback={<PageSkeleton />}><Page params={props.params} /></Suspense>;
 }

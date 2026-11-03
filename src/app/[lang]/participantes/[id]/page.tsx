@@ -1,10 +1,17 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
 import { ropers, fmtRating, initials } from "@/lib/mock";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { fmtDate } from "@/lib/format";
-import { getDictionary, resolveLang } from "@/lib/i18n";
+import { LOCALES, getDictionary, resolveLang } from "@/lib/i18n";
+
+// Prerenderiza cada página por idioma para que la navegación sea instantánea.
+// TODO: con Supabase, listar aquí los ids reales (o dejar que se generen bajo demanda).
+export function generateStaticParams() {
+  return LOCALES.flatMap((lang) => ropers.map((x) => ({ lang, id: x.id })));
+}
 
 async function PerfilInner({ params }: { params: PageProps<"/[lang]/participantes/[id]">["params"] }) {
   const lang = await resolveLang(params);
@@ -59,7 +66,7 @@ async function PerfilInner({ params }: { params: PageProps<"/[lang]/participante
 
 export default function Perfil(props: PageProps<"/[lang]/participantes/[id]">) {
   return (
-    <Suspense fallback={<p className="mx-auto max-w-4xl px-5 pb-10 pt-12 text-muted">…</p>}>
+    <Suspense fallback={<PageSkeleton />}>
       <PerfilInner params={props.params} />
     </Suspense>
   );

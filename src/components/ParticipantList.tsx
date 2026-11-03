@@ -1,21 +1,28 @@
 "use client";
 import Link from "next/link";
-import { useDeferredValue, useState } from "react";
+import { useState } from "react";
+import { matchesName } from "@/lib/search";
 
 export type ParticipantRow = { id: string; href: string; name: string; initials: string; verified: boolean; sub: string; rating: string; rank: number };
+export type RowSet = { id: string; label: string; rows: ParticipantRow[] };
 
-// Quita acentos y mayúsculas para que "sofia" encuentre a "Sofía".
-const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
-
-// Lista con búsqueda en vivo: filtra mientras se escribe, sin recargar la página.
-export function ParticipantList({ rows, initialQuery = "", labels }: { rows: ParticipantRow[]; initialQuery?: string; labels: { search: string; noResults: string; verified: string } }) {
-  const [q, setQ] = useState(initialQuery);
-  const deferred = useDeferredValue(q);
-  const needle = norm(deferred);
-  const list = needle ? rows.filter((r) => norm(r.name).includes(needle)) : rows;
+// Lista con búsqueda en vivo y pestañas por modalidad (las pestañas solo aparecen si hay más de una activa).
+// Todo ocurre en el navegador, sin recargar ni pedir nada al servidor.
+export function ParticipantList({ sets, labels }: { sets: RowSet[]; labels: { search: string; noResults: string; verified: string } }) {
+  const [q, setQ] = useState("");
+  const [current, setCurrent] = useState(sets[0]?.id);
+  const rows = (sets.find((s) => s.id === current) ?? sets[0])?.rows ?? [];
+  const list = rows.filter((r) => matchesName(r.name, q));
 
   return (
     <>
+      {sets.length > 1 && (
+        <div className="mt-6 flex gap-2">
+          {sets.map((s) => (
+            <button key={s.id} onClick={() => setCurrent(s.id)} className={`rounded-full px-4 py-1.5 text-sm font-medium ${s.id === current ? "bg-ink text-white" : "bg-sand text-muted hover:text-ink"}`}>{s.label}</button>
+          ))}
+        </div>
+      )}
       <div className="relative mt-6 max-w-lg">
         <svg aria-hidden viewBox="0 0 20 20" className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted"><path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" d="m13.5 13.5 4 4M8.5 15a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13Z" /></svg>
         <input

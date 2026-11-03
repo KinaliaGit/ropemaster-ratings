@@ -1,18 +1,25 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
 import { events, ropers } from "@/lib/mock";
 import { fmtDate, mxn } from "@/lib/format";
 import { RoperCard } from "@/components/RoperCard";
 import { EventCover } from "@/components/EventCover";
-import { getDictionary, resolveLang } from "@/lib/i18n";
+import { LOCALES, getDictionary, resolveLang } from "@/lib/i18n";
+
+// Prerenderiza cada página por idioma para que la navegación sea instantánea.
+// TODO: con Supabase, listar aquí los ids reales (o dejar que se generen bajo demanda).
+export function generateStaticParams() {
+  return LOCALES.flatMap((lang) => events.map((x) => ({ lang, id: x.id })));
+}
 
 async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]">["params"] }) {
   const lang = await resolveLang(params);
   const { id } = await params;
   const t = getDictionary(lang);
   const e = events.find((x) => x.id === id);
-  if (!e) notFound();
+  if (!e || e.status === "borrador") notFound();
   const inscritos = ropers.filter((r) => e.registered.includes(r.id));
   const open = e.status === "publicado" && e.registered.length < e.capacity;
   return (
@@ -64,7 +71,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
 
 export default function Evento(props: PageProps<"/[lang]/eventos/[id]">) {
   return (
-    <Suspense fallback={<p className="mx-auto max-w-6xl px-5 py-10 text-muted">…</p>}>
+    <Suspense fallback={<PageSkeleton />}>
       <EventoInner params={props.params} />
     </Suspense>
   );

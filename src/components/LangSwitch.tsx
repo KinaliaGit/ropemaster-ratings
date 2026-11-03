@@ -13,12 +13,16 @@ function Current({ lang, label }: { lang: "es" | "en"; label: string }) {
   return <Switch lang={lang} label={label} rest={pathname.replace(/^\/(es|en)/, "")} />;
 }
 
+// Dos códigos en texto sencillo: el activo en negro, el otro apagado.
 function Switch({ lang, label, rest }: { lang: "es" | "en"; label: string; rest: string }) {
   return (
-    <div aria-label={label} className="flex rounded-full border border-line p-0.5 text-xs font-semibold">
-      {(["es", "en"] as const).map((l) => (
-        <Link key={l} href={`/${l}${rest}`} hrefLang={l} aria-current={l === lang ? "true" : undefined}
-          className={`rounded-full px-2.5 py-1 uppercase ${l === lang ? "bg-ink text-white" : "text-muted hover:text-ink"}`}>{l}</Link>
+    <div aria-label={label} className="flex items-center gap-1.5 text-xs font-semibold">
+      {(["es", "en"] as const).map((l, i) => (
+        <span key={l} className="flex items-center gap-1.5">
+          {i > 0 && <span aria-hidden className="h-3 w-px bg-line" />}
+          <Link href={`/${l}${rest}`} hrefLang={l} aria-current={l === lang ? "true" : undefined}
+            className={`uppercase transition ${l === lang ? "text-ink" : "text-muted hover:text-ink"}`}>{l}</Link>
+        </span>
       ))}
     </div>
   );

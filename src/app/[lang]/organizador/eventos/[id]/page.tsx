@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
+import { CopyLink } from "@/components/CopyLink";
+import { setEventStatus } from "@/lib/event-actions";
 import { Gate } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
 import { PhotoUploader } from "@/components/PhotoUploader";
@@ -8,9 +12,16 @@ import { events, ropers, statOf, fmtRating } from "@/lib/mock";
 import { fmtDate, mxn } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
-async function Resolver({ params }: { params: PageProps<"/[lang]/organizador/eventos/[id]">["params"] }) {
-  const lang = await resolveLang(params);
-  const { id } = await params;
+async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/eventos/[id]"> }) {
+  const lang = await resolveLang(props.params);
+  const { id } = await props.params;
+  const sp = await props.searchParams;
+  const justCreated = sp.nuevo === "publicado" ? "publicado" : sp.nuevo === "borrador" ? "borrador" : null;
+  // Enlace sin idioma: cada persona que lo abra llega a su idioma (el proxy elige es/en por su navegador).
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const shareUrl = `${proto}://${host}/eventos/${id}`;
   const t = getDictionary(lang);
   const stateLabel: Record<string, string> = { publicado: t.status.published, borrador: t.status.draft, finalizado: t.status.finished };
   return (
@@ -32,11 +43,23 @@ async function Resolver({ params }: { params: PageProps<"/[lang]/organizador/eve
                   <p className="text-muted">{fmtDate(e.date, lang)} · {e.venue}, {e.city}</p>
                 </div>
                 <div className="flex gap-2">
-                  <Link href={`/${lang}/eventos/${e.id}`} className="rounded-full bg-sand px-4 py-2 text-sm font-medium hover:bg-line">{t.org.ev.publicPage}</Link>
-                  {/* TODO: server actions que cambian events.status en Supabase. */}
-                  <button className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hot">{e.status === "borrador" ? t.org.ev.publish : t.org.ev.toDraft}</button>
+                  {e.status !== "borrador" && <Link href={`/${lang}/eventos/${e.id}`} className="rounded-full bg-sand px-4 py-2 text-sm font-medium hover:bg-line">{t.org.ev.publicPage}</Link>}
+                  {e.status !== "finalizado" && (
+                    <form action={setEventStatus}>
+                      <input type="hidden" name="id" value={e.id} /><input type="hidden" name="lang" value={lang} />
+                      <button className={`rounded-full px-4 py-2 text-sm font-medium transition ${e.status === "borrador" ? "bg-brand text-white hover:bg-brand-hot" : "bg-sand hover:bg-line"}`}>{e.status === "borrador" ? t.org.ev.publish : t.org.ev.toDraft}</button>
+                    </form>
+                  )}
                 </div>
               </div>
+              <section aria-labelledby="share" className={`mt-6 rounded-2xl p-5 ${justCreated === "publicado" ? "bg-brand-soft" : "card"}`}>
+                {justCreated === "publicado" && <><h2 className="text-lg font-semibold">{t.org.share.publishedTitle}</h2><p className="mt-1 text-sm">{t.org.share.publishedText}</p></>}
+                {justCreated === "borrador" && <><h2 className="text-lg font-semibold">{t.org.share.draftTitle}</h2><p className="mt-1 text-sm">{t.org.share.draftText}</p></>}
+                <h3 id="share" className={`font-semibold ${justCreated ? "mt-4 text-sm" : "text-base"}`}>{t.org.share.title}</h3>
+                {!justCreated && <p className="mt-0.5 text-sm text-muted">{t.org.share.hint}</p>}
+                <CopyLink url={shareUrl} copy={t.org.share.copy} copied={t.org.share.copied} whatsappLabel={t.org.share.whatsapp} whatsappText={t.org.share.whatsappText} />
+                {e.status === "borrador" && <p className="mt-2 text-xs text-muted">{t.org.share.draftLink}</p>}
+              </section>
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{e.registered.length}/{e.capacity}</p><p className="label mt-1">{t.org.enrolled}</p></div>
                 <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{rows.filter((x) => x.paid).length}</p><p className="label mt-1">{t.org.ev.paid}</p></div>
@@ -71,5 +94,5 @@ async function Resolver({ params }: { params: PageProps<"/[lang]/organizador/eve
 }
 
 export default function GestionarEvento(props: PageProps<"/[lang]/organizador/eventos/[id]">) {
-  return <Suspense fallback={<p className="mx-auto max-w-6xl px-5 py-10 text-muted">…</p>}><Resolver params={props.params} /></Suspense>;
+  return <Suspense fallback={<PageSkeleton />}><Resolver props={props} /></Suspense>;
 }

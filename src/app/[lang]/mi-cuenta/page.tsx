@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
 import { EventCard } from "@/components/EventCard";
 import { RoperCard } from "@/components/RoperCard";
@@ -70,5 +71,5 @@ async function Page({ params }: { params: PageProps<"/[lang]/mi-cuenta">["params
 }
 
 export default function MiCuenta(props: PageProps<"/[lang]/mi-cuenta">) {
-  return <Suspense fallback={<p className="mx-auto max-w-6xl px-5 py-10 text-muted">…</p>}><Page params={props.params} /></Suspense>;
+  return <Suspense fallback={<PageSkeleton />}><Page params={props.params} /></Suspense>;
 }

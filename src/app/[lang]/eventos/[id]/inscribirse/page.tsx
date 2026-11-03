@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
 import { events } from "@/lib/mock";
 import { mxn, type Lang } from "@/lib/format";
@@ -12,7 +13,7 @@ async function Resolver({ params }: { params: PageProps<"/[lang]/eventos/[id]/in
   const { id } = await params;
   const t = getDictionary(lang);
   const e = events.find((x) => x.id === id);
-  if (!e) notFound();
+  if (!e || e.status === "borrador") notFound();
   return (
     <Gate lang={lang} role="participante" next={`/${lang}/eventos/${id}/inscribirse`}>
       {() => (
@@ -46,7 +47,7 @@ async function Resolver({ params }: { params: PageProps<"/[lang]/eventos/[id]/in
 
 export default function Inscribirse(props: PageProps<"/[lang]/eventos/[id]/inscribirse">) {
   return (
-    <Suspense fallback={<p className="mx-auto max-w-6xl px-5 py-10 text-muted">…</p>}>
+    <Suspense fallback={<PageSkeleton />}>
       <Resolver params={props.params} />
     </Suspense>
   );

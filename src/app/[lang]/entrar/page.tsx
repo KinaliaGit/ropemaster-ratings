@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { PageSkeleton } from "@/components/PageSkeleton";
 import { login } from "@/lib/auth-actions";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
@@ -33,5 +34,5 @@ async function Form({ props }: { props: PageProps<"/[lang]/entrar"> }) {
 }
 
 export default function Entrar(props: PageProps<"/[lang]/entrar">) {
-  return <Suspense fallback={null}><Form props={props} /></Suspense>;
+  return <Suspense fallback={<PageSkeleton />}><Form props={props} /></Suspense>;
 }

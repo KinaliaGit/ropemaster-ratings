@@ -3,7 +3,7 @@
 La app (Tauri) descarga eventos y participantes del organizador cuando hay internet y los guarda en su
 SQLite local. Sin internet la app sigue funcionando con lo ya descargado.
 
-Autenticación: `Authorization: Bearer <token>` (token que el organizador genera en *Conexión con la app*).
+Autenticación: `Authorization: Bearer <código>`. El organizador genera el código en su panel (pestaña *App local*); se muestra una sola vez y el servidor guarda solo su hash. Generar uno nuevo revoca el anterior. Para pruebas locales también sirve el valor fijo de `APP_SYNC_TOKEN`.
 
 ## `GET /api/app/eventos?since=<ISO-8601>`
 Eventos del organizador con estado `publicado` o `finalizado` (los borradores no se envían), con sus inscritos.

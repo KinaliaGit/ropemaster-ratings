@@ -1,5 +1,6 @@
 import { events, ropers } from "@/lib/mock";
 import { EventCard } from "@/components/EventCard";
+import { RopeMasterPromo } from "@/components/RopeMasterPromo";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
 export default async function Home({ params }: PageProps<"/[lang]">) {
@@ -28,6 +29,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
         <h2 className="mt-14 text-xl font-semibold">{t.home.finished}</h2>
         <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{past.map((e) => <EventCard key={e.id} e={e} lang={lang} t={t} />)}</div>
       </>)}
+      <RopeMasterPromo lang={lang} t={t} />
     </div>
   );
 }

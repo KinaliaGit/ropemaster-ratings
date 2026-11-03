@@ -4,7 +4,17 @@ export const en: Dict = {
   meta: { title: "Rope Master Ratings", description: "The global registry of ropers: rating, history and results from every event." },
   common: { brand: "Rope Master", ratings: "Ratings", loading: "Loading…", back: "Back", of: "of" },
   nav: { events: "Events", participants: "Participants", signIn: "Sign in", myPanel: "My dashboard", myAccount: "My account", signOut: "Sign out", publicSite: "Public site", language: "Language" },
-  footer: { tagline: "Rope Master Ratings", product: "Rope Master" },
+  promo: {
+    label: "Rope Master", title: "The software to run your roping event.",
+    text: "Rope Master is the app used to manage roping series and events: teams, times, judges and results in one system, synced in real time.",
+    points: [
+      { title: "Everything in one place", text: "Series, events, teams, time capture and results." },
+      { title: "Works offline", text: "Runs without a signal and connects several devices over a local network." },
+      { title: "A license that fits", text: "A pass for a single event or an annual license for unlimited events." },
+    ],
+    sync: "What you publish here syncs with your app.", learn: "Discover Rope Master", licenses: "See licenses",
+  },
+  footer: { tagline: "Rope Master Ratings", product: "Rope Master", licenses: "Licenses" },
   disc: {
     lazo: { label: "Roping", person: "Roper", persons: "Ropers" },
     barriles: { label: "Barrel racing", person: "Barrel racer", persons: "Barrel racers" },

@@ -3,7 +3,17 @@ export const es = {
   meta: { title: "Rope Master Ratings", description: "El registro global de lazadores: rating, historial y resultados de cada evento." },
   common: { brand: "Rope Master", ratings: "Ratings", loading: "Cargando…", back: "Volver", of: "de" },
   nav: { events: "Eventos", participants: "Participantes", signIn: "Entrar", myPanel: "Mi panel", myAccount: "Mi cuenta", signOut: "Salir", publicSite: "Sitio público", language: "Idioma" },
-  footer: { tagline: "Rope Master Ratings", product: "Rope Master" },
+  promo: {
+    label: "Rope Master", title: "El software para organizar tu evento de lazo.",
+    text: "Rope Master es la aplicación con la que se gestionan series y eventos de lazo: equipos, tiempos, jueces y resultados en un solo sistema, sincronizado en tiempo real.",
+    points: [
+      { title: "Todo en un solo lugar", text: "Series, eventos, equipos, captura de tiempos y resultados." },
+      { title: "Funciona sin internet", text: "Trabaja sin señal y conecta varios dispositivos por red local." },
+      { title: "Licencia a tu medida", text: "Un pase para un solo evento o una licencia anual para eventos ilimitados." },
+    ],
+    sync: "Lo que publicas aquí se sincroniza con tu app.", learn: "Conocer Rope Master", licenses: "Ver licencias",
+  },
+  footer: { tagline: "Rope Master Ratings", product: "Rope Master", licenses: "Licencias" },
   disc: {
     lazo: { label: "Lazo", person: "Lazador", persons: "Lazadores" },
     barriles: { label: "Barriles", person: "Barrilera", persons: "Barrileras" },

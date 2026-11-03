@@ -29,7 +29,7 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
       <body className="min-h-full flex flex-col">
         <Header lang={lang} t={t} />
         <main className="flex-1 pt-16">{children}</main>
-        <Footer t={t} />
+        <Footer t={t} lang={lang} />
         <LangSwitch lang={lang} label={t.nav.language} />
       </body>
     </html>

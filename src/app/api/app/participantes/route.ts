@@ -8,8 +8,9 @@ export async function GET(request: Request) {
   if (auth instanceof Response) return auth;
   return Response.json({
     participants: ropers.map((r) => ({
-      global_id: r.id, name: r.name, phone: r.phone, rating: r.rating,
-      events: r.events, wins: r.wins, phone_verified: r.verified,
+      global_id: r.id, name: r.name, phone: r.phone, phone_verified: r.verified,
+      // Un rating (1 a 10) por modalidad: { lazo: { rating, events, wins }, ... }
+      ratings: r.stats,
     })),
   });
 }

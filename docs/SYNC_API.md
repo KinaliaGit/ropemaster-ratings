@@ -20,11 +20,11 @@ Eventos del organizador con estado `publicado` o `finalizado` (los borradores no
 ```
 
 ## `GET /api/app/participantes`
-Directorio global con rating. Incluye `phone` (llave de coincidencia) porque solo lo reciben organizadores autenticados.
+Directorio global. `ratings` trae un rating (escala de 1 a 10, un decimal) POR modalidad (`lazo`, `barriles`, …); una modalidad sin entrada significa que el participante nunca ha competido en ella. Hoy solo `lazo` está activo. Incluye `phone` (llave de coincidencia) porque solo lo reciben organizadores autenticados.
 
 ```json
-{ "participants": [{ "global_id": "…", "name": "…", "phone": "+52…", "rating": 94,
-                     "events": 18, "wins": 6, "phone_verified": true }] }
+{ "participants": [{ "global_id": "…", "name": "…", "phone": "+52…", "phone_verified": true,
+                     "ratings": { "lazo": { "rating": 9.4, "events": 18, "wins": 6 } } }] }
 ```
 
 ## Lado de la app (pendiente)
@@ -32,3 +32,7 @@ Directorio global con rating. Incluye `phone` (llave de coincidencia) porque sol
   `roping-manager-tauri/src-tauri/migrations/MIGRATIONS.md`) para que reimportar actualice y no duplique.
 - Coincidir participantes por `global_id`; si no existe, por celular normalizado (E.164) pidiendo confirmación.
 - Pantalla de Ajustes → Cuenta web (token) y botón Sincronizar.
+
+## Modalidades
+Los ids de modalidad son `lazo` y `barriles` (los mismos en `events.disciplines`, `event_results.discipline` y `ratings`).
+La app debe mapear cada modo de juego local a su id; los modos que la web aún no activa se ignoran.

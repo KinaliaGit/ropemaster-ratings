@@ -7,4 +7,9 @@
 - Verificación por SMS/WhatsApp solo cuando el lazador reclama su cuenta en la web.
 - Subida: cola outbox en la app con UUID por registro (idempotente).
 - Bajada: la app busca e importa lazadores (nombre, rating, historial) y los guarda en caché.
-- El rating se calcula en el servidor. El teléfono nunca es público (ver vista `public_ropers`).
+- El rating va de 1 a 10 (un decimal) y se calcula en el servidor. El teléfono nunca es público (ver vista `public_ropers`).
+- Modalidades: cada participante tiene un rating por modalidad (`lazo`, `barriles`, …). Hoy solo Lazo está activo en la web
+  (`src/lib/disciplines.ts`); activar otra es cambiar un flag.
+- Idiomas: toda la web existe en español e inglés (`/es`, `/en`). Los textos viven en `src/dictionaries/{es,en}.ts`
+  y TypeScript exige que ambos tengan las mismas claves. El contenido que escriben los organizadores (nombres, descripciones)
+  no se traduce.

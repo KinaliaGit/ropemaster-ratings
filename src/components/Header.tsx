@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { getSession } from "@/lib/session";
 import { logout } from "@/lib/auth-actions";
-import { LangSwitch } from "@/components/LangSwitch";
 import { NavLinks } from "@/components/NavLinks";
 import { AccountMenu } from "@/components/AccountMenu";
 import { initials } from "@/lib/mock";
@@ -22,7 +21,7 @@ async function Account({ lang, t }: { lang: Lang; t: Dict }) {
   );
 }
 
-// Navbar sin fondo (solo desenfoque): logo · enlaces centrados · idioma y cuenta.
+// Navbar sin fondo (solo desenfoque): logo · enlaces centrados · cuenta. El idioma va en un botón flotante (LangSwitch).
 export function Header({ lang, t }: { lang: Lang; t: Dict }) {
   const items = [{ href: `/${lang}`, label: t.nav.events }, { href: `/${lang}/participantes`, label: t.nav.participants }];
   return (
@@ -34,8 +33,7 @@ export function Header({ lang, t }: { lang: Lang; t: Dict }) {
           <span className="hidden sm:inline">{t.common.brand}</span>
         </Link>
         <div className="md:justify-self-center"><NavLinks items={items} /></div>
-        <div className="flex items-center justify-end gap-4">
-          <LangSwitch lang={lang} label={t.nav.language} />
+        <div className="flex items-center justify-end">
           <Suspense fallback={<span className="size-9" />}><Account lang={lang} t={t} /></Suspense>
         </div>
       </div>

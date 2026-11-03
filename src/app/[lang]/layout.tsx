@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "../globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { LangSwitch } from "@/components/LangSwitch";
 import { LOCALES, getDictionary, hasLocale } from "@/lib/i18n";
 
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
@@ -29,6 +30,7 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
         <Header lang={lang} t={t} />
         <main className="flex-1 pt-16">{children}</main>
         <Footer t={t} />
+        <LangSwitch lang={lang} label={t.nav.language} />
       </body>
     </html>
   );

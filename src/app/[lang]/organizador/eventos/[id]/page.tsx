@@ -65,7 +65,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
                 <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{rows.filter((x) => x.paid).length}</p><p className="label mt-1">{t.org.ev.paid}</p></div>
                 <div className="card p-4"><p className="text-2xl font-semibold">{stateLabel[e.status]}</p><p className="label mt-1">{t.org.ev.state}</p></div>
               </div>
-              <div className="card mt-8 p-6"><PhotoUploader labels={{ title: t.uploader.eventPhotos, add: t.uploader.add, hint: t.uploader.hint, cover: t.uploader.cover }} /></div>
+              <div className="card mt-8 p-6"><PhotoUploader labels={{ title: t.uploader.eventPhotos, add: t.uploader.add, hint: t.uploader.hint, tooBig: t.uploader.tooBig, cover: t.uploader.cover }} /></div>
               <h2 className="mt-10 text-xl font-semibold">{t.org.ev.enrolledTitle}</h2>
               <div className="card mt-3 overflow-x-auto">
                 <table className="w-full text-left text-sm">

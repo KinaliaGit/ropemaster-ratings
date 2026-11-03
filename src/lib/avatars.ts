@@ -6,7 +6,8 @@ type Entry = { mime: string; bytes: Buffer; v: number };
 const g = globalThis as unknown as { __rmAvatars?: Map<string, Entry> };
 const store = (g.__rmAvatars ??= new Map<string, Entry>());
 
-export const MAX_AVATAR_BYTES = 300 * 1024;
+// Tope del archivo YA procesado (256 px, JPEG): normalmente pesa decenas de KB.
+export const MAX_AVATAR_BYTES = 200 * 1024;
 
 // Identifica el tipo real por sus primeros bytes (no confiamos en lo que declare el cliente).
 function sniff(b: Buffer): string | null {

@@ -1,3 +1,5 @@
+import { MAX_UPLOAD_MB } from "@/lib/limits";
+
 // Textos en español. `en.ts` debe tener exactamente la misma forma (lo verifica TypeScript).
 export const es = {
   meta: { title: "Rope Master Ratings", description: "El registro global de lazadores: rating, historial y resultados de cada evento." },
@@ -56,7 +58,7 @@ export const es = {
     demoNote: "Vista de ejemplo: el registro real se conecta con Supabase. Continúa en modo demostración.", continue: "Continuar",
   },
   account: {
-    photo: { add: "Agregar foto", change: "Cambiar foto", remove: "Quitar", saving: "Guardando…", hint: "Se muestra en tu perfil público y en el ranking. JPG, PNG o WebP.", error: "No se pudo guardar la foto. Usa una imagen JPG, PNG o WebP de hasta 10 MB." },
+    photo: { add: "Agregar foto", change: "Cambiar foto", remove: "Quitar", saving: "Guardando…", tooBig: `La foto pesa más de ${MAX_UPLOAD_MB} MB. Elige una más ligera.`, error: "No se pudo guardar la foto. Usa una imagen JPG, PNG o WebP." },
     type: "Cuenta de participante", phoneVerified: "celular verificado", phoneUnverified: "celular sin verificar", myRegistrations: "Mis inscripciones",
     noRegistrations: "Aún no te has inscrito a ningún evento.", available: "Eventos disponibles", noneAvailable: "No hay eventos nuevos por ahora.",
     ranking: "Ranking", seeAll: "Ver todos", publicProfile: "Ver mi perfil público e historial", paid: "Pagado", pending: "Pago pendiente",
@@ -91,7 +93,7 @@ export const es = {
       },
     },
   },
-  uploader: { eventPhotos: "Fotos del evento", add: "Agregar", hint: "JPG o PNG, hasta 10 MB cada una.", cover: "Portada" },
+  uploader: { eventPhotos: "Fotos del evento", add: "Agregar", hint: `JPG o PNG, hasta ${MAX_UPLOAD_MB} MB cada una.`, tooBig: `Alguna foto pesa más de ${MAX_UPLOAD_MB} MB y no se agregó.`, cover: "Portada" },
   plural: {
     event: (n: number): string => (n === 1 ? "evento" : "eventos"),
     win: (n: number): string => (n === 1 ? "victoria" : "victorias"),

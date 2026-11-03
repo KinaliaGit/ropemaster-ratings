@@ -2,8 +2,9 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { setAvatar, deleteAvatar } from "@/lib/avatar-actions";
+import { MAX_UPLOAD_BYTES } from "@/lib/limits";
 
-type Labels = { add: string; change: string; remove: string; saving: string; hint: string; error: string };
+type Labels = { add: string; change: string; remove: string; saving: string; tooBig: string; error: string };
 
 const SIZE = 256;
 
@@ -24,13 +25,14 @@ export function AvatarUploader({ url, initials, name, l }: { url: string | null;
   const input = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null | undefined>(undefined); // undefined = usar la del servidor
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<"tooBig" | "error" | null>(null);
   const shown = preview === undefined ? url : preview;
 
   async function onPick(file: File | undefined) {
     if (!file) return;
-    setError(false);
-    if (!file.type.startsWith("image/") || file.size > 10 * 1024 * 1024) { setError(true); return; }
+    setError(null);
+    if (file.size > MAX_UPLOAD_BYTES) { setError("tooBig"); return; }
+    if (!file.type.startsWith("image/")) { setError("error"); return; }
     setBusy(true);
     try {
       const dataUrl = await toSquareJpeg(file);
@@ -38,36 +40,32 @@ export function AvatarUploader({ url, initials, name, l }: { url: string | null;
       if (!res.ok) throw new Error("rejected");
       setPreview(dataUrl);
       router.refresh();
-    } catch { setError(true); }
+    } catch { setError("error"); }
     setBusy(false);
     if (input.current) input.current.value = "";
   }
 
   async function onRemove() {
-    setBusy(true); setError(false);
+    setBusy(true); setError(null);
     const res = await deleteAvatar();
     setBusy(false);
-    if (res.ok) { setPreview(null); router.refresh(); } else setError(true);
+    if (res.ok) { setPreview(null); router.refresh(); } else setError("error");
   }
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex w-fit flex-col items-center gap-3">
       <button type="button" onClick={() => input.current?.click()} disabled={busy} aria-label={shown ? l.change : l.add}
-        className="group relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-full bg-sand text-xl font-semibold transition hover:ring-2 hover:ring-ink disabled:opacity-60">
+        className="group relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-xl font-semibold text-white transition hover:ring-2 hover:ring-ink hover:ring-offset-2 disabled:opacity-60">
         {shown
           // eslint-disable-next-line @next/next/no-img-element
           ? <img src={shown} alt={name} className="size-full object-cover" />
           : <span aria-hidden>{initials}</span>}
-        <span className="absolute inset-x-0 bottom-0 bg-black/55 py-1 text-center text-[10px] font-medium text-white opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">{busy ? l.saving : shown ? l.change : l.add}</span>
       </button>
-      <div className="min-w-0">
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => input.current?.click()} disabled={busy} className="rounded-full border border-line px-4 py-1.5 text-sm font-medium transition hover:border-ink disabled:opacity-60">{busy ? l.saving : shown ? l.change : l.add}</button>
-          {shown && <button type="button" onClick={onRemove} disabled={busy} className="rounded-full px-3 py-1.5 text-sm text-muted transition hover:text-ink disabled:opacity-60">{l.remove}</button>}
-        </div>
-        <p className="mt-1.5 text-xs text-muted">{l.hint}</p>
-        {error && <p role="alert" className="mt-1 text-xs text-red-700">{l.error}</p>}
+      <div className="flex flex-wrap items-center justify-center gap-1">
+        <button type="button" onClick={() => input.current?.click()} disabled={busy} className="rounded-full border border-line px-4 py-1.5 text-sm font-medium transition hover:border-ink disabled:opacity-60">{busy ? l.saving : shown ? l.change : l.add}</button>
+        {shown && <button type="button" onClick={onRemove} disabled={busy} className="rounded-full px-3 py-1.5 text-sm text-muted transition hover:text-ink disabled:opacity-60">{l.remove}</button>}
       </div>
+      {error && <p role="alert" className="max-w-[14rem] text-center text-xs text-red-700">{error === "tooBig" ? l.tooBig : l.error}</p>}
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => onPick(e.target.files?.[0])} />
     </div>
   );

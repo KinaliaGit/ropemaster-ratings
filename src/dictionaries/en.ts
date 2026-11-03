@@ -1,4 +1,5 @@
 import type { Dict } from "./es";
+import { MAX_UPLOAD_MB } from "@/lib/limits";
 
 export const en: Dict = {
   meta: { title: "Rope Master Ratings", description: "The global registry of ropers: rating, history and results from every event." },
@@ -57,7 +58,7 @@ export const en: Dict = {
     demoNote: "Sample view: real sign-up connects to Supabase. Continue in demo mode.", continue: "Continue",
   },
   account: {
-    photo: { add: "Add photo", change: "Change photo", remove: "Remove", saving: "Saving…", hint: "Shown on your public profile and in the ranking. JPG, PNG or WebP.", error: "Couldn't save the photo. Use a JPG, PNG or WebP image up to 10 MB." },
+    photo: { add: "Add photo", change: "Change photo", remove: "Remove", saving: "Saving…", tooBig: `The photo is larger than ${MAX_UPLOAD_MB} MB. Choose a lighter one.`, error: "Couldn't save the photo. Use a JPG, PNG or WebP image." },
     type: "Participant account", phoneVerified: "phone verified", phoneUnverified: "phone not verified", myRegistrations: "My registrations",
     noRegistrations: "You haven't registered for any event yet.", available: "Available events", noneAvailable: "No new events right now.",
     ranking: "Ranking", seeAll: "See all", publicProfile: "View my public profile and history", paid: "Paid", pending: "Payment pending",
@@ -92,7 +93,7 @@ export const en: Dict = {
       },
     },
   },
-  uploader: { eventPhotos: "Event photos", add: "Add", hint: "JPG or PNG, up to 10 MB each.", cover: "Cover" },
+  uploader: { eventPhotos: "Event photos", add: "Add", hint: `JPG or PNG, up to ${MAX_UPLOAD_MB} MB each.`, tooBig: `A photo is larger than ${MAX_UPLOAD_MB} MB and was not added.`, cover: "Cover" },
   plural: {
     event: (n: number): string => (n === 1 ? "event" : "events"),
     win: (n: number): string => (n === 1 ? "win" : "wins"),

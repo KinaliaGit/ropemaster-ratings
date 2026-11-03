@@ -1,17 +1,23 @@
 "use client";
 import { useRef, useState } from "react";
 
-type Labels = { title: string; add: string; hint: string; cover: string };
+import { MAX_UPLOAD_BYTES } from "@/lib/limits";
+
+type Labels = { title: string; add: string; hint: string; cover: string; tooBig: string };
 
 // Selector de fotos con vista previa. La primera es la portada.
 // TODO: subir a Supabase Storage (bucket event-photos) y guardar en event_photos al conectar la base de datos.
 export function PhotoUploader({ labels, single = false }: { labels: Labels; single?: boolean }) {
   const input = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [rejected, setRejected] = useState(false);
 
   function pick(files: FileList | null) {
     if (!files) return;
-    const next = Array.from(files).filter((f) => f.type.startsWith("image/") && f.size <= 10 * 1024 * 1024).map((f) => URL.createObjectURL(f));
+    const images = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    const ok = images.filter((f) => f.size <= MAX_UPLOAD_BYTES);
+    setRejected(ok.length < images.length);
+    const next = ok.map((f) => URL.createObjectURL(f));
     setPreviews((p) => (single ? next.slice(0, 1) : [...p, ...next]));
   }
 
@@ -32,6 +38,7 @@ export function PhotoUploader({ labels, single = false }: { labels: Labels; sing
       </div>
       <input ref={input} type="file" accept="image/*" multiple={!single} hidden onChange={(e) => pick(e.target.files)} />
       <p className="mt-2 text-xs text-muted">{labels.hint}</p>
+      {rejected && <p role="alert" className="mt-1 text-xs text-red-700">{labels.tooBig}</p>}
     </div>
   );
 }

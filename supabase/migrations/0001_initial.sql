@@ -2,7 +2,6 @@
 -- Un perfil (roper) puede existir sin cuenta; la cuenta se "reclama" luego
 -- verificando el teléfono por SMS/WhatsApp.
 
-create extension if not exists pgcrypto;
 
 create table ropers (
   id uuid primary key default gen_random_uuid(),          -- global_id

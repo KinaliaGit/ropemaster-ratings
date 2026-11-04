@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export type Role = "participante" | "organizador";
@@ -13,6 +14,8 @@ export const demoSession = (): Session => DEMO_PARTICIPANT;
 // Quién es la persona que visita. Real: la sesión de Supabase + su perfil. Demo: solo el participante de ejemplo.
 // El rol de organizador NUNCA viene de una cookie editable: sale de la base de datos.
 export const getSession = cache(async (): Promise<Session | null> => {
+  // Verificar el token usa la hora actual: esto debe ocurrir al atender la petición, nunca al prerenderizar.
+  await connection();
   const supabase = await createServerSupabase();
   const { data } = await supabase.auth.getClaims();
   const userId = data?.claims?.sub;

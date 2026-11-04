@@ -28,27 +28,6 @@ export const ropers: Roper[] = [
   { id: "r4", phone: "+52 844 555 0199", name: "Luis Cantú", stats: { lazo: { rating: 7.6, events: 9, wins: 1 } }, verified: false, results: [] },
 ];
 
-const seedEvents: EventItem[] = [
-  { id: "e1", name: "Gran Serie de Lazo Invierno", date: "2026-12-06", city: "Monterrey, NL", venue: "Arena San Pedro",
-    disciplines: ["lazo"], capacity: 100, registered: ["r1", "r2", "r4"], unpaid: ["r4"], updatedAt: "2026-11-01T18:30:00Z", organizer: "Rodeo Norte", tone: 0, photos: [],
-    description: "Serie de tres fechas con premio acumulado. Cupo limitado, cierre de inscripciones 3 días antes.",
-    categories: [{ name: "Libre", fee: 800 }, { name: "Amateur", fee: 500 }], status: "publicado" },
-  { id: "e2", name: "Copa Noroeste de Lazo", date: "2026-11-22", city: "Hermosillo, SON", venue: "Lienzo Charro Hermosillo",
-    disciplines: ["lazo"], capacity: 60, registered: ["r3"], updatedAt: "2026-10-28T12:00:00Z", organizer: "Asociación Noroeste", tone: 1, photos: [],
-    description: "Copa abierta para lazadores de todas las categorías.",
-    categories: [{ name: "Abierta", fee: 600 }, { name: "Juvenil", fee: 350 }], status: "publicado" },
-  { id: "e3", name: "Serie El Silencio 2026", date: "2026-10-12", city: "Saltillo, COAH", venue: "Rancho El Silencio",
-    disciplines: ["lazo"], capacity: 80, registered: ["r1", "r2"], updatedAt: "2026-10-13T09:00:00Z", organizer: "Rodeo Norte", tone: 2, photos: [],
-    description: "Evento finalizado. Consulta los resultados en el perfil de cada participante.",
-    categories: [{ name: "Libre", fee: 700 }], status: "finalizado" },
-];
-
-// Los eventos creados desde la web viven aquí mientras no haya base de datos (se pierden al reiniciar el servidor).
-// Se guardan en globalThis para que todas las capas de Next vean la misma lista.
-// TODO: reemplazar por la tabla events de Supabase.
-const g = globalThis as unknown as { __rmEvents?: EventItem[] };
-export const events: EventItem[] = (g.__rmEvents ??= seedEvents);
-
 // El rating va de 1 a 10 y se muestra siempre con un decimal.
 export const fmtRating = (n: number) => n.toFixed(1);
 // Estadística de un participante en una modalidad (undefined si nunca ha competido en ella).

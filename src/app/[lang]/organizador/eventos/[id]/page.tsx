@@ -8,31 +8,23 @@ import { setEventStatus } from "@/lib/event-actions";
 import { Gate } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
 import { PhotoUploader } from "@/components/PhotoUploader";
-import { events, ropers, statOf, fmtRating } from "@/lib/mock";
+import { ropers, statOf, fmtRating } from "@/lib/mock";
+import { getOrganizerEvent } from "@/lib/data/events";
+import type { Session } from "@/lib/session";
+import type { Dict } from "@/dictionaries/es";
+import type { Lang } from "@/lib/format";
 import { fmtDate, mxn } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
-async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/eventos/[id]"> }) {
-  const lang = await resolveLang(props.params);
-  const { id } = await props.params;
-  const sp = await props.searchParams;
-  const justCreated = sp.nuevo === "publicado" ? "publicado" : sp.nuevo === "borrador" ? "borrador" : null;
-  // Enlace sin idioma: cada persona que lo abra llega a su idioma (el proxy elige es/en por su navegador).
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  const shareUrl = `${proto}://${host}/eventos/${id}`;
-  const t = getDictionary(lang);
-  const stateLabel: Record<string, string> = { publicado: t.status.published, borrador: t.status.draft, finalizado: t.status.finished };
+type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; shareUrl: string; stateLabel: Record<string, string> };
+
+async function Manage({ s, id, lang, t, justCreated, shareUrl, stateLabel }: ManageProps) {
+  // Un organizador solo gestiona sus propios eventos (la base además lo impone).
+  const e = await getOrganizerEvent(s.id, id);
+  if (!e) notFound();
+  const d = e.disciplines[0] as "lazo";
+  const rows = e.registered.map((rid) => ({ r: ropers.find((x) => x.id === rid)!, paid: !e.unpaid?.includes(rid) }));
   return (
-    <Gate lang={lang} role="organizador" next={`/${lang}/organizador/eventos/${id}`}>
-      {(s) => {
-        const e = events.find((x) => x.id === id);
-        // Un organizador solo gestiona sus propios eventos.
-        if (!e || e.organizer !== s.id) notFound();
-        const d = e.disciplines[0] as "lazo";
-        const rows = e.registered.map((rid) => ({ r: ropers.find((x) => x.id === rid)!, paid: !e.unpaid?.includes(rid) }));
-        return (
           <>
             <OrgNav lang={lang} t={t} />
             <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
@@ -40,7 +32,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
               <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h1 className="text-3xl font-semibold">{e.name}</h1>
-                  <p className="text-muted">{fmtDate(e.date, lang)} · {e.venue}, {e.city}</p>
+                  <p className="text-muted">{e.date ? fmtDate(e.date, lang) : "–"} · {e.venue}, {e.city}</p>
                 </div>
                 <div className="flex gap-2">
                   {e.status !== "borrador" && <Link href={`/${lang}/eventos/${e.id}`} className="rounded-full bg-sand px-4 py-2 text-sm font-medium hover:bg-line">{t.org.ev.publicPage}</Link>}
@@ -87,8 +79,24 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
               </div>
             </div>
           </>
-        );
-      }}
+  );
+}
+
+async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/eventos/[id]"> }) {
+  const lang = await resolveLang(props.params);
+  const { id } = await props.params;
+  const sp = await props.searchParams;
+  const justCreated = sp.nuevo === "publicado" ? "publicado" : sp.nuevo === "borrador" ? "borrador" : null;
+  // Enlace sin idioma: cada persona que lo abra llega a su idioma (el proxy elige es/en por su navegador).
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const shareUrl = `${proto}://${host}/eventos/${id}`;
+  const t = getDictionary(lang);
+  const stateLabel: Record<string, string> = { publicado: t.status.published, borrador: t.status.draft, finalizado: t.status.finished };
+  return (
+    <Gate lang={lang} role="organizador" next={`/${lang}/organizador/eventos/${id}`}>
+      {(s) => <Manage s={s} id={id} lang={lang} t={t} justCreated={justCreated} shareUrl={shareUrl} stateLabel={stateLabel} />}
     </Gate>
   );
 }

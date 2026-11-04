@@ -1,4 +1,4 @@
-import { events } from "@/lib/mock";
+import { getPublicEvent } from "@/lib/data/events";
 import { getSession } from "@/lib/session";
 import { stripe, platformFeeBps, siteUrl } from "@/lib/stripe";
 
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   if (session.role !== "participante") return Response.json({ error: "forbidden" }, { status: 403 });
   const roperId = session.id;
 
-  const event = events.find((e) => e.id === eventId);
+  const event = eventId ? await getPublicEvent(eventId) : null;
   const cat = event?.categories.find((c) => c.name === category);
   if (!event || !cat) return Response.json({ error: "invalid" }, { status: 400 });
   if (event.registered.includes(roperId)) return Response.json({ error: "already" }, { status: 409 });

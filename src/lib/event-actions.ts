@@ -1,8 +1,8 @@
 "use server";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
-import { events, type EventItem } from "@/lib/mock";
+import { updateTag } from "next/cache";
 import { getSession } from "@/lib/session";
+import { createServerSupabase } from "@/lib/supabase/server";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
@@ -13,12 +13,12 @@ function slug(name: string) {
   return `${base}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
-// Crea el evento (borrador o publicado) y lleva al organizador a su pantalla, donde está el enlace para compartir.
-// TODO: guardar en Supabase (events + event_categories) y subir la portada a Storage.
+// Crea el evento (borrador o publicado) en la base y lleva al organizador a su pantalla, donde está el enlace para compartir.
+// Las reglas de la base garantizan que solo un organizador cree eventos a su nombre.
 export async function createEvent(formData: FormData) {
   const l = lang(formData.get("lang"));
   const session = await getSession();
-  if (session?.role !== "organizador") redirect(`/${l}/entrar?role=organizador`);
+  if (session?.role !== "organizador" || session.demo) redirect(`/${l}/entrar?role=organizador`);
 
   const name = text(formData.get("name"), 120);
   const date = text(formData.get("date"), 10);
@@ -34,25 +34,40 @@ export async function createEvent(formData: FormData) {
     redirect(`/${l}/organizador/eventos/nuevo?error=1`);
   }
 
-  const id = slug(name);
-  const e: EventItem = {
-    id, name, date, city, venue, disciplines, categories, capacity, registered: [], organizer: session.id,
-    tone: events.length % 3, photos: [], updatedAt: new Date().toISOString(), description: text(formData.get("description"), 1000),
-    status: formData.get("intent") === "publish" ? "publicado" : "borrador",
-  };
-  events.unshift(e);
-  revalidatePath("/", "layout");
-  redirect(`/${l}/organizador/eventos/${id}?nuevo=${e.status === "publicado" ? "publicado" : "borrador"}`);
+  const status = formData.get("intent") === "publish" ? "publicado" : "borrador";
+  const supabase = await createServerSupabase();
+  const id = crypto.randomUUID();
+  const eventSlug = slug(name);
+
+  const { error } = await supabase.from("events").insert({
+    id, slug: eventSlug, name, event_date: date, city, venue, capacity, disciplines, status,
+    description: text(formData.get("description"), 1000), organizer_id: session.id, organizer_name: session.name,
+  });
+  if (error) redirect(`/${l}/organizador/eventos/nuevo?error=1`);
+
+  const { error: catError } = await supabase.from("event_categories").insert(categories.map((c) => ({ event_id: id, name: c.name, fee_cents: c.fee * 100 })));
+  if (catError) {
+    await supabase.from("events").delete().eq("id", id); // no dejar un evento sin categorías
+    redirect(`/${l}/organizador/eventos/nuevo?error=1`);
+  }
+
+  updateTag("events");
+  redirect(`/${l}/organizador/eventos/${eventSlug}?nuevo=${status}`);
 }
 
-// Publica un borrador o lo regresa a borrador. Solo el organizador dueño del evento.
+// Publica un borrador o lo regresa a borrador. La base solo deja cambiar eventos propios.
 export async function setEventStatus(formData: FormData) {
   const l = lang(formData.get("lang"));
   const session = await getSession();
-  const e = events.find((x) => x.id === formData.get("id"));
-  if (session?.role !== "organizador" || !e || e.organizer !== session.id || e.status === "finalizado") redirect(`/${l}/organizador`);
-  e.status = e.status === "borrador" ? "publicado" : "borrador";
-  e.updatedAt = new Date().toISOString();
-  revalidatePath("/", "layout");
-  redirect(`/${l}/organizador/eventos/${e.id}${e.status === "publicado" ? "?nuevo=publicado" : ""}`);
+  const eventSlug = text(formData.get("id"), 80);
+  if (session?.role !== "organizador" || session.demo || !eventSlug) redirect(`/${l}/organizador`);
+
+  const supabase = await createServerSupabase();
+  const { data: current } = await supabase.from("events").select("id, status").eq("slug", eventSlug).eq("organizer_id", session.id).maybeSingle();
+  if (!current || current.status === "finalizado") redirect(`/${l}/organizador`);
+
+  const next = current.status === "borrador" ? "publicado" : "borrador";
+  await supabase.from("events").update({ status: next }).eq("id", current.id);
+  updateTag("events");
+  redirect(`/${l}/organizador/eventos/${eventSlug}${next === "publicado" ? "?nuevo=publicado" : ""}`);
 }

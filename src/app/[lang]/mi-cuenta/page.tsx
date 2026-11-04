@@ -6,13 +6,15 @@ import { AvatarUploader } from "@/components/AvatarUploader";
 import { avatarUrl } from "@/lib/avatars";
 import { EventCard } from "@/components/EventCard";
 import { RoperCard } from "@/components/RoperCard";
-import { events, ropers, rankedIn, statOf, fmtRating, initials } from "@/lib/mock";
+import { ropers, rankedIn, statOf, fmtRating, initials } from "@/lib/mock";
+import { listPublicEvents } from "@/lib/data/events";
 import { fmtDate, mxn } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
 async function Page({ params }: { params: PageProps<"/[lang]/mi-cuenta">["params"] }) {
   const lang = await resolveLang(params);
   const t = getDictionary(lang);
+  const events = await listPublicEvents();
   return (
     <Gate lang={lang} role="participante" next={`/${lang}/mi-cuenta`}>
       {(s) => {

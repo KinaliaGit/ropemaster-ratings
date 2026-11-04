@@ -26,6 +26,7 @@ export const es = {
   },
   status: { open: "Inscripciones abiertas", full: "Cupo lleno", finished: "Finalizado", draft: "Borrador", published: "Publicado", paid: "Pagado", pending: "Pendiente" },
   home: {
+    empty: "Aún no hay eventos publicados.",
     title: "Eventos", subtitle: "Encuentra tu próximo evento, inscríbete y sigue tu rating.",
     openEvents: "eventos abiertos", registered: "inscritos", participants: "participantes", upcoming: "Próximos", finished: "Finalizados",
   },
@@ -49,6 +50,10 @@ export const es = {
     ratingsByMode: "Rating por modalidad",
   },
   auth: {
+    password: "Contraseña", passwordHint: "Mínimo 8 caracteres", signInBtn: "Entrar", organizerAccess: "Acceso de organizadores", or: "o",
+    demoParticipant: "Entrar como participante (demostración)", demoParticipantNote: "Los participantes reales entrarán con su celular; por ahora hay una cuenta de demostración.",
+    errorInvalid: "Correo o contraseña incorrectos.", errorExists: "Ya existe una cuenta con ese correo.", errorPassword: "La contraseña debe tener al menos 8 caracteres.",
+    errorGeneric: "No se pudo completar. Intenta de nuevo.", checkEmail: "Te enviamos un correo para confirmar tu cuenta. Ábrelo y vuelve a entrar.",
     signInTitle: "Iniciar sesión", needAccount: "Necesitas una cuenta para continuar.", demoMode: "Modo demostración · aún sin autenticación real",
     asParticipant: "Entrar como participante", asOrganizer: "Entrar como organizador", firstTime: "¿Primera vez?", createAccount: "Crear cuenta",
     participant: "Participante", organizer: "Organizador",
@@ -64,6 +69,8 @@ export const es = {
     ranking: "Ranking", seeAll: "Ver todos", publicProfile: "Ver mi perfil público e historial", paid: "Pagado", pending: "Pago pendiente",
   },
   org: {
+    verify: { title: "Tu cuenta está pendiente de verificación.", text: "Mientras tanto puedes crear y publicar eventos. Para ver los celulares de los participantes y registrarlos, un administrador debe verificar tu cuenta." },
+    welcome: "¡Cuenta creada! Ya puedes crear tu primer evento.", noEvents: "Aún no tienes eventos. Crea el primero.", noParticipants: "Todavía no hay participantes registrados.",
     accountType: "Cuenta de organizador", newEvent: "+ Nuevo evento", events: "Eventos", enrolled: "Inscritos", collected: "Cobrado", myEvents: "Mis eventos", manage: "Gestionar",
     tabs: { summary: "Resumen", participants: "Participantes", app: "App local" },
     tbl: { event: "Evento", date: "Fecha", state: "Estado", enrolled: "Inscritos" },

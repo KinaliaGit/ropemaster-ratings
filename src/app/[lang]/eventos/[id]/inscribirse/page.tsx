@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
-import { events } from "@/lib/mock";
+import { getPublicEvent } from "@/lib/data/events";
 import { mxn, type Lang } from "@/lib/format";
 import { Gate } from "@/components/Gate";
 import { PayButton } from "@/components/PayButton";
@@ -12,8 +12,8 @@ async function Resolver({ params }: { params: PageProps<"/[lang]/eventos/[id]/in
   const lang: Lang = await resolveLang(params);
   const { id } = await params;
   const t = getDictionary(lang);
-  const e = events.find((x) => x.id === id);
-  if (!e || e.status === "borrador") notFound();
+  const e = await getPublicEvent(id);
+  if (!e) notFound();
   return (
     <Gate lang={lang} role="participante" next={`/${lang}/eventos/${id}/inscribirse`}>
       {() => (

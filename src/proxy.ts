@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { refreshSession } from "@/lib/supabase/proxy";
 
 const LOCALES = ["es", "en"];
 
@@ -12,14 +13,16 @@ function pickLocale(request: NextRequest) {
   return "es";
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (LOCALES.some((l) => pathname === `/${l}` || pathname.startsWith(`/${l}/`))) return;
+  // La API no lleva idioma: solo se renueva la sesión.
+  if (pathname.startsWith("/api")) return refreshSession(request);
+  if (LOCALES.some((l) => pathname === `/${l}` || pathname.startsWith(`/${l}/`))) return refreshSession(request);
   request.nextUrl.pathname = `/${pickLocale(request)}${pathname === "/" ? "" : pathname}`;
   return NextResponse.redirect(request.nextUrl);
 }
 
 export const config = {
-  // No toca archivos internos, la API ni los archivos públicos (con extensión).
-  matcher: ["/((?!_next|api|.*\\..*).*)"],
+  // No toca archivos internos ni archivos públicos (con extensión).
+  matcher: ["/((?!_next|.*\\..*).*)"],
 };

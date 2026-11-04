@@ -26,6 +26,7 @@ export const en: Dict = {
   },
   status: { open: "Registration open", full: "Full", finished: "Finished", draft: "Draft", published: "Published", paid: "Paid", pending: "Pending" },
   home: {
+    empty: "There are no published events yet.",
     title: "Events", subtitle: "Find your next event, register and follow your rating.",
     openEvents: "open events", registered: "registered", participants: "participants", upcoming: "Upcoming", finished: "Finished",
   },
@@ -49,6 +50,10 @@ export const en: Dict = {
     ratingsByMode: "Rating by discipline",
   },
   auth: {
+    password: "Password", passwordHint: "At least 8 characters", signInBtn: "Sign in", organizerAccess: "Organizer access", or: "or",
+    demoParticipant: "Sign in as participant (demo)", demoParticipantNote: "Real participants will sign in with their phone; for now there is a demo account.",
+    errorInvalid: "Incorrect email or password.", errorExists: "An account with that email already exists.", errorPassword: "The password must be at least 8 characters.",
+    errorGeneric: "Couldn't complete that. Please try again.", checkEmail: "We sent you an email to confirm your account. Open it and sign in again.",
     signInTitle: "Sign in", needAccount: "You need an account to continue.", demoMode: "Demo mode · no real authentication yet",
     asParticipant: "Sign in as participant", asOrganizer: "Sign in as organizer", firstTime: "First time?", createAccount: "Create account",
     participant: "Participant", organizer: "Organizer",
@@ -64,6 +69,8 @@ export const en: Dict = {
     ranking: "Ranking", seeAll: "See all", publicProfile: "View my public profile and history", paid: "Paid", pending: "Payment pending",
   },
   org: {
+    verify: { title: "Your account is pending verification.", text: "Meanwhile you can create and publish events. To see participants' phone numbers and register them, an administrator must verify your account." },
+    welcome: "Account created! You can now create your first event.", noEvents: "You have no events yet. Create the first one.", noParticipants: "No participants have registered yet.",
     accountType: "Organizer account", newEvent: "+ New event", events: "Events", enrolled: "Registered", collected: "Collected", myEvents: "My events", manage: "Manage",
     tabs: { summary: "Overview", participants: "Participants", app: "Local app" },
     tbl: { event: "Event", date: "Date", state: "Status", enrolled: "Registered" },

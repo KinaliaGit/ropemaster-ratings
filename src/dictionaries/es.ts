@@ -79,6 +79,7 @@ export const es = {
   },
   org: {
     license: {
+      recheck: "Ya tengo licencia: revisar", results: { valid: "¡Encontramos tu licencia! Ya puedes crear eventos.", none: "No encontramos una licencia vigente con el correo de tu cuenta. Si compraste con otro correo, pide la aprobación de un administrador.", conflict: "Esa licencia ya está vinculada a otra cuenta. Pide la aprobación de un administrador.", unavailable: "No pudimos comprobar tu licencia en este momento. Intenta de nuevo en unos minutos." },
       noneTitle: "Tu cuenta está en revisión.", noneText: "Para crear eventos y ver participantes necesitas una licencia de Rope Master vigente o la aprobación de un administrador. Mientras tanto no puedes publicar nada.",
       expiredTitle: "Tu licencia venció.", expiredText: "Renuévala para volver a crear y publicar eventos. Venció el", validUntil: "Licencia vigente hasta el",
     },

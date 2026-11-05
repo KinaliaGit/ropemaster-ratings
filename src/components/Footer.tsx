@@ -5,7 +5,7 @@ import { productUrl, licensesUrl } from "@/lib/links";
 export function Footer({ t, lang }: { t: Dict; lang: "es" | "en" }) {
   return (
     <footer className="mt-16 border-t border-line">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-5 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-5 pb-24 pt-8 text-sm text-muted sm:flex-row sm:pb-8 sm:items-center sm:justify-between">
         <p>{t.footer.tagline}</p>
         <nav className="flex flex-wrap gap-x-5 gap-y-2">
           <Link href={`/${lang}/terminos`} className="hover:text-ink">{t.footer.terms}</Link>

@@ -19,6 +19,26 @@ import { getDictionary, resolveLang } from "@/lib/i18n";
 
 type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justEdited: boolean; pagoError: boolean; shareUrl: string; stateLabel: Record<string, string> };
 
+type Reg = Awaited<ReturnType<typeof listEventRegistrations>>[number];
+
+// Estado del pago de una inscripción y, para el organizador, los botones para marcarla pagada (efectivo/transferencia) o deshacerla.
+function PaymentCell({ r, lang, slug, t }: { r: Reg; lang: Lang; slug: string; t: Dict }) {
+  const paid = r.paymentStatus === "pagado";
+  return paid ? (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="font-medium text-emerald-700">{t.org.ev.paidAmount} {mxn(r.amountCents / 100, lang)} · {t.pay.method[(r.paymentMethod ?? "efectivo") as "efectivo" | "transferencia" | "stripe"]}</span>
+      {r.paymentMethod !== "stripe" && <PayForm lang={lang} slug={slug} id={r.id} method="pendiente" label={t.pay.undo} tone="ghost" />}
+    </div>
+  ) : (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="font-medium text-brand-hot">{t.org.ev.pending}</span>
+      <span className="text-xs text-muted">{t.pay.markPaid}</span>
+      <PayForm lang={lang} slug={slug} id={r.id} method="efectivo" label={t.pay.method.efectivo} tone="solid" />
+      <PayForm lang={lang} slug={slug} id={r.id} method="transferencia" label={t.pay.method.transferencia} tone="solid" />
+    </div>
+  );
+}
+
 function PayForm({ lang, slug, id, method, label, tone }: { lang: Lang; slug: string; id: string; method: string; label: string; tone: "solid" | "ghost" }) {
   return (
     <form action={setRegistrationPayment}>
@@ -74,31 +94,26 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, shar
                   l={{ title: t.uploader.eventPhotos, add: t.uploader.add, hint: t.uploader.hint, cover: t.uploader.cover, makeCover: t.uploader.makeCover, remove: t.uploader.remove, confirmRemove: t.uploader.confirmRemove, uploading: t.uploader.uploading, empty: t.uploader.empty, tooBig: t.uploader.tooBig, invalid: t.uploader.invalid, limit: t.uploader.limit, failed: t.uploader.failed }} />
               </div>
               <h2 className="mt-10 text-xl font-semibold">{t.org.ev.enrolledTitle}</h2>
-              <div className="card mt-3 overflow-x-auto">
+              <div className="mt-3 space-y-3 sm:hidden">
+                {rows.length === 0 && <p className="rounded-2xl bg-sand p-4 text-muted">{t.org.ev.noneEnrolled}</p>}
+                {rows.map((r) => (
+                  <div key={r.id} className="card p-4">
+                    <Link href={`/${lang}/participantes/${r.roperId}`} className="font-semibold hover:text-brand-hot">{r.name}</Link>
+                    <p className="mt-0.5 text-sm text-muted">{r.category}{r.email ? ` · ${r.email}` : ""}</p>
+                    <div className="mt-3"><PaymentCell r={r} lang={lang} slug={e.id} t={t} /></div>
+                  </div>
+                ))}
+              </div>
+              <div className="card mt-3 hidden overflow-x-auto sm:block">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-sand label"><tr><th className="p-3">{t.org.ev.participant}</th><th>{t.org.ev.phone}</th><th>{t.org.ev.category}</th><th>{t.org.ev.payment}</th></tr></thead>
                   <tbody>
                     {rows.map((r) => {
-                      const paid = r.paymentStatus === "pagado";
                       return (
                         <tr key={r.id} className="border-t border-line">
                           <td className="p-3 font-medium"><Link href={`/${lang}/participantes/${r.roperId}`} className="hover:text-brand-hot">{r.name}</Link></td>
                           <td className="text-muted">{r.email ?? "–"}</td><td>{r.category}</td>
-                          <td className="py-2 pr-3">
-                            {paid ? (
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="font-medium text-emerald-700">{t.org.ev.paidAmount} {mxn(r.amountCents / 100, lang)} · {t.pay.method[(r.paymentMethod ?? "efectivo") as "efectivo" | "transferencia" | "stripe"]}</span>
-                                {r.paymentMethod !== "stripe" && <PayForm lang={lang} slug={e.id} id={r.id} method="pendiente" label={t.pay.undo} tone="ghost" />}
-                              </div>
-                            ) : (
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="font-medium text-brand-hot">{t.org.ev.pending}</span>
-                                <span className="text-xs text-muted">{t.pay.markPaid}</span>
-                                <PayForm lang={lang} slug={e.id} id={r.id} method="efectivo" label={t.pay.method.efectivo} tone="solid" />
-                                <PayForm lang={lang} slug={e.id} id={r.id} method="transferencia" label={t.pay.method.transferencia} tone="solid" />
-                              </div>
-                            )}
-                          </td>
+                          <td className="py-2 pr-3"><PaymentCell r={r} lang={lang} slug={e.id} t={t} /></td>
                         </tr>
                       );
                     })}

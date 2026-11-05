@@ -66,8 +66,8 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                 );
                 return (
                   <div key={m.id} className="card p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      {m.event?.slug ? <Link href={`/${lang}/eventos/${m.event.slug}`} className="flex flex-1 items-center justify-between gap-3">{inner}</Link> : <div className="flex flex-1 items-center justify-between gap-3">{inner}</div>}
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      {m.event?.slug ? <Link href={`/${lang}/eventos/${m.event.slug}`} className="flex min-w-[15rem] flex-1 items-center justify-between gap-3">{inner}</Link> : <div className="flex min-w-[15rem] flex-1 items-center justify-between gap-3">{inner}</div>}
                       {!paid && (
                         <form action={cancelRegistration}>
                           <input type="hidden" name="lang" value={lang} /><input type="hidden" name="id" value={m.id} />
@@ -89,7 +89,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
             </div>
 
             <h2 className="mt-12 text-xl font-semibold">{t.account.available}</h2>
-            <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="mt-4 grid grid-cols-1 gap-x-4 gap-y-8 min-[480px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {available.length ? available.map((e) => <EventCard key={e.id} e={e} lang={lang} t={t} />) : <p className="text-muted">{t.account.noneAvailable}</p>}
             </div>
 

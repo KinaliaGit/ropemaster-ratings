@@ -4,7 +4,7 @@ import { organizerFromRequest } from "@/lib/app-auth";
 // La app local descarga el directorio global de participantes con su rating.
 // Incluye el celular (es la llave de coincidencia) porque solo lo reciben organizadores autenticados.
 export async function GET(request: Request) {
-  const auth = organizerFromRequest(request);
+  const auth = await organizerFromRequest(request);
   if (auth instanceof Response) return auth;
   return Response.json({
     participants: ropers.map((r) => ({

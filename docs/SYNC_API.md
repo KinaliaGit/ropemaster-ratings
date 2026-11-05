@@ -3,7 +3,13 @@
 La app (Tauri) descarga eventos y participantes del organizador cuando hay internet y los guarda en su
 SQLite local. Sin internet la app sigue funcionando con lo ya descargado.
 
-Autenticación: `Authorization: Bearer <código>`. El organizador genera el código en su panel (pestaña *App local*); se muestra una sola vez y el servidor guarda solo su hash. Generar uno nuevo revoca el anterior. Para pruebas locales también sirve el valor fijo de `APP_SYNC_TOKEN`.
+Autenticación: `Authorization: Bearer <código>`. El organizador genera el código en su panel (pestaña *App local*); se muestra una sola vez y la base (`api_tokens`) guarda solo su hash sha256. Generar uno nuevo revoca el anterior, y también se puede revocar sin generar otro. Un código revocado deja de funcionar al instante, y reiniciar el servidor no desconecta a la app. El panel muestra cuándo se creó y cuándo se usó por última vez.
+
+- `401`: código inválido o revocado (no reintentar; la app pide reconectar).
+- `429`: demasiados intentos con un código inválido desde la misma IP (20 en 5 minutos). Trae `Retry-After`.
+- `503`: falla temporal al verificar el código. Sí reintentar.
+
+Configuración del servidor: `SUPABASE_SERVICE_ROLE_KEY` (secreta, solo servidor) es obligatoria en producción. Sin ella, fuera de producción los códigos viven en memoria y se pierden al reiniciar; en producción la API responde `503`. El valor fijo `APP_SYNC_TOKEN` solo funciona fuera de producción, para pruebas locales.
 
 ## `GET /api/app/eventos?since=<ISO-8601>`
 Eventos del organizador con estado `publicado` o `finalizado` (los borradores no se envían), con sus inscritos.

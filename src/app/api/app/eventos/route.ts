@@ -4,7 +4,7 @@ import { organizerFromRequest } from "@/lib/app-auth";
 // La app local descarga los eventos del organizador (incluye inscritos).
 // ?since=<ISO> devuelve solo los modificados después de esa fecha (sincronización incremental).
 export async function GET(request: Request) {
-  const auth = organizerFromRequest(request);
+  const auth = await organizerFromRequest(request);
   if (auth instanceof Response) return auth;
   const since = new URL(request.url).searchParams.get("since") ?? "";
 

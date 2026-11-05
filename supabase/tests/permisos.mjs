@@ -8,7 +8,7 @@ const dir = fileURLToPath(new URL("../migrations", import.meta.url));
 const db = new PGlite();
 
 await db.exec(`
-  create role anon; create role authenticated;
+  create role anon; create role authenticated; create role service_role;
   create schema auth; create table auth.users (id uuid primary key default gen_random_uuid());
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   create schema storage;
@@ -17,10 +17,11 @@ await db.exec(`
   alter table storage.objects enable row level security;
   create function storage.foldername(name text) returns text[] language sql as $$ select string_to_array(name, '/') $$;
   grant usage on schema public, auth to anon, authenticated;
-  alter default privileges in schema public grant all on tables to anon, authenticated;
+  grant usage on schema public to service_role;
+  alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
 `);
 for (const f of readdirSync(dir).sort()) await db.exec(readFileSync(`${dir}/${f}`, "utf8"));
-console.log("migraciones 0001-0009 aplicadas en orden\n");
+console.log("migraciones aplicadas en orden\n");
 
 // Datos de prueba (como superusuario)
 const A = "aaaaaaaa-0000-0000-0000-00000000000a", B = "bbbbbbbb-0000-0000-0000-00000000000b", C = "cccccccc-0000-0000-0000-00000000000c";
@@ -90,6 +91,42 @@ await as("authenticated", C, "update ropers set avatar_path='mi/foto.jpg' where 
 await as("authenticated", C, "update ropers set avatar_path='mi/foto.jpg' where id = '11111111-0000-0000-0000-000000000001'", "SÍ cambia la foto de SU perfil", "some");
 await as("authenticated", B, "update ropers set avatar_path='hack.jpg' where id = '11111111-0000-0000-0000-000000000001'", "NO cambia la foto de otra persona", "deny");
 await as("authenticated", C, "insert into profiles (user_id, role, display_name) values ('" + C + "', 'organizador', 'x')", "NO se hace organizador (ya tiene perfil / rol)", "deny");
+
+// Comprobación de un valor concreto (no solo permitido o denegado).
+async function check(label, cond) {
+  if (!cond) failures++;
+  console.log(`${cond ? "✔" : "✘ FALLO"}  ${label.padEnd(58)} → ${cond ? "ok" : "no se cumple"}`);
+}
+
+console.log("- Códigos de conexión de la app (0011)");
+await as("service_role", null, `select rotate_api_token('${A}', 'hash-uno')`, "el servidor genera un código", "some");
+await as("service_role", null, `select rotate_api_token('${A}', 'hash-dos')`, "el servidor genera otro (revoca el anterior)", "some");
+{
+  const r = await db.query(`select count(*) filter (where revoked_at is null)::int as activos, count(*) filter (where revoked_at is not null)::int as revocados from api_tokens where organizer_id = '${A}'`);
+  await check("queda 1 código activo y 1 revocado", r.rows[0].activos === 1 && r.rows[0].revocados === 1);
+  let dup = false;
+  try { await db.query(`insert into api_tokens (organizer_id, token_hash) values ('${A}', 'hash-tres')`); } catch { dup = true; }
+  await check("la base impide dos códigos activos del mismo organizador", dup);
+}
+await as("authenticated", A, "select id, created_at, last_used_at, revoked_at from api_tokens", "el organizador ve las fechas de SUS códigos", "some");
+await as("authenticated", A, "select token_hash from api_tokens", "NO ve el hash de sus códigos", "deny");
+await as("authenticated", B, "select id from api_tokens", "NO ve códigos de otro organizador", "deny");
+await as("authenticated", A, `update api_tokens set revoked_at = null where organizer_id = '${A}'`, "NO reactiva ni edita códigos directo", "deny");
+await as("authenticated", A, `insert into api_tokens (organizer_id, token_hash) values ('${A}', 'x')`, "NO crea códigos directo", "deny");
+await as("authenticated", A, `select rotate_api_token('${A}', 'x')`, "NO ejecuta la rotación (solo el servidor)", "deny");
+await as("anon", null, "select id from api_tokens", "anónimo NO ve códigos", "deny");
+await as("authenticated", A, "select * from api_auth_failures", "NO ve los intentos fallidos", "deny");
+await as("authenticated", A, "select api_auth_is_blocked('x')", "NO consulta el bloqueo por IP", "deny");
+await as("anon", null, "select api_auth_record_failure('x')", "anónimo NO registra intentos fallidos", "deny");
+{
+  await db.exec("reset role; set role service_role");
+  for (let i = 0; i < 20; i++) await db.query("select api_auth_record_failure('ip-mala')");
+  const mala = await db.query("select api_auth_is_blocked('ip-mala') as b");
+  const buena = await db.query("select api_auth_is_blocked('ip-buena') as b");
+  await db.exec("reset role");
+  await check("20 fallos seguidos bloquean esa IP", mala.rows[0].b === true);
+  await check("otra IP sigue sin bloqueo", buena.rows[0].b === false);
+}
 
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

@@ -11,7 +11,7 @@ Estado al 2026-11-05, rama `feat/organizadores-reales` (PR #1). ✅ hecho y prob
 
 ## Acceso y licencia de organizadores
 - ✅ Candado por licencia en la base (0015): sin licencia vigente ni aprobación manual no operan; vencida = no crea ni edita.
-- ⛔ **Enlace automático con la base de licencias** (`rope-master-licencias`, compradores reales): falta el repo/acceso, el permiso explícito para crear una función de solo lectura allí y `SUPABASE_SERVICE_ROLE_KEY` de ratings. Regla acordada: el correo de la licencia debe coincidir con el de la cuenta y un folio se vincula a una sola cuenta. Mientras tanto: aprobación manual desde Administración.
+- 🟡 **Enlace automático con la base de licencias** (KIN-572): el código está hecho y probado en sus partes (`src/lib/licencias*.ts`, `license-link.ts`); falta **ejecutar a mano** `docs/licencias/licencia_vigente_web.sql` en el SQL Editor de `rope-master-licencias` y poner `LICENCIAS_URL`, `LICENCIAS_ANON_KEY` y `LICENCIAS_CHECK_SECRET` (sensible) en Vercel. Sin eso, todo sigue como hoy: aprobación manual. Pendiente de decidir: si un plan `event_pass` también habilita al organizador (hoy sí).
 - ⬜ Quién aprueba organizadores sin licencia y con qué criterio.
 
 ## Dinero

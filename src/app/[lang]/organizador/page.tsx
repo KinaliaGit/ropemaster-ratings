@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
+import { recheckLicense } from "@/lib/license-actions";
 import { StripeConnectButton } from "@/components/StripeConnectButton";
 import { listOrganizerEvents } from "@/lib/data/events";
 import { fmtDate, mxn } from "@/lib/format";
@@ -13,7 +14,7 @@ import type { Lang } from "@/lib/format";
 
 const badge: Record<string, string> = { publicado: "bg-brand-soft text-brand-hot", borrador: "bg-sand text-muted", finalizado: "bg-ink text-white" };
 
-async function Panel({ s, lang, t, welcome }: { s: Session; lang: Lang; t: Dict; welcome: boolean }) {
+async function Panel({ s, lang, t, welcome, licencia }: { s: Session; lang: Lang; t: Dict; welcome: boolean; licencia?: string }) {
   const mine = await listOrganizerEvents(s.id);
   const stateLabel: Record<string, string> = { publicado: t.status.published, borrador: t.status.draft, finalizado: t.status.finished };
   const stats = [[t.org.events, mine.length], [t.status.published, mine.filter((e) => e.status === "publicado").length], [t.org.collected, mxn(0, lang)]];
@@ -22,10 +23,12 @@ async function Panel({ s, lang, t, welcome }: { s: Session; lang: Lang; t: Dict;
       <OrgNav lang={lang} t={t} admin={s.isAdmin} />
       <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
         {welcome && s.verified && <p role="status" className="mb-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.org.welcome}</p>}
+        {licencia && t.org.license.results[licencia as "valid"] && <p role="status" className="mb-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.org.license.results[licencia as "valid" | "none" | "conflict" | "unavailable"]}</p>}
         {!s.verified && (
           <div role="note" className="mb-6 rounded-2xl border border-line bg-sand p-4 text-sm">
             <p className="font-semibold">{s.license === "expired" ? t.org.license.expiredTitle : t.org.license.noneTitle}</p>
             <p className="mt-1 text-muted">{s.license === "expired" ? `${t.org.license.expiredText} ${s.licenseUntil ? fmtDate(s.licenseUntil.slice(0, 10), lang) : ""}` : t.org.license.noneText}</p>
+            <form action={recheckLicense} className="mt-3"><input type="hidden" name="lang" value={lang} /><button className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-white hover:bg-brand-hot">{t.org.license.recheck}</button></form>
           </div>
         )}
         {s.verified && s.license === "valid" && s.licenseUntil && <p className="mb-6 text-sm text-muted">{t.org.license.validUntil} {fmtDate(s.licenseUntil.slice(0, 10), lang)}</p>}
@@ -85,7 +88,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador"> }) {
   const sp = await props.searchParams;
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador`}>
-      {(s) => <Panel s={s} lang={lang} t={t} welcome={sp.bienvenido === "1"} />}
+      {(s) => <Panel s={s} lang={lang} t={t} welcome={sp.bienvenido === "1"} licencia={typeof sp.licencia === "string" ? sp.licencia : undefined} />}
     </Gate>
   );
 }

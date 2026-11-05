@@ -9,6 +9,7 @@ import { initials, publicAvatarUrl } from "@/lib/people";
 import { listRanking } from "@/lib/data/ropers";
 import { listMyRegistrations } from "@/lib/data/registrations";
 import { cancelRegistration } from "@/lib/registration-actions";
+import { createMyRoperProfile } from "@/lib/profile-actions";
 import { listPublicEvents } from "@/lib/data/events";
 import { fmtDate, mxn } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
@@ -18,10 +19,23 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
   const sp = await props.searchParams;
   const t = getDictionary(lang);
   const [events, top] = await Promise.all([listPublicEvents(), listRanking("lazo").then((r) => r.slice(0, 4))]);
-  const notice = sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
+  const notice = sp.perfil === "ok" ? t.account.profileCreated : sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
   return (
-    <Gate lang={lang} role="participante" next={`/${lang}/mi-cuenta`}>
+    <Gate lang={lang} role="any" next={`/${lang}/mi-cuenta`}>
       {async (s) => {
+        if (!s.hasRoper) {
+          // Cuenta sin perfil de lazador (p. ej. un organizador): se crea con un botón; reclama el que otro organizador haya registrado con su correo.
+          return (
+            <div className="mx-auto max-w-lg px-5 pb-10 pt-14">
+              <h1 className="text-3xl font-semibold">{t.account.createTitle}</h1>
+              <p className="mt-2 text-muted">{t.account.createText}</p>
+              <form action={createMyRoperProfile} className="mt-6">
+                <input type="hidden" name="lang" value={lang} />
+                <button className="w-full rounded-full bg-brand py-3 text-sm font-medium text-white hover:bg-brand-hot">{t.account.createBtn}</button>
+              </form>
+            </div>
+          );
+        }
         const mine = await listMyRegistrations();
         const mineSlugs = new Set(mine.map((m) => m.event?.slug));
         const available = events.filter((e) => e.status === "publicado" && !mineSlugs.has(e.id));
@@ -30,7 +44,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
             <div className="flex flex-wrap items-center gap-5">
               <AvatarUploader url={publicAvatarUrl(s.avatarPath)} initials={initials(s.name)} name={s.name} l={t.account.photo} />
               <div className="flex-1">
-                <p className="label">{t.account.type}</p>
+                <p className="label">{s.role === "organizador" ? t.account.typeOrganizer : t.account.type}</p>
                 <h1 className="text-3xl font-semibold">{s.name}</h1>
               </div>
             </div>

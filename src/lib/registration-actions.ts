@@ -19,7 +19,7 @@ export async function enroll(formData: FormData) {
   const back = (error: string) => redirect(`/${l}/eventos/${encodeURIComponent(slug)}/inscribirse?error=${error}`);
   const s = await getSession();
   if (!s) redirect(`/${l}/entrar?role=participante&next=${encodeURIComponent(`/${l}/eventos/${slug}/inscribirse`)}`);
-  if (s.role !== "participante") return back("forbidden");
+  if (!s.hasRoper) redirect(`/${l}/mi-cuenta?perfil=1`); // aún no tiene perfil de lazador: lo crea en Mi cuenta
   const event = await getPublicEvent(slug);
   if (!event?.uuid || !UUID.test(category)) return back("invalid_category");
   const { error } = await (await createServerSupabase()).rpc("register_for_event", { p_event: event.uuid, p_category: category });

@@ -146,7 +146,10 @@ await as("authenticated", F, "select public.claim_my_roper('Otro Nombre')", "sin
 await as("authenticated", F, "select count(*) from roper_contacts where email = 'otro@x.com' having count(*) = 1", "queda su correo de contacto", "some");
 await as("authenticated", G, "insert into profiles (user_id, role, display_name) values ('" + G + "', 'participante', 'Sin confirmar')", "cuenta sin confirmar crea su perfil", "some");
 await as("authenticated", G, "select public.claim_my_roper('Sin confirmar')", "correo SIN confirmar NO reclama ni crea perfil", "deny");
-await as("authenticated", B, "select public.claim_my_roper('Org')", "un organizador NO usa claim_my_roper", "deny");
+await as("authenticated", B, "select public.claim_my_roper('Org Lazador')", "un organizador SÍ crea su perfil de lazador", "some");
+await as("authenticated", B, "select count(*) from ropers where full_name = 'Org Lazador' having count(*) = 1", "un solo perfil, enlazado a su cuenta", "some");
+await as("authenticated", B, "select public.claim_my_roper('Otro')", "pedirlo otra vez devuelve el mismo perfil", "some");
+await as("authenticated", B, "select count(*) from ropers where full_name in ('Org Lazador','Otro') having count(*) = 1", "sin duplicados", "some");
 await as("anon", null, "select public.claim_my_roper('Anon')", "anónimo NO usa claim_my_roper", "deny");
 console.log("— Inscripciones (0014)");
 const EV = "e0000000-0000-0000-0000-000000000001"; // publicado, sin cupo definido
@@ -167,7 +170,7 @@ await as("authenticated", C, `select public.register_for_event('${EV}','${CAT1}'
 await as("authenticated", C, `select public.register_for_event('${EV}','${CAT2}')`, "SÍ puede inscribirse en otra categoría", "some");
 await as("authenticated", C, `select public.register_for_event('${EV}','${CATC}')`, "categoría de otro evento se rechaza", "deny");
 await as("authenticated", C, "select public.register_for_event('e0000000-0000-0000-0000-000000000002','" + CAT1 + "')", "evento en borrador no acepta inscripciones", "deny");
-await as("authenticated", A, `select public.register_for_event('${EV}','${CAT1}')`, "un organizador NO se inscribe", "deny");
+await as("authenticated", A, `select public.register_for_event('${EV}','${CAT1}')`, "un organizador SIN perfil de lazador NO se inscribe", "deny");
 await as("anon", null, `select public.register_for_event('${EV}','${CAT1}')`, "anónimo NO se inscribe", "deny");
 await as("authenticated", C, "select amount_cents from registrations where category_id = '" + CAT1 + "' and amount_cents = 50000", "el precio sale de la categoría (no del navegador)", "some");
 await as("authenticated", C, "select id from registrations", "el participante ve sus inscripciones (2)", "some");
@@ -204,7 +207,7 @@ console.log("— Licencia de organizadores (0015)");
 // B (admin lo verificó antes en este script) se vuelve a dejar sin aprobar para probar la licencia
 await db.exec(`update profiles set organizer_verified = false where user_id = '${B}'`);
 await as("authenticated", B, "insert into events (id, name, organizer_id, status) values (gen_random_uuid(), 'Sin licencia', '" + B + "', 'borrador')", "sin licencia ni aprobación NO crea eventos", "deny");
-await as("authenticated", B, "select phone_e164 from roper_contacts", "sin licencia NO ve el directorio", "deny");
+await as("authenticated", B, "select roper_id from roper_contacts where roper_id <> (select public.my_roper_id())", "sin licencia NO ve el directorio (solo su propio contacto)", "deny");
 await as("authenticated", B, "select public.create_participant('Sin Licencia', 'sl@x.com')", "sin licencia NO registra participantes", "deny");
 await as("authenticated", B, "select user_id from profiles where user_id = '" + B + "'", "pero sí ve su propia cuenta", "some");
 await db.exec(`update profiles set license_valid_until = now() + interval '30 days', license_order_id = 'ORD-1' where user_id = '${B}'`);
@@ -217,13 +220,19 @@ await db.exec(`update profiles set license_valid_until = now() - interval '1 day
 await as("authenticated", B, "insert into events (id, name, organizer_id, status) values (gen_random_uuid(), 'Vencida', '" + B + "', 'borrador')", "licencia VENCIDA: NO crea eventos", "deny");
 await as("authenticated", B, "update events set status = 'publicado' where organizer_id = '" + B + "'", "licencia VENCIDA: NO publica ni edita", "deny");
 await as("authenticated", B, "insert into event_categories (event_id, name, fee_cents) select id, 'X', 1 from events where organizer_id = '" + B + "' limit 1", "licencia VENCIDA: NO agrega categorías", "deny");
-await as("authenticated", B, "select phone_e164 from roper_contacts", "licencia VENCIDA: NO ve el directorio", "deny");
+await as("authenticated", B, "select roper_id from roper_contacts where roper_id <> (select public.my_roper_id())", "licencia VENCIDA: NO ve el directorio (solo su propio contacto)", "deny");
 await as("authenticated", B, "select public.create_participant('Vencida', 'v@x.com')", "licencia VENCIDA: NO registra participantes", "deny");
 await as("authenticated", B, "select id from events where organizer_id = '" + B + "'", "licencia VENCIDA: aún ve sus propios eventos", "some");
 await as("authenticated", B, "update profiles set license_valid_until = 'infinity' where user_id = '" + B + "'", "NO se pone una licencia a sí mismo", "deny");
 await as("authenticated", B, "update profiles set license_order_id = 'x' where user_id = '" + B + "'", "NO escribe su folio de licencia", "deny");
 await db.exec(`update profiles set organizer_verified = true where user_id = '${B}'`);
 await as("authenticated", B, "insert into events (id, name, organizer_id, status) values (gen_random_uuid(), 'Aprobado a mano', '" + B + "', 'borrador')", "vencida pero aprobado por un admin: SÍ opera", "some");
+await as("authenticated", B, `select public.register_for_event('${EV}','${CAT2}')`, "organizador con perfil de lazador SÍ se inscribe", "some");
+await as("authenticated", B, "select role from profiles where user_id = '" + B + "' and role = 'organizador'", "y sigue siendo organizador", "some");
+await db.exec(`update profiles set organizer_verified = false, license_valid_until = now() - interval '1 day' where user_id = '${B}'`);
+await as("authenticated", B, `select public.register_for_event('${EV}','${CAT1}')`, "con la licencia VENCIDA igual se inscribe como lazador", "some");
+await as("authenticated", B, "insert into events (id, name, organizer_id, status) values (gen_random_uuid(), 'x', '" + B + "', 'borrador')", "pero NO crea eventos con la licencia vencida", "deny");
+await as("authenticated", B, "update ropers set avatar_path = 'a/b.jpg' where id = (select public.my_roper_id())", "el organizador cambia la foto de su perfil de lazador", "some");
 console.log("— Participante");
 await as("authenticated", C, "select phone_e164 from roper_contacts", "ve SOLO su propio contacto (1)", "some");
 await as("authenticated", C, "select organizer_verified from profiles", "ve su perfil (1)", "some");

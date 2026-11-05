@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   const lang = rawLang === "en" ? "en" : "es";
   const session = await getSession();
   if (!session) return Response.json({ error: "unauthenticated" }, { status: 401 });
-  if (session.role !== "participante") return Response.json({ error: "forbidden" }, { status: 403 });
+  if (!session.hasRoper) return Response.json({ error: "forbidden" }, { status: 403 });
   const roperId = session.id;
 
   const event = eventId ? await getPublicEvent(eventId) : null;

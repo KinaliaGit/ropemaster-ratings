@@ -65,3 +65,11 @@ Las columnas `license_*` NO son editables desde la API: las escribe solo el serv
 **Pendiente (bloquea la vinculación automática):** la comprobación contra la base de licencias (proyecto `rope-master-licencias`, con compradores reales)
 y la `SUPABASE_SERVICE_ROLE_KEY` de ratings en `.env.local`. Regla acordada: el correo de la licencia debe coincidir con el de la cuenta; un folio (`order_id`) solo
 se vincula a una cuenta (índice único). Mientras tanto la vía manual (admin) funciona.
+
+## Organizador que también es lazador (migración 0016)
+
+Una persona = una cuenta (el correo es único). La cuenta tiene dos "espacios": **organizador** (`profiles.role = 'organizador'`, con licencia o aprobación)
+y **lazador** (su fila en `ropers`, enlazada por `user_id`). Cualquier cuenta puede crear su perfil de lazador con el botón de "Mi cuenta"
+(`claim_my_roper`: reclama el que otro organizador haya registrado con su correo, si no, crea uno) y con él puede inscribirse a eventos.
+La licencia vencida solo afecta el lado de organizador: el perfil de lazador, su historial y sus inscripciones siguen igual.
+"Entrar como" elige el espacio al que se llega; una cuenta de participante no tiene espacio de organizador (pendiente: solicitarlo, pasando por licencia o aprobación).

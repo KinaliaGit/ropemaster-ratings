@@ -4,12 +4,12 @@ import { useEffect, useRef, useState } from "react";
 
 type Props = {
   initials: string; photo?: string | null; name: string; roleLabel: string; lang: "es" | "en";
-  dashboardHref: string; dashboardLabel: string; signOutLabel: string;
+  dashboardHref: string; dashboardLabel: string; extra?: { href: string; label: string }; signOutLabel: string;
   signOut: (formData: FormData) => void | Promise<void>;
 };
 
 // Avatar con menú desplegable. Se cierra al hacer clic fuera o con Escape.
-export function AccountMenu({ initials, photo, name, roleLabel, lang, dashboardHref, dashboardLabel, signOutLabel, signOut }: Props) {
+export function AccountMenu({ initials, photo, name, roleLabel, lang, dashboardHref, dashboardLabel, extra, signOutLabel, signOut }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -36,6 +36,7 @@ export function AccountMenu({ initials, photo, name, roleLabel, lang, dashboardH
           </div>
           <div className="my-1 h-px bg-line" />
           <Link role="menuitem" href={dashboardHref} onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-sand">{dashboardLabel}</Link>
+          {extra && <Link role="menuitem" href={extra.href} onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-sand">{extra.label}</Link>}
           <form action={signOut}>
             <input type="hidden" name="lang" value={lang} />
             <button role="menuitem" className="block w-full rounded-xl px-3 py-2 text-left text-sm text-muted hover:bg-sand hover:text-ink">{signOutLabel}</button>

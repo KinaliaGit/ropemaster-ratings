@@ -10,7 +10,7 @@ import { AVATARS_BUCKET, publicStorageUrl, type PhotoResult } from "@/lib/storag
 // Cada foto tiene nombre único (<roper_id>/<marca de tiempo>.jpg): la URL cambia al reemplazarla y la caché nunca muestra la vieja.
 async function myRoper() {
   const s = await getSession();
-  if (!s || s.role !== "participante") return { error: "unauthorized" as const };
+  if (!s || !s.hasRoper) return { error: "unauthorized" as const };
   const supabase = await createServerSupabase();
   const { data: roperId } = await supabase.rpc("my_roper_id");
   if (!roperId) return { error: "unauthorized" as const };

@@ -16,7 +16,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
   const e = await getPublicEvent(id);
   if (!e) notFound();
   return (
-    <Gate lang={lang} role="participante" next={`/${lang}/eventos/${id}/inscribirse`}>
+    <Gate lang={lang} role="any" next={`/${lang}/eventos/${id}/inscribirse`}>
       {() => (
         <div className="mx-auto max-w-lg px-5 pb-10 pt-12">
           <Link href={`/${lang}/eventos/${e.id}`} className="text-sm text-muted hover:text-ink">← {e.name}</Link>

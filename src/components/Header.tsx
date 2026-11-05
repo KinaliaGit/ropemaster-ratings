@@ -14,8 +14,9 @@ async function Account({ lang, t }: { lang: Lang; t: Dict }) {
   const org = s.role === "organizador";
   return (
     <AccountMenu
-      initials={initials(s.name)} photo={org ? null : publicAvatarUrl(s.avatarPath)} name={s.name} roleLabel={org ? t.org.accountType : t.account.type} lang={lang}
+      initials={initials(s.name)} photo={publicAvatarUrl(s.avatarPath)} name={s.name} roleLabel={org ? t.org.accountType : t.account.type} lang={lang}
       dashboardHref={`/${lang}/${org ? "organizador" : "mi-cuenta"}`} dashboardLabel={org ? t.nav.myPanel : t.nav.myAccount}
+      extra={org ? { href: `/${lang}/mi-cuenta`, label: s.hasRoper ? t.nav.myLazador : t.nav.createLazador } : undefined}
       signOutLabel={t.nav.signOut} signOut={logout}
     />
   );

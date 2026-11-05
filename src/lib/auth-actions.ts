@@ -17,8 +17,9 @@ type Role = "organizador" | "participante";
 const roleOf = (v: FormDataEntryValue | null): Role => (v === "participante" ? "participante" : "organizador");
 const home = (l: string, role: Role) => `/${l}/${role === "organizador" ? "organizador" : "mi-cuenta"}`;
 
-// Entrar: el rol elegido debe coincidir con el de la cuenta (no se entra como organizador con una cuenta de participante).
-// Un participante enlaza aquí su perfil con el que un organizador pudo crear con su correo (idempotente).
+// Entrar: el rol elegido es el espacio al que se llega. Una cuenta de organizador también puede entrar a su perfil de lazador;
+// una cuenta de participante no tiene espacio de organizador (eso pasa por licencia o aprobación).
+// Quien tiene cuenta enlaza aquí su perfil de lazador con el que un organizador pudo crear con su correo (idempotente).
 export async function signIn(formData: FormData) {
   const l = lang(formData.get("lang"));
   const role = roleOf(formData.get("role"));
@@ -28,8 +29,8 @@ export async function signIn(formData: FormData) {
   const { data, error } = await supabase.auth.signInWithPassword({ email: str(formData.get("email"), 200), password: str(formData.get("password"), 100) });
   if (error || !data.user) return back("invalid");
   const { data: profile } = await supabase.from("profiles").select("role, display_name").eq("user_id", data.user.id).maybeSingle();
-  if (!profile || profile.role !== role) { await supabase.auth.signOut(); return back(profile ? "role" : "invalid"); }
-  if (role === "participante") await supabase.rpc("claim_my_roper", { p_name: profile.display_name });
+  if (!profile || (role === "organizador" && profile.role !== "organizador")) { await supabase.auth.signOut(); return back(profile ? "role" : "invalid"); }
+  if (profile.role === "participante") await supabase.rpc("claim_my_roper", { p_name: profile.display_name });
   redirect(safeNext(next, home(l, role)));
 }
 

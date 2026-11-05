@@ -4,7 +4,7 @@ import { MAX_UPLOAD_MB } from "@/lib/limits";
 export const en: Dict = {
   meta: { title: "Rope Master Ratings", description: "The global registry of ropers: rating, history and results from every event." },
   common: { brand: "Rope Master", ratings: "Ratings", loading: "Loading…", back: "Back", of: "of" },
-  nav: { events: "Events", participants: "Participants", signIn: "Sign in", myPanel: "My dashboard", myAccount: "My account", signOut: "Sign out", publicSite: "Public site", language: "Language" },
+  nav: { myLazador: "My roper profile", createLazador: "Create my roper profile", events: "Events", participants: "Participants", signIn: "Sign in", myPanel: "My dashboard", myAccount: "My account", signOut: "Sign out", publicSite: "Public site", language: "Language" },
   promo: {
     label: "Rope Master", title: "The software to run your roping event.",
     text: "Rope Master is the app used to manage roping series and events: teams, times, judges and results in one system, synced in real time.",
@@ -61,6 +61,7 @@ export const en: Dict = {
     fullName: "Full name", email: "Email", create: "Create account",
   },
   account: {
+    createTitle: "Create your roper profile", createText: "Your account is an organizer account. If you also compete, create your roper profile: you'll get your rating and history and can register for events. If another organizer already registered you with your email, you claim that profile.", createBtn: "Create my roper profile", profileCreated: "Done! Your roper profile is created.", typeOrganizer: "Organizer · roper profile",
     photo: { add: "Add photo", change: "Change photo", remove: "Remove", saving: "Saving…", tooBig: `The photo is larger than ${MAX_UPLOAD_MB} MB. Choose a lighter one.`, error: "Couldn't save the photo. Use a JPG, PNG or WebP image." },
     type: "Participant account", myRegistrations: "My registrations",
     noRegistrations: "You haven't registered for any event yet.", available: "Available events", noneAvailable: "No new events right now.",

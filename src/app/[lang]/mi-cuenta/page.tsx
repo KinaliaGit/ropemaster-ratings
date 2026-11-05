@@ -77,7 +77,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
             </div>
 
             <h2 className="mt-12 text-xl font-semibold">{t.account.available}</h2>
-            <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
               {available.length ? available.map((e) => <EventCard key={e.id} e={e} lang={lang} t={t} />) : <p className="text-muted">{t.account.noneAvailable}</p>}
             </div>
 

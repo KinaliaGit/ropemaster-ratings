@@ -18,48 +18,55 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   if (!e) notFound();
   const inscritos = await getRopersByIds(e.uuid ? await getRegistrantIds(e.uuid) : []);
   const open = e.status === "publicado" && e.enrolled < e.capacity;
+  const gallery = e.photos.filter((p) => p.url !== e.cover); // el flyer de portada ya se ve arriba
+  const meta = [e.date ? fmtDate(e.date, lang) : "", [e.venue, e.city].filter(Boolean).join(", ")].filter(Boolean);
   return (
-    <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
-      <div className="relative h-64 overflow-hidden rounded-[28px] bg-sand sm:h-80">
-        <EventCover e={e} />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-8">
-          <h1 className="text-3xl font-semibold sm:text-5xl">{e.name}</h1>
-          <p className="mt-2 text-white/85">{e.city} · {fmtDate(e.date, lang)}</p>
+    <div className="mx-auto max-w-6xl px-5 pb-12 pt-8">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,380px)_1fr] lg:gap-12">
+        {/* Cartel: el flyer vertical completo (2:3), sin recortes ni texto encima. */}
+        <div className="mx-auto w-full max-w-sm lg:max-w-none">
+          <div className="relative aspect-[2/3] overflow-hidden rounded-[28px] bg-sand shadow-[0_18px_48px_-24px_rgba(20,19,17,0.55)] lg:sticky lg:top-24">
+            <EventCover e={e} />
+            {!e.cover && <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-6 pt-24"><h2 className="text-3xl font-semibold text-white">{e.name}</h2></div>}
+          </div>
         </div>
-      </div>
 
-      <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_320px]">
         <div>
-          <p className="text-sm text-muted">{e.venue} · {t.event.organizedBy} {e.organizer}</p>
-          <p className="mt-3 max-w-2xl text-lg">{e.description}</p>
+          <h1 className="text-3xl font-semibold sm:text-4xl">{e.name}</h1>
+          <p className="mt-2 text-muted">{meta.join(" · ")}</p>
+          <p className="mt-1 text-sm text-muted">{t.event.organizedBy} {e.organizer}</p>
 
-          <h2 className="mt-12 text-xl font-semibold">{t.event.photos}</h2>
-          {e.photos.length ? (
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {e.photos.map(({ id: photoId, url: src }) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={photoId} src={src} alt="" loading="lazy" className="aspect-square w-full rounded-2xl object-cover" />
-              ))}
-            </div>
-          ) : <p className="mt-3 text-muted">{t.event.noPhotos}</p>}
+          <aside className="card mt-6 p-6">
+            <h2 className="text-lg font-semibold">{t.event.enrollment}</h2>
+            <ul className="mt-3">
+              {e.categories.map((c) => <li key={c.id} className="flex justify-between border-b border-line py-3 text-sm last:border-0"><span>{c.name}</span><span className="tabular-nums">{mxn(c.fee, lang)}</span></li>)}
+            </ul>
+            {open
+              ? <Link href={`/${lang}/eventos/${e.id}/inscribirse`} className="mt-4 block rounded-full bg-ink py-3 text-center text-sm font-medium text-white transition hover:bg-brand-hot">{t.event.enroll}</Link>
+              : <p className="mt-4 rounded-full bg-sand py-3 text-center text-sm text-muted">{e.status === "finalizado" ? t.event.eventFinished : t.event.full}</p>}
+            <p className="mt-3 text-center text-xs text-muted">{t.event.needAccount}</p>
+          </aside>
+
+          {e.description && <p className="mt-8 max-w-2xl whitespace-pre-line text-lg">{e.description}</p>}
 
           <h2 className="mt-12 text-xl font-semibold">{t.event.enrolled} <span className="font-normal text-muted">{e.enrolled}/{e.capacity}</span></h2>
           <div className="mt-2">
             {inscritos.length ? inscritos.map((r) => <RoperCard key={r.id} r={r} lang={lang} t={t} discipline={e.disciplines[0] as "lazo"} />) : <p className="mt-3 text-muted">{t.event.noEnrolled}</p>}
           </div>
-        </div>
 
-        <aside className="card h-fit p-6 lg:sticky lg:top-24">
-          <h2 className="text-lg font-semibold">{t.event.enrollment}</h2>
-          <ul className="mt-4">
-            {e.categories.map((c) => <li key={c.name} className="flex justify-between border-b border-line py-3 text-sm last:border-0"><span>{c.name}</span><span className="tabular-nums">{mxn(c.fee, lang)}</span></li>)}
-          </ul>
-          {open
-            ? <Link href={`/${lang}/eventos/${e.id}/inscribirse`} className="mt-4 block rounded-full bg-ink py-3 text-center text-sm font-medium text-white transition hover:bg-brand-hot">{t.event.enroll}</Link>
-            : <p className="mt-4 rounded-full bg-sand py-3 text-center text-sm text-muted">{e.status === "finalizado" ? t.event.eventFinished : t.event.full}</p>}
-          <p className="mt-3 text-center text-xs text-muted">{t.event.needAccount}</p>
-        </aside>
+          {gallery.length > 0 && (
+            <>
+              <h2 className="mt-12 text-xl font-semibold">{t.event.photos}</h2>
+              {/* Fotos con su proporción real (sin recortar): columnas tipo galería. */}
+              <div className="mt-4 columns-2 gap-3 sm:columns-3">
+                {gallery.map(({ id: photoId, url: src }) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={photoId} src={src} alt="" loading="lazy" className="mb-3 w-full break-inside-avoid rounded-2xl" />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

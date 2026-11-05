@@ -87,12 +87,12 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, shar
                           <td className="py-2 pr-3">
                             {paid ? (
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="font-medium text-brand-hot">{t.org.ev.paidAmount} {mxn(r.amountCents / 100, lang)} · {t.pay.method[(r.paymentMethod ?? "efectivo") as "efectivo" | "transferencia" | "stripe"]}</span>
+                                <span className="font-medium text-emerald-700">{t.org.ev.paidAmount} {mxn(r.amountCents / 100, lang)} · {t.pay.method[(r.paymentMethod ?? "efectivo") as "efectivo" | "transferencia" | "stripe"]}</span>
                                 {r.paymentMethod !== "stripe" && <PayForm lang={lang} slug={e.id} id={r.id} method="pendiente" label={t.pay.undo} tone="ghost" />}
                               </div>
                             ) : (
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="font-medium text-red-700">{t.org.ev.pending}</span>
+                                <span className="font-medium text-brand-hot">{t.org.ev.pending}</span>
                                 <span className="text-xs text-muted">{t.pay.markPaid}</span>
                                 <PayForm lang={lang} slug={e.id} id={r.id} method="efectivo" label={t.pay.method.efectivo} tone="solid" />
                                 <PayForm lang={lang} slug={e.id} id={r.id} method="transferencia" label={t.pay.method.transferencia} tone="solid" />

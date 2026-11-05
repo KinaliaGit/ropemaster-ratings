@@ -61,7 +61,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                   <>
                     <span><span className="font-medium">{m.event?.name ?? "—"}</span><span className="block text-sm text-muted">{m.category}{m.event?.date ? ` · ${fmtDate(m.event.date, lang)}` : ""}{m.event?.city ? ` · ${m.event.city}` : ""}</span></span>
                     <span className="text-right text-sm"><span className="block tabular-nums">{mxn(m.amountCents / 100, lang)}</span>
-                      <span className={`text-xs font-medium ${paid ? "text-brand-hot" : "text-red-700"}`}>{paid ? `${t.account.paid} ✓${m.paymentMethod ? ` · ${t.pay.method[m.paymentMethod as "efectivo" | "transferencia" | "stripe"]}` : ""}` : t.account.pending}</span></span>
+                      <span className={`text-xs font-medium ${paid ? "text-emerald-700" : "text-brand-hot"}`}>{paid ? `${t.account.paid} ✓${m.paymentMethod ? ` · ${t.pay.method[m.paymentMethod as "efectivo" | "transferencia" | "stripe"]}` : ""}` : t.account.pending}</span></span>
                   </>
                 );
                 return (

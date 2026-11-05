@@ -266,6 +266,16 @@ await as("authenticated", D, `select instructions from event_payment_info where 
 await as("authenticated", B, `insert into event_payment_info (event_id, instructions) values ('e0000000-0000-0000-0000-000000000002', 'x')`, "no escribe instrucciones en eventos ajenos", "deny");
 await as("authenticated", A, `update event_payment_info set instructions = 'Efectivo en la arena' where event_id = '${EV}'`, "el organizador edita las instrucciones", "some");
 await as("authenticated", A, `insert into event_payment_info (event_id, instructions) values ('e0000000-0000-0000-0000-000000000002', '   ')`, "instrucciones vacías se rechazan", "deny");
+console.log("— Categorías: una sola política de lectura (0019)");
+await as("authenticated", A, `insert into event_categories (event_id, name, fee_cents) values ('${EV}','Nueva',100)`, "el dueño activo agrega categorías", "some");
+await as("authenticated", A, `update event_categories set name = 'Renombrada' where name = 'Nueva'`, "el dueño activo edita categorías", "some");
+await as("authenticated", A, `delete from event_categories where name = 'Renombrada'`, "el dueño activo borra categorías", "some");
+await as("authenticated", D, `insert into event_categories (event_id, name, fee_cents) values ('${EV}','Intrusa',100)`, "otro organizador NO agrega categorías a un evento ajeno", "deny");
+await as("anon", null, `select name from event_categories where event_id = '${EV}'`, "el público sigue viendo las categorías de eventos publicados", "some");
+await as("authenticated", A, `select name from event_categories where event_id = 'e0000000-0000-0000-0000-000000000002'`, "el dueño sigue viendo las categorías de su borrador", "some");
+await as("anon", null, `select name from event_categories where event_id = 'e0000000-0000-0000-0000-000000000002'`, "el público NO ve las de un borrador", "deny");
+const pol = await db.query("select count(*)::int as n from pg_policies where tablename = 'event_categories' and cmd in ('SELECT','ALL') and 'authenticated' = any(roles::text[]) or (tablename = 'event_categories' and cmd in ('SELECT','ALL') and 'public' = any(roles::text[]))");
+console.log("políticas que leen event_categories para authenticated:", pol.rows[0].n);
 console.log("— Participante");
 await as("authenticated", C, "select phone_e164 from roper_contacts", "ve SOLO su propio contacto (1)", "some");
 await as("authenticated", C, "select organizer_verified from profiles", "ve su perfil (1)", "some");

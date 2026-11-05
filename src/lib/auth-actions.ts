@@ -14,44 +14,72 @@ function safeNext(next: FormDataEntryValue | null, fallback: string) {
   return typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : fallback;
 }
 
-// ---- Organizadores (cuentas reales con Supabase Auth) ----
+// ---- Organizadores (cuentas reales con Supabase Auth, solo con el correo) ----
+// No hay contraseña: se envía un código de 6 dígitos al correo y se teclea en la web.
+// Crear cuenta y entrar usan el mismo flujo; al crear, el nombre y la versión de los términos aceptados viajan en los metadatos
+// del usuario y, al verificar el código, se crean el perfil y la constancia de aceptación.
 
-export async function signInOrganizer(formData: FormData) {
-  const l = lang(formData.get("lang"));
-  const next = str(formData.get("next"), 300);
-  const { error } = await (await createServerSupabase()).auth.signInWithPassword({ email: str(formData.get("email"), 200), password: str(formData.get("password"), 100) });
-  if (error) redirect(`/${l}/entrar?error=invalid${next ? `&next=${encodeURIComponent(next)}` : ""}`);
-  redirect(safeNext(next, `/${l}/organizador`));
-}
+export type OtpError = "terms" | "name" | "email" | "wait" | "failed" | "code" | "noaccount";
+export type OtpState = null | { step: "email"; error?: OtpError } | { step: "code"; email: string; name: string; error?: OtpError };
 
-// Crea la cuenta, el perfil de organizador y deja constancia de la aceptación de términos y privacidad.
-export async function registerOrganizer(formData: FormData) {
-  const l = lang(formData.get("lang"));
-  if (formData.get("accept") !== "on") redirect(`/${l}/registro?error=terms`);
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  const name = str(formData.get("name"), 80);
+export async function organizerOtp(_prev: OtpState, formData: FormData): Promise<OtpState> {
+  const intent = formData.get("intent");
+  const mode = formData.get("mode") === "register" ? "register" : "login";
   const email = str(formData.get("email"), 200).toLowerCase();
-  const password = str(formData.get("password"), 100);
-  if (name.length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) redirect(`/${l}/registro?error=generic`);
-  if (password.length < 8) redirect(`/${l}/registro?error=password`);
-
+  const name = str(formData.get("name"), 80);
   const supabase = await createServerSupabase();
-  const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { display_name: name } } });
-  if (error) redirect(`/${l}/registro?error=${/registered|exists/i.test(error.message) ? "exists" : /password/i.test(error.message) ? "password" : "generic"}`);
-  // Si el proyecto exige confirmar el correo, aún no hay sesión: se pide revisar el correo.
-  if (!data.session || !data.user) redirect(`/${l}/registro?check=email`);
 
-  const userId = data.user.id;
-  const { error: profileError } = await supabase.from("profiles").insert({ user_id: userId, role: "organizador", display_name: name, email });
-  const { error: consentError } = await supabase.from("consents").insert([
-    { user_id: userId, document: "terms", version: LEGAL.version },
-    { user_id: userId, document: "privacy", version: LEGAL.version },
-  ]);
-  if (profileError || consentError) {
-    await supabase.auth.signOut(); // no dejar una cuenta a medias (sin perfil o sin constancia de aceptación)
-    redirect(`/${l}/registro?error=generic`);
+  if (intent === "reset") return { step: "email" };
+
+  if (intent === "send") {
+    if (mode === "register") {
+      if (formData.get("accept") !== "on") return { step: "email", error: "terms" };
+      if (name.length < 2) return { step: "email", error: "name" };
+    }
+    if (!EMAIL.test(email)) return { step: "email", error: "email" };
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: mode === "register"
+        ? { shouldCreateUser: true, data: { display_name: name, terms_version: LEGAL.version } }
+        : { shouldCreateUser: false },
+    });
+    // Al entrar no se revela si el correo existe: si no hay cuenta, el código simplemente no llega.
+    if (error && (error.status === 429 || /rate|seconds|too many/i.test(error.message))) return { step: "email", error: "wait" };
+    if (error && mode === "register") return { step: "email", error: "failed" };
+    return { step: "code", email, name };
   }
-  redirect(`/${l}/organizador?bienvenido=1`);
+
+  // intent === "verify"
+  const l = lang(formData.get("lang"));
+  const token = str(formData.get("token"), 12).replace(/\s/g, "");
+  if (!/^\d{6,8}$/.test(token)) return { step: "code", email, name, error: "code" };
+  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+  if (error || !data.user) return { step: "code", email, name, error: "code" };
+
+  const user = data.user;
+  const { data: profile } = await supabase.from("profiles").select("user_id").eq("user_id", user.id).maybeSingle();
+  if (!profile) {
+    // Cuenta nueva: solo se crea el perfil si en el registro se aceptaron términos y privacidad.
+    const meta = user.user_metadata as { display_name?: string; terms_version?: string };
+    const displayName = (meta.display_name ?? "").trim().slice(0, 80);
+    if (!meta.terms_version || displayName.length < 2) {
+      await supabase.auth.signOut();
+      return { step: "email", error: "noaccount" };
+    }
+    const { error: profileError } = await supabase.from("profiles").insert({ user_id: user.id, role: "organizador", display_name: displayName, email });
+    const { error: consentError } = await supabase.from("consents").insert([
+      { user_id: user.id, document: "terms", version: LEGAL.version },
+      { user_id: user.id, document: "privacy", version: LEGAL.version },
+    ]);
+    if (profileError || consentError) {
+      await supabase.auth.signOut(); // no dejar una cuenta a medias (sin perfil o sin constancia de aceptación)
+      return { step: "email", error: "failed" };
+    }
+    redirect(`/${l}/organizador?bienvenido=1`);
+  }
+  redirect(safeNext(formData.get("next"), `/${l}/organizador`));
 }
 
 // ---- Participante de DEMOSTRACIÓN (los participantes reales entrarán por celular) ----

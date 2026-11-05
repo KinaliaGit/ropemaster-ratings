@@ -32,3 +32,10 @@
   el directorio). Pendiente decidir el criterio: aprobación manual o licencia vigente de Rope Master.
 - Base de datos: las columnas sensibles de `ropers` (como `user_id`) están ocultas por privilegios de columna, así que las consultas
   deben pedir las columnas por nombre (`select=id,full_name`), nunca `select=*`.
+
+## Cuentas de organizador sin contraseña
+
+Crear cuenta y entrar usan solo el correo: se envía un código de 6 dígitos (`signInWithOtp`) y se teclea en la web (`verifyOtp`).
+Al crear, el nombre y la versión de términos aceptados viajan en `user_metadata`; al verificar el código se crean el perfil y la
+constancia de aceptación. Al entrar no se revela si un correo existe. Requisitos en Supabase (Auth): la plantilla de "Magic Link"
+y la de "Confirm signup" deben incluir `{{ .Token }}`, la longitud del código en 6 y un SMTP propio (el de Supabase es muy limitado).

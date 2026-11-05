@@ -9,12 +9,13 @@ async function Page({ props }: { props: PageProps<"/[lang]/registro"> }) {
   const t = getDictionary(lang);
   const a = t.auth, g = t.legal;
   return (
-    <RegistroForm lang={lang} error={typeof sp.error === "string" ? sp.error : undefined} checkEmail={sp.check === "email"} l={{
+    <RegistroForm lang={lang} error={typeof sp.error === "string" ? sp.error : undefined} l={{
       title: a.createAccount, participant: a.participant, organizer: a.organizer, participantBlurb: a.participantBlurb, organizerBlurb: a.organizerBlurb,
-      fullName: a.fullName, phone: a.phone, email: a.email, password: a.password, passwordHint: a.passwordHint, sendCode: a.sendCode, create: a.create, code: a.code,
-      verify: a.verify, demoNote: a.demoNote, continue: a.continue, checkEmail: a.checkEmail,
+      fullName: a.fullName, phone: a.phone, email: a.email, sendCode: a.sendCode, create: a.create, code: a.code,
+      verify: a.verify, demoNote: a.demoNote, continue: a.continue,
       acceptPrefix: g.acceptPrefix, and: g.and, terms: g.terms, privacy: g.privacy, termsHref: `/${lang}/terminos`, privacyHref: `/${lang}/privacidad`, phoneNote: g.phoneNote,
-      errors: { terms: g.acceptError, exists: a.errorExists, password: a.errorPassword, generic: a.errorGeneric },
+      errors: { terms: g.acceptError, generic: a.errorGeneric },
+      otp: { codeSent: a.codeSent, resend: a.resend, changeEmail: a.changeEmail, errors: a.otpErrors },
     }} />
   );
 }

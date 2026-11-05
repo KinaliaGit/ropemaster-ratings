@@ -42,7 +42,7 @@ export async function registerOrganizer(formData: FormData) {
   if (!data.session || !data.user) redirect(`/${l}/registro?check=email`);
 
   const userId = data.user.id;
-  const { error: profileError } = await supabase.from("profiles").insert({ user_id: userId, role: "organizador", display_name: name });
+  const { error: profileError } = await supabase.from("profiles").insert({ user_id: userId, role: "organizador", display_name: name, email });
   const { error: consentError } = await supabase.from("consents").insert([
     { user_id: userId, document: "terms", version: LEGAL.version },
     { user_id: userId, document: "privacy", version: LEGAL.version },

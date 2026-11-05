@@ -26,7 +26,7 @@ async function Manage({ s, id, lang, t, justCreated, shareUrl, stateLabel }: Man
   const rows = enrolled.map((r) => ({ r, paid: !e.unpaid?.includes(r.id) }));
   return (
           <>
-            <OrgNav lang={lang} t={t} />
+            <OrgNav lang={lang} t={t} admin={s.isAdmin} />
             <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
               <Link href={`/${lang}/organizador`} className="text-sm text-muted hover:text-ink">← {t.org.ev.back}</Link>
               <div className="mt-2 flex flex-wrap items-start justify-between gap-3">

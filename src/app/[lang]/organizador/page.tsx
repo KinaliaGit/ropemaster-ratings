@@ -19,7 +19,7 @@ async function Panel({ s, lang, t, welcome }: { s: Session; lang: Lang; t: Dict;
   const stats = [[t.org.events, mine.length], [t.status.published, mine.filter((e) => e.status === "publicado").length], [t.org.collected, mxn(0, lang)]];
   return (
     <>
-      <OrgNav lang={lang} t={t} />
+      <OrgNav lang={lang} t={t} admin={s.isAdmin} />
       <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
         {welcome && <p role="status" className="mb-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.org.welcome}</p>}
         {!s.verified && (

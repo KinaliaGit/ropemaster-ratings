@@ -9,10 +9,11 @@ async function Page({ props }: { props: PageProps<"/[lang]/registro"> }) {
   const t = getDictionary(lang);
   const a = t.auth, g = t.legal;
   return (
-    <RegistroForm lang={lang} termsError={sp.error === "terms"} l={{
-      title: a.createAccount, participant: a.participant, organizer: a.organizer, participantBlurb: a.participantBlurb, organizerBlurb: a.organizerBlurb,
-      fullName: a.fullName, phone: a.phone, email: a.email, sendCode: a.sendCode, create: a.create, code: a.code, verify: a.verify, demoNote: a.demoNote, continue: a.continue,
-      acceptPrefix: g.acceptPrefix, and: g.and, terms: g.terms, privacy: g.privacy, termsHref: `/${lang}/terminos`, privacyHref: `/${lang}/privacidad`, phoneNote: g.phoneNote, acceptError: g.acceptError,
+    <RegistroForm lang={lang} initialRole={sp.role === "participante" ? "participante" : "organizador"} error={typeof sp.error === "string" ? sp.error : undefined} checkEmail={sp.check === "email"} email={typeof sp.email === "string" ? sp.email : undefined} resent={sp.resent === "1"} l={{
+      title: a.createAccount, participantBlurb: a.participantBlurb, organizerBlurb: a.organizerBlurb, roles: { organizador: a.organizer, participante: a.participant },
+      fullName: a.fullName, email: a.email, password: a.password, passwordHint: a.passwordHint, create: a.create, checkEmail: a.checkEmail, resend: a.resend, resent: a.resent,
+      acceptPrefix: g.acceptPrefix, and: g.and, terms: g.terms, privacy: g.privacy, termsHref: `/${lang}/terminos`, privacyHref: `/${lang}/privacidad`,
+      errors: { terms: g.acceptError, exists: a.errorExists, password: a.errorPassword, generic: a.errorGeneric },
     }} />
   );
 }

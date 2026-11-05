@@ -1,22 +1,30 @@
 import Link from "next/link";
 import { fmtDate, type Lang } from "@/lib/format";
-import { type EventItem } from "@/lib/mock";
+import { type EventItem } from "@/lib/types";
 import { EventCover } from "@/components/EventCover";
 import type { Dict } from "@/dictionaries/es";
 
-// Tarjeta de foto con el texto encima (estilo galería).
+// Tarjeta tipo cartel: el flyer vertical (2:3) se ve completo y el texto va DEBAJO (el flyer ya trae el suyo).
+// Sin flyer, el cartel genérico lleva el nombre encima para que la tarjeta no quede vacía.
 export function EventCard({ e, lang, t }: { e: EventItem; lang: Lang; t: Dict }) {
-  const full = e.registered.length >= e.capacity;
+  const full = e.enrolled >= e.capacity;
   const tag = e.status === "finalizado" ? t.status.finished : full ? t.status.full : t.status.open;
   return (
-    <Link href={`/${lang}/eventos/${e.id}`} className="group relative block aspect-[4/3] overflow-hidden rounded-[28px] bg-sand">
-      <div className="absolute inset-0 transition duration-500 group-hover:scale-[1.03]"><EventCover e={e} /></div>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-      <span className="absolute left-4 top-4 rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur-md">{tag}</span>
-      <div className="absolute inset-x-0 bottom-0 p-5 text-white">
-        <h3 className="text-lg font-semibold leading-tight">{e.name}</h3>
-        <p className="mt-1 text-white/75">{e.city}</p>
-        <p className="text-white/90">{fmtDate(e.date, lang)}</p>
+    <Link href={`/${lang}/eventos/${e.id}`} className="group block">
+      <div className="relative aspect-[2/3] overflow-hidden rounded-[24px] bg-sand shadow-[0_10px_30px_-18px_rgba(20,19,17,0.5)]">
+        <div className="absolute inset-0 transition duration-500 group-hover:scale-[1.03]"><EventCover e={e} /></div>
+        {!e.cover && (
+          <>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-transparent" />
+            <h3 className="absolute inset-x-0 bottom-0 p-5 text-xl font-semibold leading-tight text-white">{e.name}</h3>
+          </>
+        )}
+      </div>
+      <div className="mt-3 px-1">
+        <h3 className="font-semibold leading-tight">{e.name}</h3>
+        <p className="mt-0.5 text-sm text-muted">{e.city}{e.date ? ` · ${fmtDate(e.date, lang)}` : ""}</p>
+        {/* La etiqueta va debajo para no tapar nada del flyer. */}
+        <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${e.status === "finalizado" ? "bg-ink text-white" : full ? "bg-sand text-muted" : "bg-brand-soft text-brand-hot"}`}>{tag}</span>
       </div>
     </Link>
   );

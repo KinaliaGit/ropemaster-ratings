@@ -1,43 +1,43 @@
+import { connection } from "next/server";
 import Link from "next/link";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
-import { events } from "@/lib/mock";
+import { getPublicEvent } from "@/lib/data/events";
 import { mxn, type Lang } from "@/lib/format";
 import { Gate } from "@/components/Gate";
-import { PayButton } from "@/components/PayButton";
+import { enroll } from "@/lib/registration-actions";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
-async function Resolver({ params }: { params: PageProps<"/[lang]/eventos/[id]/inscribirse">["params"] }) {
-  const lang: Lang = await resolveLang(params);
-  const { id } = await params;
+async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/inscribirse"> }) {
+  // Los datos públicos se leen al atender la visita, no al compilar (así el build no necesita conectarse a la base).
+  await connection();
+  const lang: Lang = await resolveLang(props.params);
+  const { id } = await props.params;
+  const sp = await props.searchParams;
   const t = getDictionary(lang);
-  const e = events.find((x) => x.id === id);
-  if (!e || e.status === "borrador") notFound();
+  const e = await getPublicEvent(id);
+  if (!e) notFound();
   return (
-    <Gate lang={lang} role="participante" next={`/${lang}/eventos/${id}/inscribirse`}>
+    <Gate lang={lang} role="any" next={`/${lang}/eventos/${id}/inscribirse`}>
       {() => (
         <div className="mx-auto max-w-lg px-5 pb-10 pt-12">
           <Link href={`/${lang}/eventos/${e.id}`} className="text-sm text-muted hover:text-ink">← {e.name}</Link>
           <h1 className="mt-3 text-3xl font-semibold">{t.enroll.title}</h1>
-          <form className="card mt-6 space-y-5 p-6">
+          {typeof sp.error === "string" && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{(t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed}</p>}
+          <form action={enroll} className="card mt-6 space-y-5 p-6">
+            <input type="hidden" name="lang" value={lang} /><input type="hidden" name="event" value={e.id} />
             <fieldset>
               <legend className="text-sm font-medium">{t.enroll.category}</legend>
               {e.categories.map((c, i) => (
                 <label key={c.name} className="mt-2 flex cursor-pointer items-center justify-between rounded-xl border border-line p-3 has-checked:border-ink has-checked:bg-sand">
-                  <span><input type="radio" name="cat" value={c.name} defaultChecked={i === 0} className="mr-2 accent-brand" />{c.name}</span>
+                  <span><input type="radio" name="category" value={c.id} defaultChecked={i === 0} className="mr-2 accent-brand" />{c.name}</span>
                   <span className="text-sm tabular-nums">{mxn(c.fee, lang)}</span>
                 </label>
               ))}
             </fieldset>
-            {e.disciplines.length > 1 && (
-              <fieldset>
-                <legend className="text-sm font-medium">{t.enroll.discipline}</legend>
-                {e.disciplines.map((d) => <label key={d} className="mr-4 text-sm"><input type="checkbox" defaultChecked className="mr-1 accent-brand" />{t.disc[d as "lazo"].label}</label>)}
-              </fieldset>
-            )}
-            <PayButton eventId={e.id} lang={lang} label={t.enroll.pay} busyLabel={t.enroll.paying} errors={t.enroll.errors} />
-            <p className="text-center text-xs text-muted">{t.enroll.secure}</p>
+            <button className="w-full rounded-full bg-brand py-3 font-semibold text-white hover:bg-brand-hot">{t.enroll.submit}</button>
+            <p className="text-center text-xs text-muted">{t.enroll.pendingNote}</p>
           </form>
         </div>
       )}
@@ -48,7 +48,7 @@ async function Resolver({ params }: { params: PageProps<"/[lang]/eventos/[id]/in
 export default function Inscribirse(props: PageProps<"/[lang]/eventos/[id]/inscribirse">) {
   return (
     <Suspense fallback={<PageSkeleton />}>
-      <Resolver params={props.params} />
+      <Resolver props={props} />
     </Suspense>
   );
 }

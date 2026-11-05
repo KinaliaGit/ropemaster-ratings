@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
   // Solo aplica a `npm run dev`; no afecta a producción.
   allowedDevOrigins: ["10.*.*.*", "192.168.*.*", "172.*.*.*", "*.local"],
   cacheComponents: true,
+  // Las fotos llegan reducidas (<1.5 MB) por una acción del servidor; el límite por defecto es 1 MB.
+  experimental: { serverActions: { bodySizeLimit: "2mb" } },
   partialPrefetching: true,
   turbopack: {
     rules: {

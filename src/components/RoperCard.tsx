@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { initials, fmtRating, statOf, type Roper } from "@/lib/mock";
+import { initials, fmtRating, statOf, publicAvatarUrl } from "@/lib/people";
+import type { Roper } from "@/lib/types";
 import { DEFAULT_DISCIPLINE, type DisciplineId } from "@/lib/disciplines";
 import { Avatar } from "@/components/Avatar";
-import { avatarUrl } from "@/lib/avatars";
 import type { Dict } from "@/dictionaries/es";
 import type { Lang } from "@/lib/format";
 
@@ -12,9 +12,9 @@ export function RoperCard({ r, rank, lang, t, discipline = DEFAULT_DISCIPLINE }:
   return (
     <Link href={`/${lang}/participantes/${r.id}`} className="group flex items-center gap-4 border-b border-line py-4 transition hover:bg-sand/60 sm:px-2">
       {rank && <span className="w-6 text-sm text-muted tabular-nums">{rank}</span>}
-      <Avatar name={r.name} initials={initials(r.name)} url={avatarUrl(r.id)} />
+      <Avatar name={r.name} initials={initials(r.name)} url={publicAvatarUrl(r.avatarPath)} />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{r.name}{r.verified && <span title={t.people.verified} className="ml-1 text-brand">✓</span>}</p>
+        <p className="truncate font-medium">{r.name}</p>
         <p className="text-sm text-muted">{st ? `${st.events} ${t.plural.event(st.events)} · ${st.wins} ${t.plural.win(st.wins)}` : t.people.noRating}</p>
       </div>
       <p className="text-2xl font-semibold tabular-nums group-hover:text-brand-hot">{st ? fmtRating(st.rating) : "–"}</p>

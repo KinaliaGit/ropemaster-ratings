@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
@@ -13,20 +14,22 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/eventos/n
   const f = t.org.form;
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador/eventos/nuevo`}>
-      {() => (
+      {(s) => {
+        if (!s.verified) redirect(`/${lang}/organizador`);
+        return (
         <>
-          <OrgNav lang={lang} t={t} />
+          <OrgNav lang={lang} t={t} admin={s.isAdmin} />
           <div className="mx-auto max-w-2xl px-5 pb-10 pt-8">
             <h1 className="text-3xl font-semibold">{f.title}</h1>
             <p className="mt-1 text-sm text-muted">{f.blurb}</p>
             <EventForm
-              lang={lang} error={sp.error === "1"}
-              labels={{ ...f, add: t.uploader.add, hint: t.uploader.hint, tooBig: t.uploader.tooBig, coverTag: t.uploader.cover }}
+              lang={lang} error={typeof sp.error === "string" ? sp.error : undefined}
+              labels={f}
               disciplines={ACTIVE_DISCIPLINES.map((d) => ({ id: d.id, label: t.disc[d.id].label }))}
             />
           </div>
         </>
-      )}
+      );}}
     </Gate>
   );
 }

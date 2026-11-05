@@ -1,16 +1,15 @@
 "use client";
 import { useState } from "react";
 
-type Props = { eventId: string; lang: "es" | "en"; label: string; busyLabel: string; errors: Record<string, string> };
+type Props = { registrationId: string; lang: "es" | "en"; label: string; busyLabel: string; errors: Record<string, string> };
 
-export function PayButton({ eventId, lang, label, busyLabel, errors }: Props) {
+export function PayButton({ registrationId, lang, label, busyLabel, errors }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  async function pay(e: React.MouseEvent<HTMLButtonElement>) {
-    const category = new FormData(e.currentTarget.form!).get("cat") as string;
+  async function pay() {
     setBusy(true); setError("");
-    const res = await fetch("/api/checkout", { method: "POST", body: JSON.stringify({ eventId, category, lang }) });
+    const res = await fetch("/api/checkout", { method: "POST", body: JSON.stringify({ registrationId, lang }) });
     const data = await res.json().catch(() => ({}));
     if (data.url) { window.location.href = data.url; return; }
     setError(errors[data.error] ?? errors.generic); setBusy(false);

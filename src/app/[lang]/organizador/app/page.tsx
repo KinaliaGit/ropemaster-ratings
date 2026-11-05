@@ -41,7 +41,7 @@ async function Page({ params }: { params: PageProps<"/[lang]/organizador/app">["
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador/app`}>
       {(s) => (
         <>
-          <OrgNav lang={lang} t={t} />
+          <OrgNav lang={lang} t={t} admin={s.isAdmin} />
           <div className="mx-auto max-w-2xl px-5 pb-10 pt-10">
             <h1 className="text-3xl font-semibold">{a.title}</h1>
             <p className="mt-2 text-muted">{a.blurb}</p>

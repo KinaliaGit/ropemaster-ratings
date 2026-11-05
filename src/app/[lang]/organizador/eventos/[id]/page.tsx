@@ -16,9 +16,9 @@ import type { Lang } from "@/lib/format";
 import { fmtDate, mxn } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
-type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; shareUrl: string; stateLabel: Record<string, string> };
+type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justEdited: boolean; shareUrl: string; stateLabel: Record<string, string> };
 
-async function Manage({ s, id, lang, t, justCreated, shareUrl, stateLabel }: ManageProps) {
+async function Manage({ s, id, lang, t, justCreated, justEdited, shareUrl, stateLabel }: ManageProps) {
   // Un organizador solo gestiona sus propios eventos (la base además lo impone).
   const e = await getOrganizerEvent(s.id, id);
   if (!e) notFound();
@@ -35,6 +35,7 @@ async function Manage({ s, id, lang, t, justCreated, shareUrl, stateLabel }: Man
                 </div>
                 <div className="flex gap-2">
                   {e.status !== "borrador" && <Link href={`/${lang}/eventos/${e.id}`} className="rounded-full bg-sand px-4 py-2 text-sm font-medium hover:bg-line">{t.org.ev.publicPage}</Link>}
+                  {e.status !== "finalizado" && <Link href={`/${lang}/organizador/eventos/${e.id}/editar`} className="rounded-full bg-sand px-4 py-2 text-sm font-medium hover:bg-line">{t.org.form.edit}</Link>}
                   {e.status !== "finalizado" && (
                     <form action={setEventStatus}>
                       <input type="hidden" name="id" value={e.id} /><input type="hidden" name="lang" value={lang} />
@@ -43,6 +44,7 @@ async function Manage({ s, id, lang, t, justCreated, shareUrl, stateLabel }: Man
                   )}
                 </div>
               </div>
+              {justEdited && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.org.form.saved}</p>}
               <section aria-labelledby="share" className={`mt-6 rounded-2xl p-5 ${justCreated === "publicado" ? "bg-brand-soft" : "card"}`}>
                 {justCreated === "publicado" && <><h2 className="text-lg font-semibold">{t.org.share.publishedTitle}</h2><p className="mt-1 text-sm">{t.org.share.publishedText}</p></>}
                 {justCreated === "borrador" && <><h2 className="text-lg font-semibold">{t.org.share.draftTitle}</h2><p className="mt-1 text-sm">{t.org.share.draftText}</p></>}
@@ -88,6 +90,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
   const lang = await resolveLang(props.params);
   const { id } = await props.params;
   const sp = await props.searchParams;
+  const justEdited = sp.editado === "1";
   const justCreated = sp.nuevo === "publicado" ? "publicado" : sp.nuevo === "borrador" ? "borrador" : null;
   // Enlace sin idioma: cada persona que lo abra llega a su idioma (el proxy elige es/en por su navegador).
   const h = await headers();
@@ -98,7 +101,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
   const stateLabel: Record<string, string> = { publicado: t.status.published, borrador: t.status.draft, finalizado: t.status.finished };
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador/eventos/${id}`}>
-      {(s) => <Manage s={s} id={id} lang={lang} t={t} justCreated={justCreated} shareUrl={shareUrl} stateLabel={stateLabel} />}
+      {(s) => <Manage s={s} id={id} lang={lang} t={t} justCreated={justCreated} justEdited={justEdited} shareUrl={shareUrl} stateLabel={stateLabel} />}
     </Gate>
   );
 }

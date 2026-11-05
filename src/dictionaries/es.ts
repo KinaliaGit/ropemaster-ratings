@@ -98,6 +98,8 @@ export const es = {
       name: "Nombre", email: "Correo", since: "Registro", verify: "Verificar", revoke: "Revocar", audit: "Historial", auditNone: "Aún no hay movimientos.", actionVerify: "verificó a", actionRevoke: "revocó a", error: "No se pudo completar el cambio.",
     },
     form: {
+      save: "Guardar cambios", editTitle: "Editar evento", editBlurb: "Los cambios se ven al momento en la página pública. Lo ya inscrito conserva el precio con el que se apartó.", saved: "Cambios guardados.", edit: "Editar",
+      errors: { capacity: "El cupo no puede ser menor que los inscritos que ya hay.", catInUse: "No puedes quitar una categoría que ya tiene inscritos. Puedes renombrarla o cambiar su costo." },
       photosLater: "Después de crear el evento podrás agregar fotos y elegir la portada.", 
       error: "Revisa los campos: faltan datos o hay valores inválidos.", title: "Nuevo evento", blurb: "Al publicarlo aparece en la web y tu app Rope Master lo descarga al sincronizar.", name: "Nombre del evento", date: "Fecha", capacity: "Cupo", venue: "Sede", city: "Ciudad",
       disciplines: "Modalidades", categories: "Categorías y costo de inscripción", categoryName: "Nombre de la categoría", categoryNamePlaceholder: "Ej. Libre, Amateur", cost: "Costo de inscripción", costHint: "Lo que paga cada participante por esta categoría", addCategory: "+ Agregar categoría", description: "Descripción", cover: "Foto de portada", saveDraft: "Guardar borrador", publish: "Publicar",

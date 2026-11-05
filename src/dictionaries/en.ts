@@ -98,6 +98,8 @@ export const en: Dict = {
       name: "Name", email: "Email", since: "Signed up", verify: "Verify", revoke: "Revoke", audit: "History", auditNone: "No activity yet.", actionVerify: "verified", actionRevoke: "revoked", error: "Couldn't complete the change.",
     },
     form: {
+      save: "Save changes", editTitle: "Edit event", editBlurb: "Changes show up right away on the public page. Anyone already registered keeps the price they reserved at.", saved: "Changes saved.", edit: "Edit",
+      errors: { capacity: "Capacity can't be lower than the number already registered.", catInUse: "You can't remove a category that already has registrations. You can rename it or change its price." },
       photosLater: "After creating the event you can add photos and choose the cover. ", 
       error: "Please check the fields: something is missing or invalid.", title: "New event", blurb: "Once published it appears on the website and your Rope Master app downloads it when it syncs.", name: "Event name", date: "Date", capacity: "Capacity", venue: "Venue", city: "City",
       disciplines: "Disciplines", categories: "Categories and registration fee", categoryName: "Category name", categoryNamePlaceholder: "E.g. Open, Amateur", cost: "Registration fee", costHint: "What each participant pays for this category", addCategory: "+ Add category", description: "Description", cover: "Cover photo", saveDraft: "Save draft", publish: "Publish",

@@ -18,7 +18,7 @@ function slug(name: string) {
 export async function createEvent(formData: FormData) {
   const l = lang(formData.get("lang"));
   const session = await getSession();
-  if (session?.role !== "organizador" || session.demo) redirect(`/${l}/entrar?role=organizador`);
+  if (session?.role !== "organizador") redirect(`/${l}/entrar?role=organizador`);
 
   const name = text(formData.get("name"), 120);
   const date = text(formData.get("date"), 10);
@@ -60,7 +60,7 @@ export async function setEventStatus(formData: FormData) {
   const l = lang(formData.get("lang"));
   const session = await getSession();
   const eventSlug = text(formData.get("id"), 80);
-  if (session?.role !== "organizador" || session.demo || !eventSlug) redirect(`/${l}/organizador`);
+  if (session?.role !== "organizador" || !eventSlug) redirect(`/${l}/organizador`);
 
   const supabase = await createServerSupabase();
   const { data: current } = await supabase.from("events").select("id, status").eq("slug", eventSlug).eq("organizer_id", session.id).maybeSingle();

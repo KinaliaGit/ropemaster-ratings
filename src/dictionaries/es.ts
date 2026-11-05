@@ -17,7 +17,6 @@ export const es = {
   },
   legal: {
     terms: "Términos y Condiciones", privacy: "Aviso de Privacidad", acceptPrefix: "Acepto los", and: "y el", acceptError: "Debes aceptar los términos y el aviso de privacidad para crear tu cuenta.",
-    phoneNote: "Tu celular se usa para verificar tu identidad y vincular tu historial entre eventos. Solo lo ven los organizadores; nunca es público.",
   },
   footer: { tagline: "Rope Master Ratings", product: "Rope Master", licenses: "Licencias", terms: "Términos", privacy: "Privacidad" },
   disc: {
@@ -51,27 +50,24 @@ export const es = {
     ratingsByMode: "Rating por modalidad",
   },
   auth: {
-    password: "Contraseña", passwordHint: "Mínimo 8 caracteres", signInBtn: "Entrar", organizerAccess: "Acceso de organizadores", or: "o",
-    demoParticipant: "Entrar como participante (demostración)", demoParticipantNote: "Los participantes reales entrarán con su celular; por ahora hay una cuenta de demostración.",
+    password: "Contraseña", passwordHint: "Mínimo 8 caracteres", signInBtn: "Entrar", participantAccess: "Acceso de participantes", errorRoleOrganizer: "Esa cuenta no es de organizador. Elige «Participante» para entrar.", errorRoleParticipant: "Esa cuenta no es de participante. Elige «Organizador» para entrar.", organizerAccess: "Acceso de organizadores", or: "o",
     errorInvalid: "Correo o contraseña incorrectos.", errorExists: "Ya existe una cuenta con ese correo.", errorPassword: "La contraseña debe tener al menos 8 caracteres.",
     errorGeneric: "No se pudo completar. Intenta de nuevo.", checkEmail: "Te enviamos un correo para confirmar tu cuenta. Ábrelo y vuelve a entrar.",
-    signInTitle: "Iniciar sesión", needAccount: "Necesitas una cuenta para continuar.", demoMode: "Modo demostración · aún sin autenticación real",
+    signInTitle: "Iniciar sesión", needAccount: "Necesitas una cuenta para continuar.",
     asParticipant: "Entrar como participante", asOrganizer: "Entrar como organizador", firstTime: "¿Primera vez?", createAccount: "Crear cuenta",
     participant: "Participante", organizer: "Organizador",
-    participantBlurb: "Lazadores, barrileras y demás participantes: inscríbete a eventos, paga y consulta tu historial. Si un organizador ya te registró con tu celular, aquí reclamas ese perfil.",
+    participantBlurb: "Lazadores, barrileras y demás participantes: inscríbete a eventos, paga y consulta tu historial. Si un organizador ya te registró con tu correo, aquí reclamas ese perfil.",
     organizerBlurb: "Crea y publica eventos, y recibe las inscripciones y pagos de los participantes.",
-    fullName: "Nombre completo", phone: "Celular", email: "Correo", sendCode: "Enviar código", create: "Crear cuenta", code: "Código de 6 dígitos", verify: "Verificar",
-    demoNote: "Vista de ejemplo: el registro real se conecta con Supabase. Continúa en modo demostración.", continue: "Continuar",
+    fullName: "Nombre completo", email: "Correo", create: "Crear cuenta",
   },
   account: {
-    demo: "Cuenta de demostración: el acceso real por celular llega pronto.",
     photo: { add: "Agregar foto", change: "Cambiar foto", remove: "Quitar", saving: "Guardando…", tooBig: `La foto pesa más de ${MAX_UPLOAD_MB} MB. Elige una más ligera.`, error: "No se pudo guardar la foto. Usa una imagen JPG, PNG o WebP." },
-    type: "Cuenta de participante", phoneVerified: "celular verificado", phoneUnverified: "celular sin verificar", myRegistrations: "Mis inscripciones",
+    type: "Cuenta de participante", myRegistrations: "Mis inscripciones",
     noRegistrations: "Aún no te has inscrito a ningún evento.", available: "Eventos disponibles", noneAvailable: "No hay eventos nuevos por ahora.",
     ranking: "Ranking", seeAll: "Ver todos", publicProfile: "Ver mi perfil público e historial", paid: "Pagado", pending: "Pago pendiente",
   },
   org: {
-    verify: { title: "Tu cuenta está pendiente de verificación.", text: "Mientras tanto puedes crear y publicar eventos. Para ver los celulares de los participantes y registrarlos, un administrador debe verificar tu cuenta." },
+    verify: { title: "Tu cuenta está pendiente de verificación.", text: "Mientras tanto puedes crear y publicar eventos. Para ver los correos de los participantes y registrarlos, un administrador debe verificar tu cuenta." },
     welcome: "¡Cuenta creada! Ya puedes crear tu primer evento.", noEvents: "Aún no tienes eventos. Crea el primero.", noParticipants: "Todavía no hay participantes registrados.",
     accountType: "Cuenta de organizador", newEvent: "+ Nuevo evento", events: "Eventos", enrolled: "Inscritos", collected: "Cobrado", myEvents: "Mis eventos", manage: "Gestionar",
     tabs: { admin: "Administración", summary: "Resumen", participants: "Participantes", app: "App local" },
@@ -79,12 +75,12 @@ export const es = {
     stripe: { title: "Activa tus cobros.", text: "Conecta tu cuenta de Stripe para recibir las inscripciones directo en tu banco.", btn: "Conectar Stripe", opening: "Abriendo…" },
     ev: {
       back: "Mis eventos", publicPage: "Ver página pública", publish: "Publicar", toDraft: "Pasar a borrador", paid: "Pagados", state: "Estado · disponible en la app al sincronizar",
-      enrolledTitle: "Inscritos", participant: "Participante", phone: "Celular", rating: "Rating", category: "Categoría", payment: "Pago", paidAmount: "Pagado", pending: "Pendiente", noneEnrolled: "Aún no hay inscritos.",
+      enrolledTitle: "Inscritos", participant: "Participante", phone: "Correo", rating: "Rating", category: "Categoría", payment: "Pago", paidAmount: "Pagado", pending: "Pendiente", noneEnrolled: "Aún no hay inscritos.",
     },
-    dir: { title: "Participantes", blurb: "Directorio global con datos de contacto, visible solo para organizadores. Úsalo para registrar participantes en tus eventos.", name: "Nombre", phone: "Celular", rating: "Rating", events: "Eventos", wins: "Victorias", profile: "Perfil", verified: "Verificado", unclaimed: "Sin reclamar",
-      addTitle: "Agregar participante", addBlurb: "Regístralo con su celular para que aparezca en el directorio y pueda reclamar su perfil.", addName: "Nombre completo", addPhone: "Celular", addPhoneHint: "Con lada. Si no pones código de país, se asume México (+52).",
-      addConsent: "Tengo autorización de esta persona para registrar su celular.", addBtn: "Agregar", added: "Agregado:", duplicateTitle: "Ya hay participantes con ese celular:", duplicateHint: "Puede ser la misma persona o alguien que comparte celular (por ejemplo, un familiar).", createAnyway: "Es otra persona, crear de todos modos",
-      empty: "Aún no hay participantes en el directorio.", errors: { unauthorized: "Solo organizadores verificados pueden agregar participantes.", invalid_name: "Escribe el nombre completo (entre 2 y 80 caracteres).", invalid_phone: "El celular no es válido. Revisa la lada y los dígitos.", consent: "Debes confirmar que tienes autorización de la persona.", failed: "No se pudo agregar. Intenta de nuevo." },
+    dir: { title: "Participantes", blurb: "Directorio global con datos de contacto, visible solo para organizadores. Úsalo para registrar participantes en tus eventos.", name: "Nombre", email: "Correo", rating: "Rating", events: "Eventos", wins: "Victorias", profile: "Perfil", verified: "Verificado", unclaimed: "Sin reclamar",
+      addTitle: "Agregar participante", addBlurb: "Regístralo con su correo para que aparezca en el directorio y pueda reclamar su perfil al crear su cuenta.", addName: "Nombre completo", addEmail: "Correo", addEmailHint: "Cuando la persona cree su cuenta con este correo, reclamará su perfil e historial.",
+      addConsent: "Tengo autorización de esta persona para registrar su correo.", addBtn: "Agregar", added: "Agregado:", duplicate: "Ese correo ya está registrado a nombre de:",
+      empty: "Aún no hay participantes en el directorio.", errors: { unauthorized: "Solo organizadores verificados pueden agregar participantes.", invalid_name: "Escribe el nombre completo (entre 2 y 80 caracteres).", invalid_email: "El correo no es válido.", consent: "Debes confirmar que tienes autorización de la persona.", failed: "No se pudo agregar. Intenta de nuevo." },
   },
     share: {
       title: "Enlace para compartir", hint: "Cualquiera con este enlace puede ver el evento e inscribirse. Se abre en su idioma.", copy: "Copiar enlace", copied: "Copiado",
@@ -93,7 +89,7 @@ export const es = {
       draftTitle: "Guardado como borrador", draftText: "Todavía no es visible para nadie. Publícalo cuando esté listo y aquí tendrás el enlace.", draftLink: "El enlace funcionará cuando publiques el evento.",
     },
     admin: {
-      title: "Administración", blurb: "Aprueba a los organizadores que pueden ver celulares y registrar participantes.", pending: "Pendientes de verificación", verifiedTitle: "Verificados", none: "No hay organizadores en esta lista.",
+      title: "Administración", blurb: "Aprueba a los organizadores que pueden ver correos y registrar participantes.", pending: "Pendientes de verificación", verifiedTitle: "Verificados", none: "No hay organizadores en esta lista.",
       name: "Nombre", email: "Correo", since: "Registro", verify: "Verificar", revoke: "Revocar", audit: "Historial", auditNone: "Aún no hay movimientos.", actionVerify: "verificó a", actionRevoke: "revocó a", error: "No se pudo completar el cambio.",
     },
     form: {

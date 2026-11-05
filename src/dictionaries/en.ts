@@ -17,7 +17,6 @@ export const en: Dict = {
   },
   legal: {
     terms: "Terms and Conditions", privacy: "Privacy Notice", acceptPrefix: "I accept the", and: "and the", acceptError: "You must accept the terms and the privacy notice to create your account.",
-    phoneNote: "Your mobile number is used to verify your identity and link your history across events. Only organizers can see it; it is never public.",
   },
   footer: { tagline: "Rope Master Ratings", product: "Rope Master", licenses: "Licenses", terms: "Terms", privacy: "Privacy" },
   disc: {
@@ -51,27 +50,24 @@ export const en: Dict = {
     ratingsByMode: "Rating by discipline",
   },
   auth: {
-    password: "Password", passwordHint: "At least 8 characters", signInBtn: "Sign in", organizerAccess: "Organizer access", or: "or",
-    demoParticipant: "Sign in as participant (demo)", demoParticipantNote: "Real participants will sign in with their phone; for now there is a demo account.",
+    password: "Password", passwordHint: "At least 8 characters", signInBtn: "Sign in", participantAccess: "Participant access", errorRoleOrganizer: "That account isn't an organizer account. Choose \"Participant\" to sign in.", errorRoleParticipant: "That account isn't a participant account. Choose \"Organizer\" to sign in.", organizerAccess: "Organizer access", or: "or",
     errorInvalid: "Incorrect email or password.", errorExists: "An account with that email already exists.", errorPassword: "The password must be at least 8 characters.",
     errorGeneric: "Couldn't complete that. Please try again.", checkEmail: "We sent you an email to confirm your account. Open it and sign in again.",
-    signInTitle: "Sign in", needAccount: "You need an account to continue.", demoMode: "Demo mode · no real authentication yet",
+    signInTitle: "Sign in", needAccount: "You need an account to continue.",
     asParticipant: "Sign in as participant", asOrganizer: "Sign in as organizer", firstTime: "First time?", createAccount: "Create account",
     participant: "Participant", organizer: "Organizer",
-    participantBlurb: "Ropers, barrel racers and other participants: register for events, pay and check your history. If an organizer already added you with your phone number, you claim that profile here.",
+    participantBlurb: "Ropers, barrel racers and other participants: register for events, pay and check your history. If an organizer already added you with your email, you claim that profile here.",
     organizerBlurb: "Create and publish events, and receive registrations and payments from participants.",
-    fullName: "Full name", phone: "Phone", email: "Email", sendCode: "Send code", create: "Create account", code: "6-digit code", verify: "Verify",
-    demoNote: "Sample view: real sign-up connects to Supabase. Continue in demo mode.", continue: "Continue",
+    fullName: "Full name", email: "Email", create: "Create account",
   },
   account: {
-    demo: "Demo account: real sign-in by phone is coming soon.",
     photo: { add: "Add photo", change: "Change photo", remove: "Remove", saving: "Saving…", tooBig: `The photo is larger than ${MAX_UPLOAD_MB} MB. Choose a lighter one.`, error: "Couldn't save the photo. Use a JPG, PNG or WebP image." },
-    type: "Participant account", phoneVerified: "phone verified", phoneUnverified: "phone not verified", myRegistrations: "My registrations",
+    type: "Participant account", myRegistrations: "My registrations",
     noRegistrations: "You haven't registered for any event yet.", available: "Available events", noneAvailable: "No new events right now.",
     ranking: "Ranking", seeAll: "See all", publicProfile: "View my public profile and history", paid: "Paid", pending: "Payment pending",
   },
   org: {
-    verify: { title: "Your account is pending verification.", text: "Meanwhile you can create and publish events. To see participants' phone numbers and register them, an administrator must verify your account." },
+    verify: { title: "Your account is pending verification.", text: "Meanwhile you can create and publish events. To see participants' emails and register them, an administrator must verify your account." },
     welcome: "Account created! You can now create your first event.", noEvents: "You have no events yet. Create the first one.", noParticipants: "No participants have registered yet.",
     accountType: "Organizer account", newEvent: "+ New event", events: "Events", enrolled: "Registered", collected: "Collected", myEvents: "My events", manage: "Manage",
     tabs: { admin: "Administration", summary: "Overview", participants: "Participants", app: "Local app" },
@@ -79,12 +75,12 @@ export const en: Dict = {
     stripe: { title: "Enable payments.", text: "Connect your Stripe account to receive registrations straight into your bank.", btn: "Connect Stripe", opening: "Opening…" },
     ev: {
       back: "My events", publicPage: "View public page", publish: "Publish", toDraft: "Move to draft", paid: "Paid", state: "Status · available in the app on sync",
-      enrolledTitle: "Registered", participant: "Participant", phone: "Phone", rating: "Rating", category: "Category", payment: "Payment", paidAmount: "Paid", pending: "Pending", noneEnrolled: "No one has registered yet.",
+      enrolledTitle: "Registered", participant: "Participant", phone: "Email", rating: "Rating", category: "Category", payment: "Payment", paidAmount: "Paid", pending: "Pending", noneEnrolled: "No one has registered yet.",
     },
-    dir: { title: "Participants", blurb: "Global directory with contact details, visible to organizers only. Use it to register participants in your events.", name: "Name", phone: "Phone", rating: "Rating", events: "Events", wins: "Wins", profile: "Profile", verified: "Verified", unclaimed: "Unclaimed",
-      addTitle: "Add participant", addBlurb: "Register them with their mobile number so they appear in the directory and can claim their profile.", addName: "Full name", addPhone: "Mobile number", addPhoneHint: "With area code. Without a country code, Mexico (+52) is assumed.",
-      addConsent: "I have this person's permission to register their mobile number.", addBtn: "Add", added: "Added:", duplicateTitle: "There are already participants with that number:", duplicateHint: "It could be the same person or someone who shares a phone (for example, a relative).", createAnyway: "It's someone else, create anyway",
-      empty: "There are no participants in the directory yet.", errors: { unauthorized: "Only verified organizers can add participants.", invalid_name: "Enter the full name (2 to 80 characters).", invalid_phone: "The mobile number isn't valid. Check the area code and digits.", consent: "You must confirm you have the person's permission.", failed: "Couldn't add them. Please try again." },
+    dir: { title: "Participants", blurb: "Global directory with contact details, visible to organizers only. Use it to register participants in your events.", name: "Name", email: "Email", rating: "Rating", events: "Events", wins: "Wins", profile: "Profile", verified: "Verified", unclaimed: "Unclaimed",
+      addTitle: "Add participant", addBlurb: "Register them with their email so they appear in the directory and can claim their profile when they create their account.", addName: "Full name", addEmail: "Email", addEmailHint: "When the person creates their account with this email, they will claim their profile and history.",
+      addConsent: "I have this person's permission to register their email.", addBtn: "Add", added: "Added:", duplicate: "That email is already registered to:",
+      empty: "There are no participants in the directory yet.", errors: { unauthorized: "Only verified organizers can add participants.", invalid_name: "Enter the full name (2 to 80 characters).", invalid_email: "The email isn't valid.", consent: "You must confirm you have the person's permission.", failed: "Couldn't add them. Please try again." },
   },
     share: {
       title: "Share link", hint: "Anyone with this link can view the event and register. It opens in their language.", copy: "Copy link", copied: "Copied",
@@ -93,7 +89,7 @@ export const en: Dict = {
       draftTitle: "Saved as a draft", draftText: "It isn't visible to anyone yet. Publish it when it's ready and you'll have the link here.", draftLink: "The link will work once you publish the event.",
     },
     admin: {
-      title: "Administration", blurb: "Approve the organizers who can see mobile numbers and register participants.", pending: "Pending verification", verifiedTitle: "Verified", none: "No organizers in this list.",
+      title: "Administration", blurb: "Approve the organizers who can see emails and register participants.", pending: "Pending verification", verifiedTitle: "Verified", none: "No organizers in this list.",
       name: "Name", email: "Email", since: "Signed up", verify: "Verify", revoke: "Revoke", audit: "History", auditNone: "No activity yet.", actionVerify: "verified", actionRevoke: "revoked", error: "Couldn't complete the change.",
     },
     form: {

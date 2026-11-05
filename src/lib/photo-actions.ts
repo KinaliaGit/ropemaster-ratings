@@ -9,7 +9,7 @@ import { EVENT_PHOTOS_BUCKET, publicStorageUrl, type PhotoResult } from "@/lib/s
 // Fotos de evento (portada y galería). Solo el organizador dueño del evento; la base y Storage además lo imponen.
 async function myEvent(slug: unknown) {
   const s = await getSession();
-  if (!s || s.role !== "organizador" || s.demo || typeof slug !== "string") return { error: "unauthorized" as const };
+  if (!s || s.role !== "organizador" || typeof slug !== "string") return { error: "unauthorized" as const };
   const supabase = await createServerSupabase();
   const { data: event } = await supabase.from("events").select("id, cover_url, event_photos(id, storage_path, position)").eq("slug", slug).eq("organizer_id", s.id).maybeSingle();
   if (!event) return { error: "unauthorized" as const };

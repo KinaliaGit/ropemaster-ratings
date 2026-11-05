@@ -70,7 +70,7 @@ async function Manage({ s, id, lang, t, justCreated, shareUrl, stateLabel }: Man
                       return (
                         <tr key={r.id} className="border-t border-line">
                           <td className="p-3 font-medium"><Link href={`/${lang}/participantes/${r.id}`} className="hover:text-brand-hot">{r.name}</Link></td>
-                          {/* TODO KIN-579: celular (roper_contacts) y rating, solo para organizadores verificados. */}<td className="tabular-nums text-muted">–</td><td className="tabular-nums text-muted">–</td><td>{e.categories[0].name}</td>
+                          {/* TODO: correo (roper_contacts) y rating, solo para organizadores verificados. */}<td className="tabular-nums text-muted">–</td><td className="tabular-nums text-muted">–</td><td>{e.categories[0].name}</td>
                           <td className={`font-medium ${paid ? "text-brand-hot" : "text-red-700"}`}>{paid ? `${t.org.ev.paidAmount} ${mxn(e.categories[0].fee, lang)}` : t.org.ev.pending}</td>
                         </tr>
                       );

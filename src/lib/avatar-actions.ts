@@ -11,7 +11,6 @@ import { AVATARS_BUCKET, publicStorageUrl, type PhotoResult } from "@/lib/storag
 async function myRoper() {
   const s = await getSession();
   if (!s || s.role !== "participante") return { error: "unauthorized" as const };
-  if (s.demo) return { error: "demo" as const };
   const supabase = await createServerSupabase();
   const { data: roperId } = await supabase.rpc("my_roper_id");
   if (!roperId) return { error: "unauthorized" as const };

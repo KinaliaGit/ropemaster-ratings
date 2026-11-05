@@ -4,15 +4,15 @@ import { fmtRating } from "@/lib/people";
 import type { OrgRow } from "@/components/OrgParticipantsTable";
 
 type Row = {
-  phone_e164: string; phone_verified: boolean;
+  email: string | null; claimed: boolean;
   ropers: { id: string; full_name: string; roper_ratings: { discipline: string; rating: number | string; events_count: number; wins: number }[] } | null;
 };
 
-// Directorio con celulares. Solo responde a organizadores verificados y administradores: la base devuelve vacío a cualquier otro.
+// Directorio con correos. Solo responde a organizadores verificados y administradores: la base devuelve vacío a cualquier otro.
 export async function listDirectory(lang: "es" | "en", labels: { verified: string; unclaimed: string }): Promise<OrgRow[]> {
   const { data, error } = await (await createServerSupabase())
     .from("roper_contacts")
-    .select("phone_e164, phone_verified, ropers!inner(id, full_name, roper_ratings(discipline, rating, events_count, wins))")
+    .select("email, claimed, ropers!inner(id, full_name, roper_ratings(discipline, rating, events_count, wins))")
     .order("created_at", { ascending: false })
     .limit(1000);
   if (error) throw new Error(`No se pudo leer el directorio: ${error.message}`);
@@ -20,9 +20,9 @@ export async function listDirectory(lang: "es" | "en", labels: { verified: strin
     const ratings = r.ropers!.roper_ratings;
     const main = ratings.find((x) => x.discipline === ACTIVE_DISCIPLINES[0].id);
     return {
-      id: r.ropers!.id, href: `/${lang}/participantes/${r.ropers!.id}`, name: r.ropers!.full_name, phone: r.phone_e164,
+      id: r.ropers!.id, href: `/${lang}/participantes/${r.ropers!.id}`, name: r.ropers!.full_name, email: r.email ?? "–",
       ratings: ACTIVE_DISCIPLINES.map((d) => { const x = ratings.find((y) => y.discipline === d.id); return x ? fmtRating(Number(x.rating)) : "–"; }),
-      events: main?.events_count ?? 0, wins: main?.wins ?? 0, profile: r.phone_verified ? `${labels.verified} ✓` : labels.unclaimed,
+      events: main?.events_count ?? 0, wins: main?.wins ?? 0, profile: r.claimed ? `${labels.verified} ✓` : labels.unclaimed,
     };
   });
 }

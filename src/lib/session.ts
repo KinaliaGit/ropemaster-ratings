@@ -1,17 +1,11 @@
 import { cache } from "react";
-import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export type Role = "participante" | "organizador";
-export type Session = { role: Role; id: string; name: string; verified: boolean; demo: boolean; isAdmin: boolean; avatarPath?: string | null };
+export type Session = { role: Role; id: string; name: string; verified: boolean; isAdmin: boolean; avatarPath?: string | null };
 
-// Cookie SOLO para el participante de demostración (los participantes reales entrarán por celular).
-export const SESSION_COOKIE = "rm_session";
-const DEMO_PARTICIPANT: Session = { role: "participante", id: "r1", name: "Ana Estrada", verified: false, demo: true, isAdmin: false };
-export const demoSession = (): Session => DEMO_PARTICIPANT;
-
-// Quién es la persona que visita. Real: la sesión de Supabase + su perfil. Demo: solo el participante de ejemplo.
+// Quién es la persona que visita. La sesión de Supabase + su perfil.
 // El rol de organizador NUNCA viene de una cookie editable: sale de la base de datos.
 export const getSession = cache(async (): Promise<Session | null> => {
   // Verificar el token usa la hora actual: esto debe ocurrir al atender la petición, nunca al prerenderizar.
@@ -26,7 +20,7 @@ export const getSession = cache(async (): Promise<Session | null> => {
       supabase.from("admins").select("user_id").eq("user_id", userId).maybeSingle(),
     ]);
     if (profile) {
-      const session: Session = { role: profile.role as Role, id: userId, name: profile.display_name, verified: profile.organizer_verified, demo: false, isAdmin: !!adminRow };
+      const session: Session = { role: profile.role as Role, id: userId, name: profile.display_name, verified: profile.organizer_verified, isAdmin: !!adminRow };
       if (session.role === "participante") {
         // Su perfil de participante (my_roper_id evita leer ropers.user_id, que está oculto) y su foto.
         const { data: roperId } = await supabase.rpc("my_roper_id");
@@ -35,6 +29,5 @@ export const getSession = cache(async (): Promise<Session | null> => {
       return session;
     }
   }
-  if ((await cookies()).get(SESSION_COOKIE)?.value === "participante") return DEMO_PARTICIPANT;
   return null;
 });

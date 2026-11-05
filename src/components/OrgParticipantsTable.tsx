@@ -3,14 +3,14 @@ import Link from "next/link";
 import { useState } from "react";
 import { matchesName } from "@/lib/search";
 
-export type OrgRow = { id: string; href: string; name: string; phone: string; ratings: string[]; events: number; wins: number; profile: string };
-type Labels = { search: string; noResults: string; name: string; phone: string; ratingHeads: string[]; events: string; wins: string; profile: string };
+export type OrgRow = { id: string; href: string; name: string; email: string; ratings: string[]; events: number; wins: number; profile: string };
+type Labels = { search: string; noResults: string; name: string; email: string; ratingHeads: string[]; events: string; wins: string; profile: string };
 
-// Directorio para organizadores con búsqueda en vivo (mismo comportamiento que el público; también busca por celular).
+// Directorio para organizadores con búsqueda en vivo (mismo comportamiento que el público; también busca por correo).
 export function OrgParticipantsTable({ rows, l }: { rows: OrgRow[]; l: Labels }) {
   const [q, setQ] = useState("");
-  const digits = q.replace(/\D/g, "");
-  const list = rows.filter((r) => matchesName(r.name, q) || (digits.length >= 3 && r.phone.replace(/\D/g, "").includes(digits)));
+  const needle = q.trim().toLowerCase();
+  const list = rows.filter((r) => matchesName(r.name, q) || (needle.length >= 3 && r.email.toLowerCase().includes(needle)));
   return (
     <>
       <div className="relative mt-6 max-w-lg">
@@ -20,12 +20,12 @@ export function OrgParticipantsTable({ rows, l }: { rows: OrgRow[]; l: Labels })
       </div>
       <div className="card mt-4 overflow-x-auto" aria-live="polite">
         <table className="w-full text-left text-sm">
-          <thead className="bg-sand label"><tr><th className="p-3">{l.name}</th><th>{l.phone}</th>{l.ratingHeads.map((h) => <th key={h}>{h}</th>)}<th>{l.events}</th><th>{l.wins}</th><th>{l.profile}</th></tr></thead>
+          <thead className="bg-sand label"><tr><th className="p-3">{l.name}</th><th>{l.email}</th>{l.ratingHeads.map((h) => <th key={h}>{h}</th>)}<th>{l.events}</th><th>{l.wins}</th><th>{l.profile}</th></tr></thead>
           <tbody>
             {list.map((r) => (
               <tr key={r.id} className="border-t border-line">
                 <td className="p-3 font-medium"><Link href={r.href} className="hover:text-brand-hot">{r.name}</Link></td>
-                <td className="tabular-nums">{r.phone}</td>
+                <td>{r.email}</td>
                 {r.ratings.map((v, i) => <td key={i} className="tabular-nums">{v}</td>)}
                 <td className="tabular-nums">{r.events}</td><td className="tabular-nums">{r.wins}</td><td>{r.profile}</td>
               </tr>

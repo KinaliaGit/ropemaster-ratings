@@ -15,7 +15,7 @@ async function Page({ params }: { params: PageProps<"/[lang]/organizador/partici
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador/participantes`}>
       {async (s) => {
-        // Solo organizadores verificados (o admin) ven celulares; la base devuelve vacío a cualquier otro.
+        // Solo organizadores verificados (o admin) ven correos; la base devuelve vacío a cualquier otro.
         const canSee = s.verified || s.isAdmin;
         const rows = canSee ? await listDirectory(lang, { verified: d.verified, unclaimed: d.unclaimed }) : [];
         return (
@@ -27,10 +27,10 @@ async function Page({ params }: { params: PageProps<"/[lang]/organizador/partici
               {!canSee
                 ? <div role="note" className="mt-6 rounded-2xl border border-line bg-sand p-4 text-sm"><p className="font-semibold">{t.org.verify.title}</p><p className="mt-1 text-muted">{t.org.verify.text}</p></div>
                 : <>
-                    <AddParticipantForm l={{ title: d.addTitle, blurb: d.addBlurb, name: d.addName, phone: d.addPhone, phoneHint: d.addPhoneHint, consent: d.addConsent, btn: d.addBtn, added: d.added, duplicateTitle: d.duplicateTitle, duplicateHint: d.duplicateHint, createAnyway: d.createAnyway, errors: d.errors }} />
+                    <AddParticipantForm l={{ title: d.addTitle, blurb: d.addBlurb, name: d.addName, email: d.addEmail, emailHint: d.addEmailHint, consent: d.addConsent, btn: d.addBtn, added: d.added, duplicate: d.duplicate, errors: d.errors }} />
                     {rows.length === 0
                       ? <p className="mt-6 rounded-2xl bg-sand p-6 text-center text-muted">{d.empty}</p>
-                      : <OrgParticipantsTable rows={rows} l={{ search: t.people.search, noResults: t.people.noResults, name: d.name, phone: d.phone, ratingHeads: ACTIVE_DISCIPLINES.map((x) => t.disc[x.id].label), events: d.events, wins: d.wins, profile: d.profile }} />}
+                      : <OrgParticipantsTable rows={rows} l={{ search: t.people.search, noResults: t.people.noResults, name: d.name, email: d.email, ratingHeads: ACTIVE_DISCIPLINES.map((x) => t.disc[x.id].label), events: d.events, wins: d.wins, profile: d.profile }} />}
                   </>}
             </div>
           </>

@@ -9,7 +9,7 @@ const db = new PGlite();
 
 await db.exec(`
   create role anon; create role authenticated;
-  create schema auth; create table auth.users (id uuid primary key default gen_random_uuid());
+  create schema auth; create table auth.users (id uuid primary key default gen_random_uuid(), email text, email_confirmed_at timestamptz);
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   create schema storage;
   create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
@@ -26,7 +26,7 @@ console.log("migraciones 0001-0009 aplicadas en orden\n");
 // Datos de prueba (como superusuario)
 const A = "aaaaaaaa-0000-0000-0000-00000000000a", B = "bbbbbbbb-0000-0000-0000-00000000000b", C = "cccccccc-0000-0000-0000-00000000000c", D = "dddddddd-0000-0000-0000-00000000000d";
 await db.exec(`
-  insert into auth.users (id) values ('${A}'), ('${B}'), ('${C}'), ('${D}');
+  insert into auth.users (id, email, email_confirmed_at) values ('${A}','a@x.com',now()), ('${B}','b@x.com',now()), ('${C}','c@x.com',now()), ('${D}','d@x.com',now());
   insert into profiles (user_id, role, display_name, organizer_verified) values ('${A}','organizador','Org Verificado',true), ('${B}','organizador','Org Nuevo',false), ('${C}','participante','Participante',false), ('${D}','organizador','Admin',true);
   insert into admins (user_id) values ('${D}');
   insert into ropers (id, full_name, user_id) values ('11111111-0000-0000-0000-000000000001','Ana Estrada','${C}');
@@ -122,15 +122,34 @@ await as("authenticated", B, "select user_id from admins", "un usuario no admin 
 await as("authenticated", D, "select phone_e164 from roper_contacts", "admin ve celulares", "some");
 await as("authenticated", B, "update profiles set organizer_verified = false where user_id = '" + B + "'", "sigue sin poder editar organizer_verified directo", "deny");
 await as("authenticated", B, "insert into profiles (user_id, role, display_name, email) values (gen_random_uuid(), 'organizador', 'x', 'x@x.com')", "no crea perfiles ajenos con correo", "deny");
-// alta de participantes (B ahora está verificado por el admin; A ya lo estaba)
-await as("authenticated", A, "select public.create_participant('  Nuevo Participante ', '+528112340000')::text as id", "organizador verificado crea participante + celular", "some");
-await as("authenticated", A, "select count(*) as n from roper_contacts where phone_e164 = '+528112340000' having count(*) = 1", "el celular quedó guardado", "some");
-await as("authenticated", A, "select public.create_participant('Mal Celular', '81 1234')", "celular sin formato internacional se rechaza", "deny");
-await as("authenticated", A, "select count(*) from ropers where full_name = 'Mal Celular' having count(*) > 0", "y no deja un participante a medias (atómico)", "deny");
-await as("authenticated", C, "select public.create_participant('Intruso', '+528112340001')", "un participante NO crea participantes", "deny");
-await as("anon", null, "select public.create_participant('Anon', '+528112340002')", "anónimo NO crea participantes", "deny");
+// alta de participantes por correo (B ahora está verificado por el admin; A ya lo estaba)
+await as("authenticated", A, "select public.create_participant('  Nuevo Participante ', ' Nuevo@Ejemplo.COM ')::text as id", "organizador verificado crea participante + correo", "some");
+await as("authenticated", A, "select count(*) as n from roper_contacts where email = 'nuevo@ejemplo.com' having count(*) = 1", "el correo quedó guardado en minúsculas", "some");
+await as("authenticated", A, "select public.create_participant('Otro', 'nuevo@ejemplo.com')", "un correo repetido se rechaza (único)", "deny");
+await as("authenticated", A, "select public.create_participant('Mal Correo', 'no-es-correo')", "correo inválido se rechaza", "deny");
+await as("authenticated", A, "select count(*) from ropers where full_name in ('Mal Correo','Otro') having count(*) > 0", "y no deja un participante a medias (atómico)", "deny");
+await as("authenticated", C, "select public.create_participant('Intruso', 'intruso@x.com')", "un participante NO crea participantes", "deny");
+await as("anon", null, "select public.create_participant('Anon', 'anon@x.com')", "anónimo NO crea participantes", "deny");
+console.log("— Cuentas de participante y reclamo por correo (0013)");
+await db.exec(`insert into auth.users (id, email, email_confirmed_at) values ('eeeeeeee-0000-0000-0000-00000000000e','nuevo@ejemplo.com',now()), ('ffffffff-0000-0000-0000-00000000000f','otro@x.com',now()), ('99999999-0000-0000-0000-000000000009','sinconfirmar@x.com',null);`);
+const E = "eeeeeeee-0000-0000-0000-00000000000e", F = "ffffffff-0000-0000-0000-00000000000f", G = "99999999-0000-0000-0000-000000000009";
+await as("authenticated", E, "insert into profiles (user_id, role, display_name) values ('" + E + "', 'participante', 'Nuevo Participante')", "un participante crea su perfil", "some");
+await as("authenticated", F, "insert into profiles (user_id, role, display_name) values ('" + E + "', 'participante', 'x')", "NO crea el perfil de otra persona", "deny");
+await as("authenticated", E, "select public.claim_my_roper('Nuevo Participante')", "reclama el perfil creado por el organizador (mismo correo)", "some");
+await as("authenticated", E, "select r.id from ropers r where r.full_name = 'Nuevo Participante' and r.id = (select public.claim_my_roper('x'))", "reclamar de nuevo devuelve el mismo perfil", "some");
+await as("authenticated", E, "select count(*) from ropers where full_name = 'Nuevo Participante' having count(*) = 1", "sin duplicados tras reclamar", "some");
+await as("authenticated", A, "select claimed from roper_contacts where email = 'nuevo@ejemplo.com' and claimed", "el organizador ve el perfil como reclamado", "some");
+await as("authenticated", A, "update roper_contacts set claimed = false where email = 'nuevo@ejemplo.com'", "nadie edita roper_contacts desde la API", "deny");
+await as("authenticated", E, "select phone_e164, email from roper_contacts where email = 'nuevo@ejemplo.com'", "ya es dueño y ve su propio correo", "some");
+await as("authenticated", F, "insert into profiles (user_id, role, display_name) values ('" + F + "', 'participante', 'Otro')", "otro participante crea su perfil", "some");
+await as("authenticated", F, "select public.claim_my_roper('Otro Nombre')", "sin perfil previo, crea uno nuevo con su correo", "some");
+await as("authenticated", F, "select count(*) from roper_contacts where email = 'otro@x.com' having count(*) = 1", "queda su correo de contacto", "some");
+await as("authenticated", G, "insert into profiles (user_id, role, display_name) values ('" + G + "', 'participante', 'Sin confirmar')", "cuenta sin confirmar crea su perfil", "some");
+await as("authenticated", G, "select public.claim_my_roper('Sin confirmar')", "correo SIN confirmar NO reclama ni crea perfil", "deny");
+await as("authenticated", B, "select public.claim_my_roper('Org')", "un organizador NO usa claim_my_roper", "deny");
+await as("anon", null, "select public.claim_my_roper('Anon')", "anónimo NO usa claim_my_roper", "deny");
 console.log("— Participante");
-await as("authenticated", C, "select phone_e164 from roper_contacts", "ve SOLO su propio celular (1)", "some");
+await as("authenticated", C, "select phone_e164 from roper_contacts", "ve SOLO su propio contacto (1)", "some");
 await as("authenticated", C, "select organizer_verified from profiles", "ve su perfil (1)", "some");
 await as("authenticated", C, "select id from registrations", "puede consultar inscripciones sin error (0 propias)", "deny");
 await as("authenticated", C, "update ropers set avatar_path='mi/foto.jpg' where user_id = '" + C + "'", "NO edita ropers por user_id (columna oculta)", "deny");

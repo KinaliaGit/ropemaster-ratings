@@ -32,3 +32,14 @@
   el directorio). Pendiente decidir el criterio: aprobación manual o licencia vigente de Rope Master.
 - Base de datos: las columnas sensibles de `ropers` (como `user_id`) están ocultas por privilegios de columna, así que las consultas
   deben pedir las columnas por nombre (`select=id,full_name`), nunca `select=*`.
+
+## Correo y contraseña para todos; sin celular (migración 0013)
+
+Organizadores y participantes crean cuenta y entran con **correo y contraseña** (se elige el rol en "Entrar" y en "Crear cuenta").
+Ya no se pide el celular: el contacto de un participante es su **correo** (`roper_contacts.email`, único, en minúsculas; `phone_e164` queda opcional).
+Un organizador verificado da de alta a un participante con nombre y correo (`create_participant`). Cuando esa persona crea su cuenta con el
+mismo correo, `claim_my_roper` (se llama al registrarse y al entrar) enlaza la cuenta con ese perfil y conserva su historial; si no existía, crea uno.
+
+**Pendiente antes del lanzamiento (KIN-600):** el reclamo exige correo CONFIRMADO. Con "Confirm email" apagado en Auth (como en desarrollo)
+cualquiera podría reclamar el perfil de otra persona con solo escribir su correo: hay que encenderlo y tener SMTP real (Brevo).
+Los textos legales ya hablan de correo en lugar de celular; conviene que los revise quien los redactó.

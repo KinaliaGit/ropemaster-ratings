@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export type Role = "participante" | "organizador";
-export type Session = { role: Role; id: string; name: string; verified: boolean; demo: boolean };
+export type Session = { role: Role; id: string; name: string; verified: boolean; demo: boolean; avatarPath?: string | null };
 
 // Cookie SOLO para el participante de demostración (los participantes reales entrarán por celular).
 export const SESSION_COOKIE = "rm_session";
@@ -21,7 +21,15 @@ export const getSession = cache(async (): Promise<Session | null> => {
   const userId = data?.claims?.sub;
   if (userId) {
     const { data: profile } = await supabase.from("profiles").select("role, display_name, organizer_verified").eq("user_id", userId).maybeSingle();
-    if (profile) return { role: profile.role as Role, id: userId, name: profile.display_name, verified: profile.organizer_verified, demo: false };
+    if (profile) {
+      const session: Session = { role: profile.role as Role, id: userId, name: profile.display_name, verified: profile.organizer_verified, demo: false };
+      if (session.role === "participante") {
+        // Su perfil de participante (my_roper_id evita leer ropers.user_id, que está oculto) y su foto.
+        const { data: roperId } = await supabase.rpc("my_roper_id");
+        if (roperId) session.avatarPath = (await supabase.from("ropers").select("avatar_path").eq("id", roperId).maybeSingle()).data?.avatar_path ?? null;
+      }
+      return session;
+    }
   }
   if ((await cookies()).get(SESSION_COOKIE)?.value === "participante") return DEMO_PARTICIPANT;
   return null;

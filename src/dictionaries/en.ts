@@ -89,6 +89,7 @@ export const en: Dict = {
       draftTitle: "Saved as a draft", draftText: "It isn't visible to anyone yet. Publish it when it's ready and you'll have the link here.", draftLink: "The link will work once you publish the event.",
     },
     form: {
+      photosLater: "After creating the event you can add photos and choose the cover. ", 
       error: "Please check the fields: something is missing or invalid.", title: "New event", blurb: "Once published it appears on the website and your Rope Master app downloads it when it syncs.", name: "Event name", date: "Date", capacity: "Capacity", venue: "Venue", city: "City",
       disciplines: "Disciplines", categories: "Categories and registration fee", categoryName: "Category name", categoryNamePlaceholder: "E.g. Open, Amateur", cost: "Registration fee", costHint: "What each participant pays for this category", addCategory: "+ Add category", description: "Description", cover: "Cover photo", saveDraft: "Save draft", publish: "Publish",
     },
@@ -102,7 +103,7 @@ export const en: Dict = {
       },
     },
   },
-  uploader: { eventPhotos: "Event photos", add: "Add", hint: `JPG or PNG, up to ${MAX_UPLOAD_MB} MB each.`, tooBig: `A photo is larger than ${MAX_UPLOAD_MB} MB and was not added.`, cover: "Cover" },
+  uploader: { eventPhotos: "Event photos", add: "Add photos", hint: `JPG, PNG or WebP, up to ${MAX_UPLOAD_MB} MB each. The first one is the cover.`, cover: "Cover", makeCover: "Make cover", remove: "Delete", confirmRemove: "Delete this photo?", uploading: "Uploading…", empty: "No photos yet. The first one you upload will be the cover.", tooBig: `A photo is larger than ${MAX_UPLOAD_MB} MB and was not added.`, invalid: "One of the files isn't a valid image (JPG, PNG or WebP).", limit: "You reached the maximum of 20 photos.", failed: "Couldn't upload a photo. Please try again." },
   plural: {
     event: (n: number): string => (n === 1 ? "event" : "events"),
     win: (n: number): string => (n === 1 ? "win" : "wins"),

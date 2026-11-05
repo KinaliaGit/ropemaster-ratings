@@ -2,24 +2,13 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { setAvatar, deleteAvatar } from "@/lib/avatar-actions";
-import { MAX_UPLOAD_BYTES } from "@/lib/limits";
+import { AVATAR_SIDE, MAX_AVATAR_BYTES, MAX_UPLOAD_BYTES } from "@/lib/limits";
+import { toSquareJpeg } from "@/lib/resize-image";
+import type { PhotoError } from "@/lib/storage";
 
 type Labels = { add: string; change: string; remove: string; saving: string; tooBig: string; error: string };
 
-const SIZE = 256;
-
-// Recorta la imagen a un cuadrado centrado y la reduce a 256 px (JPEG) antes de enviarla: ligera y sin metadatos.
-async function toSquareJpeg(file: File): Promise<string> {
-  const bmp = await createImageBitmap(file);
-  const side = Math.min(bmp.width, bmp.height);
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = SIZE;
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, SIZE, SIZE);
-  bmp.close();
-  return canvas.toDataURL("image/jpeg", 0.85);
-}
-
+// Foto de perfil: recorte cuadrado y reducción en el navegador, y subida a Supabase Storage por una acción del servidor.
 export function AvatarUploader({ url, initials, name, l }: { url: string | null; initials: string; name: string; l: Labels }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
@@ -28,19 +17,22 @@ export function AvatarUploader({ url, initials, name, l }: { url: string | null;
   const [error, setError] = useState<"tooBig" | "error" | null>(null);
   const shown = preview === undefined ? url : preview;
 
+  function fail(e: PhotoError | "client") { setError(e === "too_big" ? "tooBig" : "error"); }
+
   async function onPick(file: File | undefined) {
     if (!file) return;
     setError(null);
-    if (file.size > MAX_UPLOAD_BYTES) { setError("tooBig"); return; }
-    if (!file.type.startsWith("image/")) { setError("error"); return; }
+    if (file.size > MAX_UPLOAD_BYTES) return fail("too_big");
+    if (!file.type.startsWith("image/")) return fail("invalid");
     setBusy(true);
     try {
-      const dataUrl = await toSquareJpeg(file);
-      const res = await setAvatar(dataUrl);
-      if (!res.ok) throw new Error("rejected");
-      setPreview(dataUrl);
-      router.refresh();
-    } catch { setError("error"); }
+      const blob = await toSquareJpeg(file, AVATAR_SIDE, MAX_AVATAR_BYTES);
+      const fd = new FormData();
+      fd.set("file", blob, "foto.jpg");
+      const res = await setAvatar(fd);
+      if (!res.ok) fail(res.error);
+      else { setPreview(URL.createObjectURL(blob)); router.refresh(); }
+    } catch { fail("client"); }
     setBusy(false);
     if (input.current) input.current.value = "";
   }
@@ -49,7 +41,7 @@ export function AvatarUploader({ url, initials, name, l }: { url: string | null;
     setBusy(true); setError(null);
     const res = await deleteAvatar();
     setBusy(false);
-    if (res.ok) { setPreview(null); router.refresh(); } else setError("error");
+    if (res.ok) { setPreview(null); router.refresh(); } else fail(res.error);
   }
 
   return (

@@ -7,7 +7,7 @@ import { CopyLink } from "@/components/CopyLink";
 import { setEventStatus } from "@/lib/event-actions";
 import { Gate } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
-import { PhotoUploader } from "@/components/PhotoUploader";
+import { EventPhotos } from "@/components/EventPhotos";
 import { getRopersByIds } from "@/lib/data/ropers";
 import { getOrganizerEvent } from "@/lib/data/events";
 import type { Session } from "@/lib/session";
@@ -57,7 +57,10 @@ async function Manage({ s, id, lang, t, justCreated, shareUrl, stateLabel }: Man
                 <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{rows.filter((x) => x.paid).length}</p><p className="label mt-1">{t.org.ev.paid}</p></div>
                 <div className="card p-4"><p className="text-2xl font-semibold">{stateLabel[e.status]}</p><p className="label mt-1">{t.org.ev.state}</p></div>
               </div>
-              <div className="card mt-8 p-6"><PhotoUploader labels={{ title: t.uploader.eventPhotos, add: t.uploader.add, hint: t.uploader.hint, tooBig: t.uploader.tooBig, cover: t.uploader.cover }} /></div>
+              <div className="card mt-8 p-6">
+                <EventPhotos eventSlug={e.id} photos={e.photos} coverUrl={e.cover ?? null}
+                  l={{ title: t.uploader.eventPhotos, add: t.uploader.add, hint: t.uploader.hint, cover: t.uploader.cover, makeCover: t.uploader.makeCover, remove: t.uploader.remove, confirmRemove: t.uploader.confirmRemove, uploading: t.uploader.uploading, empty: t.uploader.empty, tooBig: t.uploader.tooBig, invalid: t.uploader.invalid, limit: t.uploader.limit, failed: t.uploader.failed }} />
+              </div>
               <h2 className="mt-10 text-xl font-semibold">{t.org.ev.enrolledTitle}</h2>
               <div className="card mt-3 overflow-x-auto">
                 <table className="w-full text-left text-sm">

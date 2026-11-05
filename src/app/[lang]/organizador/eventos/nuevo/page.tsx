@@ -21,7 +21,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/eventos/n
             <p className="mt-1 text-sm text-muted">{f.blurb}</p>
             <EventForm
               lang={lang} error={sp.error === "1"}
-              labels={{ ...f, add: t.uploader.add, hint: t.uploader.hint, tooBig: t.uploader.tooBig, coverTag: t.uploader.cover }}
+              labels={f}
               disciplines={ACTIVE_DISCIPLINES.map((d) => ({ id: d.id, label: t.disc[d.id].label }))}
             />
           </div>

@@ -2,14 +2,16 @@ import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import { createServerSupabase } from "@/lib/supabase/server";
 import type { EventItem } from "@/lib/types";
+import { EVENT_PHOTOS_BUCKET, publicStorageUrl } from "@/lib/storage";
 
 // Columnas que se piden (siempre por nombre) y su forma. El evento se identifica en las URLs por su `slug`.
-const COLUMNS = "id, slug, name, event_date, city, venue, description, disciplines, capacity, status, organizer_id, organizer_name, cover_url, updated_at, event_categories(name, fee_cents)";
+const COLUMNS = "id, slug, name, event_date, city, venue, description, disciplines, capacity, status, organizer_id, organizer_name, cover_url, updated_at, event_categories(name, fee_cents), event_photos(id, storage_path, position)";
 
 type Row = {
   id: string; slug: string | null; name: string; event_date: string | null; city: string | null; venue: string | null; description: string | null;
   disciplines: string[] | null; capacity: number | null; status: string; organizer_id: string | null; organizer_name: string | null;
   cover_url: string | null; updated_at: string; event_categories: { name: string; fee_cents: number }[] | null;
+  event_photos: { id: string; storage_path: string; position: number }[] | null;
 };
 
 const hash = (s: string) => [...s].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7);
@@ -22,8 +24,9 @@ function toItem(r: Row): EventItem {
     categories: (r.event_categories ?? []).map((c) => ({ name: c.name, fee: Math.round(c.fee_cents / 100) })),
     status: r.status as EventItem["status"], cover: r.cover_url ?? undefined, updatedAt: r.updated_at,
     tone: hash(id) % 3,
-    // TODO: inscritos y fotos reales (tablas registrations y event_photos) cuando se conecten los participantes.
-    registered: [], photos: [],
+    photos: (r.event_photos ?? []).sort((a, b) => a.position - b.position).map((p) => ({ id: p.id, url: publicStorageUrl(EVENT_PHOTOS_BUCKET, p.storage_path) })),
+    // TODO: inscritos reales (tabla registrations) con KIN-581.
+    registered: [],
   };
 }
 

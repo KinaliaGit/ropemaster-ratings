@@ -1,11 +1,10 @@
 "use client";
 import { useState } from "react";
-import { PhotoUploader } from "@/components/PhotoUploader";
 import { createEvent } from "@/lib/event-actions";
 
 type Labels = {
   name: string; date: string; capacity: string; venue: string; city: string; disciplines: string; categories: string; categoryName: string; categoryNamePlaceholder: string; cost: string; costHint: string; addCategory: string;
-  error: string; description: string; cover: string; saveDraft: string; publish: string; add: string; hint: string; tooBig: string; coverTag: string;
+  error: string; description: string; saveDraft: string; publish: string; photosLater: string;
 };
 
 const input = "mt-1 w-full rounded-xl border border-line bg-white px-4 py-2.5 outline-none focus:border-ink";
@@ -50,7 +49,7 @@ export function EventForm({ lang, labels: l, disciplines, error }: { lang: "es" 
         ))}
         <button type="button" onClick={() => setCats([...cats, { name: "", fee: 0 }])} className="mt-3 text-sm font-medium text-brand-hot">{l.addCategory}</button>
       </fieldset>
-      <PhotoUploader labels={{ title: l.cover, add: l.add, hint: l.hint, tooBig: l.tooBig, cover: l.coverTag }} single />
+      <p className="rounded-xl bg-sand p-3 text-sm text-muted">{l.photosLater}</p>
       <label className="block text-sm font-medium">{l.description}<textarea name="description" rows={4} maxLength={1000} className={input} /></label>
       <div className="flex gap-3">
         <button name="intent" value="draft" className="flex-1 rounded-full bg-sand py-3 text-sm font-medium transition hover:bg-line">{l.saveDraft}</button>

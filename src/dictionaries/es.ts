@@ -89,6 +89,7 @@ export const es = {
       draftTitle: "Guardado como borrador", draftText: "Todavía no es visible para nadie. Publícalo cuando esté listo y aquí tendrás el enlace.", draftLink: "El enlace funcionará cuando publiques el evento.",
     },
     form: {
+      photosLater: "Después de crear el evento podrás agregar fotos y elegir la portada.", 
       error: "Revisa los campos: faltan datos o hay valores inválidos.", title: "Nuevo evento", blurb: "Al publicarlo aparece en la web y tu app Rope Master lo descarga al sincronizar.", name: "Nombre del evento", date: "Fecha", capacity: "Cupo", venue: "Sede", city: "Ciudad",
       disciplines: "Modalidades", categories: "Categorías y costo de inscripción", categoryName: "Nombre de la categoría", categoryNamePlaceholder: "Ej. Libre, Amateur", cost: "Costo de inscripción", costHint: "Lo que paga cada participante por esta categoría", addCategory: "+ Agregar categoría", description: "Descripción", cover: "Foto de portada", saveDraft: "Guardar borrador", publish: "Publicar",
     },
@@ -102,7 +103,7 @@ export const es = {
       },
     },
   },
-  uploader: { eventPhotos: "Fotos del evento", add: "Agregar", hint: `JPG o PNG, hasta ${MAX_UPLOAD_MB} MB cada una.`, tooBig: `Alguna foto pesa más de ${MAX_UPLOAD_MB} MB y no se agregó.`, cover: "Portada" },
+  uploader: { eventPhotos: "Fotos del evento", add: "Agregar fotos", hint: `JPG, PNG o WebP, hasta ${MAX_UPLOAD_MB} MB cada una. La primera es la portada.`, cover: "Portada", makeCover: "Hacer portada", remove: "Eliminar", confirmRemove: "¿Eliminar esta foto?", uploading: "Subiendo…", empty: "Aún no hay fotos. La primera que subas será la portada.", tooBig: `Alguna foto pesa más de ${MAX_UPLOAD_MB} MB y no se agregó.`, invalid: "Alguno de los archivos no es una imagen válida (JPG, PNG o WebP).", limit: "Llegaste al máximo de 20 fotos.", failed: "No se pudo subir alguna foto. Intenta de nuevo." },
   plural: {
     event: (n: number): string => (n === 1 ? "evento" : "eventos"),
     win: (n: number): string => (n === 1 ? "victoria" : "victorias"),

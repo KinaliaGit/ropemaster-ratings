@@ -36,9 +36,9 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
           <h2 className="mt-12 text-xl font-semibold">{t.event.photos}</h2>
           {e.photos.length ? (
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {e.photos.map((src) => (
+              {e.photos.map(({ id: photoId, url: src }) => (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img key={src} src={src} alt="" className="aspect-square w-full rounded-2xl object-cover" />
+                <img key={photoId} src={src} alt="" loading="lazy" className="aspect-square w-full rounded-2xl object-cover" />
               ))}
             </div>
           ) : <p className="mt-3 text-muted">{t.event.noPhotos}</p>}

@@ -7,7 +7,7 @@ export type Category = { name: string; fee: number };
 export type EventItem = {
   id: string; name: string; date: string; city: string; venue: string;
   disciplines: string[]; categories: Category[]; capacity: number; registered: string[];
-  organizer: string; uuid?: string; organizerId?: string; tone: number; cover?: string; photos: string[]; unpaid?: string[];
+  organizer: string; uuid?: string; organizerId?: string; tone: number; cover?: string; photos: { id: string; url: string }[]; unpaid?: string[];
   updatedAt: string; description: string; status: "publicado" | "borrador" | "finalizado";
 };
 

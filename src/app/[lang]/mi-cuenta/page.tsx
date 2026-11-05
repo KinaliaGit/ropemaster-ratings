@@ -3,10 +3,10 @@ import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
 import { AvatarUploader } from "@/components/AvatarUploader";
-import { avatarUrl } from "@/lib/avatars";
+import { Avatar } from "@/components/Avatar";
 import { EventCard } from "@/components/EventCard";
 import { RoperCard } from "@/components/RoperCard";
-import { initials } from "@/lib/people";
+import { initials, publicAvatarUrl } from "@/lib/people";
 import { listRanking } from "@/lib/data/ropers";
 import { listPublicEvents } from "@/lib/data/events";
 import { fmtDate, mxn } from "@/lib/format";
@@ -25,11 +25,13 @@ async function Page({ params }: { params: PageProps<"/[lang]/mi-cuenta">["params
         return (
           <div className="mx-auto max-w-6xl px-5 pb-10 pt-10">
             <div className="flex flex-wrap items-center gap-5">
-              <AvatarUploader url={avatarUrl(s.id)} initials={initials(s.name)} name={s.name} l={t.account.photo} />
+              {s.demo
+                ? <Avatar name={s.name} initials={initials(s.name)} className="size-20 text-xl" />
+                : <AvatarUploader url={publicAvatarUrl(s.avatarPath)} initials={initials(s.name)} name={s.name} l={t.account.photo} />}
               <div className="flex-1">
                 <p className="label">{t.account.type}</p>
                 <h1 className="text-3xl font-semibold">{s.name}</h1>
-                <p className="text-sm text-muted">{t.account.demo}</p>
+                {s.demo && <p className="text-sm text-muted">{t.account.demo}</p>}
               </div>
             </div>
 

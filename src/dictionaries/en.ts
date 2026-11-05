@@ -48,6 +48,7 @@ export const en: Dict = {
     },
   },
   people: {
+    initialRating: "Starting rating · no events yet",
     empty: "There are no participants with a rating in this discipline yet.", dq: "Disqualified",
     title: "Participants", subtitle: "Ropers and barrel racers with their rating and history. Public, no account needed.",
     search: "Search by name", noResults: "No results for", noRating: "No events in this discipline",

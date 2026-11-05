@@ -48,6 +48,7 @@ export const es = {
     },
   },
   people: {
+    initialRating: "Rating inicial · aún sin eventos",
     empty: "Aún no hay participantes con rating en esta modalidad.", dq: "Descalificado",
     title: "Participantes", subtitle: "Lazadores y barrileras con su rating e historial. Público, sin necesidad de cuenta.",
     search: "Buscar por nombre", noResults: "Sin resultados para", noRating: "Sin eventos en esta modalidad",

@@ -19,7 +19,7 @@ export default async function Participantes({ params }: PageProps<"/[lang]/parti
       const st = statOf(r, d.id)!;
       return {
         id: r.id, href: `/${lang}/participantes/${r.id}`, name: r.name, initials: initials(r.name), photo: publicAvatarUrl(r.avatarPath), rank: i + 1,
-        sub: `${st.events} ${t.plural.event(st.events)} · ${st.wins} ${t.plural.win(st.wins)}`, rating: fmtRating(st.rating),
+        sub: st.initial ? t.people.initialRating : `${st.events} ${t.plural.event(st.events)} · ${st.wins} ${t.plural.win(st.wins)}`, rating: fmtRating(st.rating),
       };
     }),
   })));

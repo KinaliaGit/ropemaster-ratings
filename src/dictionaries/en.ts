@@ -121,6 +121,8 @@ export const en: Dict = {
         title: "Connection code", connected: "Connected", notConnected: "Not connected", since: "Code created on", none: "You haven't generated a code yet.",
         generate: "Generate code", regenerate: "Generate a new one", copy: "Copy", copied: "Copied", shownOnce: "Copy it now: for security it won't be shown again.",
         replaceNote: "If you generate a new one, the old one stops working and you'll need to paste the new one in the app.", error: "Couldn't generate the code. Try again.",
+        lastUsed: "Last used", neverUsed: "Not used yet", revoke: "Revoke code",
+        revokeConfirm: "If you revoke it, the connected app stops working immediately. Revoke the code?", revokeError: "Couldn't revoke the code. Try again.",
       },
     },
   },

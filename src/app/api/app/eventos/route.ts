@@ -6,7 +6,7 @@ import { organizerFromRequest } from "@/lib/app-auth";
 // Los borradores no se envían. Los eventos publicados son públicos, así que no hace falta una llave secreta.
 // TODO: incluir inscritos (`registrations`) cuando existan los participantes reales y la llave de servicio.
 export async function GET(request: Request) {
-  const auth = organizerFromRequest(request);
+  const auth = await organizerFromRequest(request);
   if (auth instanceof Response) return auth;
   const since = new URL(request.url).searchParams.get("since") ?? "";
 

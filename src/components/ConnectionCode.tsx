@@ -1,9 +1,12 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { generateSyncToken } from "@/lib/sync-actions";
+import { generateSyncToken, revokeSyncTokenAction } from "@/lib/sync-actions";
 
-type Labels = { generate: string; regenerate: string; copy: string; copied: string; shownOnce: string; replaceNote: string; error: string };
+type Labels = {
+  generate: string; regenerate: string; copy: string; copied: string; shownOnce: string; replaceNote: string; error: string;
+  revoke: string; revokeConfirm: string; revokeError: string;
+};
 
 // Genera el código de conexión y lo muestra una sola vez (después solo queda su huella en el servidor).
 export function ConnectionCode({ hasActive, l }: { hasActive: boolean; l: Labels }) {
@@ -12,6 +15,15 @@ export function ConnectionCode({ hasActive, l }: { hasActive: boolean; l: Labels
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [revokeFailed, setRevokeFailed] = useState(false);
+
+  async function revoke() {
+    if (!confirm(l.revokeConfirm)) return;
+    setBusy(true); setRevokeFailed(false);
+    const res = await revokeSyncTokenAction().catch(() => ({ error: "x" } as { ok?: true; error?: string }));
+    setBusy(false);
+    if (res.ok) { setToken(null); router.refresh(); } else setRevokeFailed(true);
+  }
 
   async function generate() {
     if (hasActive && !token && !confirm(l.replaceNote)) return;
@@ -41,11 +53,20 @@ export function ConnectionCode({ hasActive, l }: { hasActive: boolean; l: Labels
           <p className="mt-2 text-sm">{l.shownOnce}</p>
         </div>
       )}
-      <button type="button" onClick={generate} disabled={busy}
-        className={`rounded-full px-5 py-2.5 text-sm font-medium transition disabled:opacity-60 ${hasActive || token ? "border border-line hover:border-ink" : "bg-brand text-white hover:bg-brand-hot"}`}>
-        {hasActive || token ? l.regenerate : l.generate}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={generate} disabled={busy}
+          className={`rounded-full px-5 py-2.5 text-sm font-medium transition disabled:opacity-60 ${hasActive || token ? "border border-line hover:border-ink" : "bg-brand text-white hover:bg-brand-hot"}`}>
+          {hasActive || token ? l.regenerate : l.generate}
+        </button>
+        {(hasActive || token) && (
+          <button type="button" onClick={revoke} disabled={busy}
+            className="rounded-full border border-line px-5 py-2.5 text-sm font-medium text-red-700 transition hover:border-red-700 disabled:opacity-60">
+            {l.revoke}
+          </button>
+        )}
+      </div>
       {error && <p role="alert" className="mt-2 text-sm text-red-700">{l.error}</p>}
+      {revokeFailed && <p role="alert" className="mt-2 text-sm text-red-700">{l.revokeError}</p>}
     </div>
   );
 }

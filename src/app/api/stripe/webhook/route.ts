@@ -1,5 +1,5 @@
 import { stripe } from "@/lib/stripe";
-import { createServiceSupabase } from "@/lib/supabase/service";
+import { adminClient } from "@/lib/supabase/admin";
 
 // Stripe avisa aquí cuando un pago se completa. Es la ÚNICA fuente de verdad para marcar "pagado" un pago EN LÍNEA
 // (efectivo y transferencia los marca el organizador). La firma del aviso se verifica con STRIPE_WEBHOOK_SECRET.
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const s = event.data.object;
     const registrationId = s.metadata?.registration_id;
     if (s.payment_status === "paid" && registrationId) {
-      const supabase = createServiceSupabase();
+      const supabase = adminClient();
       if (!supabase) return new Response("Falta SUPABASE_SERVICE_ROLE_KEY", { status: 500 }); // Stripe reintenta el aviso
       // Idempotente: el id del cobro (s.id) solo se registra una vez, así que un reintento del aviso no duplica ni cambia nada.
       const { error } = await supabase.rpc("confirm_stripe_payment", { p_registration: registrationId, p_payment_id: s.id, p_amount_cents: s.amount_total });

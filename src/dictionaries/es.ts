@@ -121,6 +121,8 @@ export const es = {
         title: "Código de conexión", connected: "Conectada", notConnected: "Sin conectar", since: "Código creado el", none: "Aún no has generado un código.",
         generate: "Generar código", regenerate: "Generar uno nuevo", copy: "Copiar", copied: "Copiado", shownOnce: "Cópialo ahora: por seguridad no se vuelve a mostrar.",
         replaceNote: "Si generas uno nuevo, el anterior deja de funcionar y tendrás que pegar el nuevo en la app.", error: "No se pudo generar el código. Intenta de nuevo.",
+        lastUsed: "Último uso", neverUsed: "Aún no se ha usado", revoke: "Revocar código",
+        revokeConfirm: "Si lo revocas, la app conectada deja de funcionar al instante. ¿Revocar el código?", revokeError: "No se pudo revocar el código. Intenta de nuevo.",
       },
     },
   },

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { fmtDate, type Lang } from "@/lib/format";
-import { type EventItem } from "@/lib/mock";
+import { type EventItem } from "@/lib/types";
 import { EventCover } from "@/components/EventCover";
 import type { Dict } from "@/dictionaries/es";
 

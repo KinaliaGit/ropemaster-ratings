@@ -1,7 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import { createServerSupabase } from "@/lib/supabase/server";
-import type { EventItem } from "@/lib/mock";
+import type { EventItem } from "@/lib/types";
 
 // Columnas que se piden (siempre por nombre) y su forma. El evento se identifica en las URLs por su `slug`.
 const COLUMNS = "id, slug, name, event_date, city, venue, description, disciplines, capacity, status, organizer_id, organizer_name, cover_url, updated_at, event_categories(name, fee_cents)";

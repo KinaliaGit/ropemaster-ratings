@@ -4,12 +4,12 @@ import { useState } from "react";
 import { matchesName } from "@/lib/search";
 import { Avatar } from "@/components/Avatar";
 
-export type ParticipantRow = { id: string; href: string; name: string; initials: string; photo: string | null; verified: boolean; sub: string; rating: string; rank: number };
+export type ParticipantRow = { id: string; href: string; name: string; initials: string; photo: string | null; sub: string; rating: string; rank: number };
 export type RowSet = { id: string; label: string; rows: ParticipantRow[] };
 
 // Lista con búsqueda en vivo y pestañas por modalidad (las pestañas solo aparecen si hay más de una activa).
 // Todo ocurre en el navegador, sin recargar ni pedir nada al servidor.
-export function ParticipantList({ sets, labels }: { sets: RowSet[]; labels: { search: string; noResults: string; verified: string } }) {
+export function ParticipantList({ sets, labels }: { sets: RowSet[]; labels: { search: string; noResults: string; empty: string } }) {
   const [q, setQ] = useState("");
   const [current, setCurrent] = useState(sets[0]?.id);
   const rows = (sets.find((s) => s.id === current) ?? sets[0])?.rows ?? [];
@@ -37,12 +37,12 @@ export function ParticipantList({ sets, labels }: { sets: RowSet[]; labels: { se
             <span className="w-6 text-sm tabular-nums text-muted">{r.rank}</span>
             <Avatar name={r.name} initials={r.initials} url={r.photo} />
             <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">{r.name}{r.verified && <span title={labels.verified} className="ml-1 text-brand">✓</span>}</p>
+              <p className="truncate font-medium">{r.name}</p>
               <p className="text-sm text-muted">{r.sub}</p>
             </div>
             <p className="text-2xl font-semibold tabular-nums group-hover:text-brand-hot">{r.rating}</p>
           </Link>
-        )) : <p className="pt-4 text-muted">{labels.noResults} “{q}”.</p>}
+        )) : <p className="pt-4 text-muted">{rows.length === 0 ? labels.empty : `${labels.noResults} “${q}”.`}</p>}
       </div>
     </>
   );

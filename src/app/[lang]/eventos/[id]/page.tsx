@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
-import { ropers } from "@/lib/mock";
+import { getRopersByIds } from "@/lib/data/ropers";
 import { getPublicEvent } from "@/lib/data/events";
 import { fmtDate, mxn } from "@/lib/format";
 import { RoperCard } from "@/components/RoperCard";
@@ -15,7 +15,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   const t = getDictionary(lang);
   const e = await getPublicEvent(id);
   if (!e) notFound();
-  const inscritos = ropers.filter((r) => e.registered.includes(r.id));
+  const inscritos = await getRopersByIds(e.registered);
   const open = e.status === "publicado" && e.registered.length < e.capacity;
   return (
     <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">

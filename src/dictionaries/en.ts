@@ -42,6 +42,7 @@ export const en: Dict = {
     },
   },
   people: {
+    empty: "There are no participants with a rating in this discipline yet.", dq: "Disqualified",
     title: "Participants", subtitle: "Ropers and barrel racers with their rating and history. Public, no account needed.",
     search: "Search by name", noResults: "No results for", noRating: "No events in this discipline",
     verified: "Verified profile", unclaimed: "Unclaimed profile", rating: "Rating", eventsWord: "events", winsWord: "wins", resultsWord: "results",
@@ -63,6 +64,7 @@ export const en: Dict = {
     demoNote: "Sample view: real sign-up connects to Supabase. Continue in demo mode.", continue: "Continue",
   },
   account: {
+    demo: "Demo account: real sign-in by phone is coming soon.",
     photo: { add: "Add photo", change: "Change photo", remove: "Remove", saving: "Saving…", tooBig: `The photo is larger than ${MAX_UPLOAD_MB} MB. Choose a lighter one.`, error: "Couldn't save the photo. Use a JPG, PNG or WebP image." },
     type: "Participant account", phoneVerified: "phone verified", phoneUnverified: "phone not verified", myRegistrations: "My registrations",
     noRegistrations: "You haven't registered for any event yet.", available: "Available events", noneAvailable: "No new events right now.",

@@ -4,7 +4,7 @@ import { getSession } from "@/lib/session";
 import { logout } from "@/lib/auth-actions";
 import { NavLinks } from "@/components/NavLinks";
 import { AccountMenu } from "@/components/AccountMenu";
-import { initials } from "@/lib/mock";
+import { initials } from "@/lib/people";
 import { avatarUrl } from "@/lib/avatars";
 import type { Dict } from "@/dictionaries/es";
 import type { Lang } from "@/lib/format";

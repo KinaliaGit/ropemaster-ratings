@@ -1,4 +1,4 @@
-import type { EventItem } from "@/lib/mock";
+import type { EventItem } from "@/lib/types";
 
 // Sin foto, un degradado sobrio por evento. Con foto (cover), se muestra la foto.
 const TONES = [

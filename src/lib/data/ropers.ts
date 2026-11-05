@@ -2,6 +2,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import { ACTIVE_DISCIPLINES, type DisciplineId } from "@/lib/disciplines";
 import type { Result, Roper, Stat } from "@/lib/types";
+import { INITIAL_RATING } from "@/lib/rating";
 
 // Lecturas PÚBLICAS de participantes. Las columnas siempre se piden por nombre: user_id y el celular están
 // ocultos a propósito (el celular vive en roper_contacts, solo para organizadores verificados).
@@ -9,25 +10,27 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_RANKING = 500; // TODO: paginar cuando haya más participantes (el buscador filtra sobre lo cargado)
 
 type RatingRow = { discipline: string; rating: number | string; events_count: number; wins: number; updated_at: string };
-type RankingRow = RatingRow & { ropers: { id: string; full_name: string; avatar_path: string | null } | null };
 
+const initialStat = (): Stat => ({ rating: INITIAL_RATING, events: 0, wins: 0, initial: true });
 const toStat = (r: RatingRow): Stat => ({ rating: Number(r.rating), events: r.events_count, wins: r.wins, updatedAt: r.updated_at });
 
-// Ranking de una modalidad, de mayor a menor rating. Solo perfiles visibles (no fusionados).
+// Ranking de una modalidad, de mayor a menor rating (y por nombre a igual rating). Entran TODOS los perfiles visibles: quien aún no
+// tiene rating en esa modalidad aparece con el inicial (INITIAL_RATING).
 export async function listRanking(discipline: DisciplineId): Promise<Roper[]> {
   "use cache";
   cacheTag("ropers");
   cacheLife("minutes");
-  const { data, error } = await createPublicClient()
-    .from("roper_ratings")
-    .select("discipline, rating, events_count, wins, updated_at, ropers!inner(id, full_name, avatar_path)")
-    .eq("discipline", discipline)
-    .order("rating", { ascending: false })
-    .limit(MAX_RANKING);
-  if (error) throw new Error(`No se pudo leer el ranking: ${error.message}`);
-  return (data as unknown as RankingRow[]).filter((r) => r.ropers).map((r) => ({
-    id: r.ropers!.id, name: r.ropers!.full_name, avatarPath: r.ropers!.avatar_path, stats: { [discipline]: toStat(r) },
-  }));
+  const sb = createPublicClient();
+  const [people, ratings] = await Promise.all([
+    sb.from("ropers").select("id, full_name, avatar_path").order("full_name", { ascending: true }).limit(MAX_RANKING),
+    sb.from("roper_ratings").select("roper_id, discipline, rating, events_count, wins, updated_at").eq("discipline", discipline).limit(MAX_RANKING),
+  ]);
+  if (people.error) throw new Error(`No se pudo leer el ranking: ${people.error.message}`);
+  if (ratings.error) throw new Error(`No se pudo leer el ranking: ${ratings.error.message}`);
+  const byRoper = new Map((ratings.data ?? []).map((r) => [r.roper_id as string, r as RatingRow]));
+  return (people.data ?? [])
+    .map((p) => ({ id: p.id as string, name: p.full_name as string, avatarPath: p.avatar_path as string | null, stats: { [discipline]: byRoper.has(p.id) ? toStat(byRoper.get(p.id)!) : initialStat() } }))
+    .sort((a, b) => b.stats[discipline]!.rating - a.stats[discipline]!.rating || a.name.localeCompare(b.name, "es"));
 }
 
 // Un participante con todos sus ratings. null si no existe o el id no es válido.
@@ -47,6 +50,7 @@ export async function getPublicRoper(id: string): Promise<Roper | null> {
   for (const r of (ratings.data ?? []) as RatingRow[]) {
     if (ACTIVE_DISCIPLINES.some((d) => d.id === r.discipline)) stats[r.discipline as DisciplineId] = toStat(r);
   }
+  for (const d of ACTIVE_DISCIPLINES) stats[d.id] ??= initialStat(); // sin rating aún: parte del inicial
   return { id: person.data.id, name: person.data.full_name, avatarPath: person.data.avatar_path, stats };
 }
 

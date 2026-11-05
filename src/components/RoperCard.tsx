@@ -15,7 +15,7 @@ export function RoperCard({ r, rank, lang, t, discipline = DEFAULT_DISCIPLINE }:
       <Avatar name={r.name} initials={initials(r.name)} url={publicAvatarUrl(r.avatarPath)} />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{r.name}</p>
-        <p className="text-sm text-muted">{st ? `${st.events} ${t.plural.event(st.events)} · ${st.wins} ${t.plural.win(st.wins)}` : t.people.noRating}</p>
+        <p className="text-sm text-muted">{st ? (st.initial ? t.people.initialRating : `${st.events} ${t.plural.event(st.events)} · ${st.wins} ${t.plural.win(st.wins)}`) : t.people.noRating}</p>
       </div>
       <p className="text-2xl font-semibold tabular-nums group-hover:text-brand-hot">{st ? fmtRating(st.rating) : "–"}</p>
     </Link>

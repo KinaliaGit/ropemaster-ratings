@@ -321,5 +321,59 @@ await as("anon", null, "select api_auth_record_failure('x')", "anónimo NO regis
   await check("otra IP sigue sin bloqueo", buena.rows[0].b === false);
 }
 
+console.log("- Participantes de UN evento para la app (0020)");
+{
+  const EX = "e1000000-0000-0000-0000-000000000001", EY = "e1000000-0000-0000-0000-000000000002";
+  const P1 = "51000000-0000-0000-0000-000000000001", P2 = "51000000-0000-0000-0000-000000000002", P3 = "51000000-0000-0000-0000-000000000003";
+  const P4 = "51000000-0000-0000-0000-000000000004", P5 = "51000000-0000-0000-0000-000000000005";
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug) values ('${EX}','Evento X','${A}','publicado','x-0020'), ('${EY}','Evento Y','${A}','publicado','y-0020');
+    insert into ropers (id, full_name, updated_at) values
+      ('${P1}','Ana Uno','2026-11-01 10:00+00'), ('${P2}','Beto Dos','2026-11-01 12:00+00'), ('${P3}','Cata Tres','2026-11-01 09:00+00'), ('${P5}','Eva Cinco','2026-11-01 09:00+00');
+    insert into ropers (id, full_name, merged_into, updated_at) values ('${P4}','Dani Cuatro','${P1}','2026-11-01 09:00+00');
+    insert into roper_contacts (roper_id, email, claimed, updated_at) values
+      ('${P1}','ana1@x.com',true,'2026-11-01 10:00+00'), ('${P2}','beto@x.com',false,'2026-11-01 12:00+00'), ('${P5}','eva@x.com',false,'2026-11-01 09:00+00');
+    insert into roper_ratings (roper_id, discipline, rating, events_count, wins, updated_at) values ('${P1}','lazo',9.4,18,6,'2026-11-02 10:00+00');
+    insert into registrations (event_id, roper_id, created_at) values
+      ('${EX}','${P1}','2026-11-01 11:00+00'), ('${EX}','${P2}','2026-11-01 12:00+00'), ('${EX}','${P3}','2026-11-03 09:00+00'), ('${EX}','${P4}','2026-11-01 09:00+00'),
+      ('${EY}','${P5}','2026-11-01 09:00+00'), ('${EY}','${P1}','2026-11-01 09:00+00');
+  `);
+  const people = async (event, since = "null", snapshot = "'2026-12-01+00'", after = "null, null", limit = 200) => {
+    await db.exec("reset role; set role service_role");
+    const r = await db.query(`select global_id, name, email, claimed, changed_at, ratings from public.app_event_participants('${event}', ${since}, ${snapshot}, ${after}, ${limit})`);
+    await db.exec("reset role");
+    return r.rows;
+  };
+  const names = (rows) => rows.map((x) => x.name);
+
+  const all = await people(EX);
+  await check("solo los inscritos de ESE evento, en orden estable", JSON.stringify(names(all)) === JSON.stringify(["Beto Dos", "Ana Uno", "Cata Tres"]));
+  await check("no incluye a quien solo está en otro evento ni a un perfil fusionado", !names(all).includes("Eva Cinco") && !names(all).includes("Dani Cuatro"));
+  await check("el otro evento devuelve solo a los suyos", JSON.stringify(names(await people(EY))) === JSON.stringify(["Eva Cinco", "Ana Uno"]) );
+  await check("un evento sin inscritos o inexistente devuelve vacío", (await people("e1000000-0000-0000-0000-0000000000ff")).length === 0);
+  const ana = all.find((x) => x.name === "Ana Uno"), cata = all.find((x) => x.name === "Cata Tres"), beto = all.find((x) => x.name === "Beto Dos");
+  await check("correo y estado de reclamo", ana.email === "ana1@x.com" && ana.claimed === true && cata.email === null && cata.claimed === false);
+  await check("ratings por modalidad con su fecha; sin rating queda vacío", ana.ratings.lazo.rating === 9.4 && ana.ratings.lazo.events === 18 && ana.ratings.lazo.wins === 6 && !!ana.ratings.lazo.updated_at && Object.keys(beto.ratings).length === 0);
+  await check("la respuesta no trae celular ni ids internos de cuenta", !Object.keys(ana).some((k) => /phone|user_id/.test(k)));
+  await check("since filtra por el último cambio (perfil, contacto, rating o inscripción)", JSON.stringify(names(await people(EX, "'2026-11-02 00:00+00'"))) === JSON.stringify(["Ana Uno", "Cata Tres"]));
+  await check("el corte (snapshot) deja fuera lo posterior", JSON.stringify(names(await people(EX, "null", "'2026-11-02 12:00+00'"))) === JSON.stringify(["Beto Dos", "Ana Uno"]));
+  const page1 = await people(EX, "null", "'2026-12-01+00'", "null, null", 2);
+  await check("la primera página respeta el límite", page1.length === 2);
+  const last = page1[1];
+  const page2 = await people(EX, "null", "'2026-12-01+00'", `'${new Date(last.changed_at).toISOString()}', '${last.global_id}'`, 2);
+  await check("el cursor continúa sin repetir ni saltarse a nadie", JSON.stringify(names(page1.concat(page2))) === JSON.stringify(["Beto Dos", "Ana Uno", "Cata Tres"]));
+
+  // Cambiar el estado de un contacto (por ejemplo al reclamar el perfil) mueve su fecha de cambio y vuelve a entrar en la sincronización.
+  const before = new Date(beto.changed_at).getTime();
+  await db.exec(`update roper_contacts set claimed = true where roper_id = '${P2}'`);
+  const after = (await people(EX)).find((x) => x.name === "Beto Dos");
+  await check("reclamar el perfil cuenta como cambio del participante", after.claimed === true && new Date(after.changed_at).getTime() > before);
+
+  await as("anon", null, `select * from public.app_event_participants('${EX}', null, now(), null, null, 10)`, "anónimo NO la ejecuta", "deny");
+  await as("authenticated", A, `select * from public.app_event_participants('${EX}', null, now(), null, null, 10)`, "un organizador NO la ejecuta desde la API pública", "deny");
+  await as("authenticated", C, `select * from public.app_event_participants('${EX}', null, now(), null, null, 10)`, "un participante NO la ejecuta", "deny");
+  await as("service_role", null, `select * from public.app_event_participants('${EX}', null, now(), null, null, 10)`, "el servidor SÍ la ejecuta", "some");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

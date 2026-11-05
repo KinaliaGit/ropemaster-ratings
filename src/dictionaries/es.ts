@@ -83,7 +83,7 @@ export const es = {
     },
     welcome: "¡Cuenta creada! Ya puedes crear tu primer evento.", noEvents: "Aún no tienes eventos. Crea el primero.", noParticipants: "Todavía no hay participantes registrados.",
     accountType: "Cuenta de organizador", newEvent: "+ Nuevo evento", events: "Eventos", enrolled: "Inscritos", collected: "Cobrado", myEvents: "Mis eventos", manage: "Gestionar",
-    tabs: { admin: "Administración", summary: "Resumen", participants: "Participantes", app: "App local" },
+    tabs: { appShort: "App", adminShort: "Admin", admin: "Administración", summary: "Resumen", participants: "Participantes", app: "App local" },
     tbl: { event: "Evento", date: "Fecha", state: "Estado", enrolled: "Inscritos" },
     stripe: { title: "Activa tus cobros.", text: "Conecta tu cuenta de Stripe para recibir las inscripciones directo en tu banco.", btn: "Conectar Stripe", opening: "Abriendo…" },
     ev: {

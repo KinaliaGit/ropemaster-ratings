@@ -83,7 +83,7 @@ export const en: Dict = {
     },
     welcome: "Account created! You can now create your first event.", noEvents: "You have no events yet. Create the first one.", noParticipants: "No participants have registered yet.",
     accountType: "Organizer account", newEvent: "+ New event", events: "Events", enrolled: "Registered", collected: "Collected", myEvents: "My events", manage: "Manage",
-    tabs: { admin: "Administration", summary: "Overview", participants: "Participants", app: "Local app" },
+    tabs: { appShort: "App", adminShort: "Admin", admin: "Administration", summary: "Overview", participants: "Participants", app: "Local app" },
     tbl: { event: "Event", date: "Date", state: "Status", enrolled: "Registered" },
     stripe: { title: "Enable payments.", text: "Connect your Stripe account to receive registrations straight into your bank.", btn: "Connect Stripe", opening: "Opening…" },
     ev: {

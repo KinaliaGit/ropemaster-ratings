@@ -23,9 +23,9 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   const meta = [e.date ? fmtDate(e.date, lang) : "", [e.venue, e.city].filter(Boolean).join(", ")].filter(Boolean);
   return (
     <div className="mx-auto max-w-6xl px-5 pb-12 pt-8">
-      {/* Celular: barra fija abajo con el botón de inscripción siempre a la mano (deja libre la derecha para el selector de idioma). */}
+      {/* Celular: barra fija abajo con el botón de inscripción siempre a la mano (a todo el ancho; el selector de idioma en celular va en el pie). */}
       {open && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-cream/90 p-3 pr-28 backdrop-blur-xl lg:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-cream/90 p-3 backdrop-blur-xl lg:hidden">
           <Link href={`/${lang}/eventos/${e.id}/inscribirse`} className="block whitespace-nowrap rounded-full bg-ink px-5 py-3 text-center text-sm font-medium text-white transition hover:bg-brand-hot">
             {t.event.enroll} · <span className="tabular-nums text-white/80">{t.event.from} {mxn(fromFee, lang).replace(" MXN", "")}</span>
           </Link>

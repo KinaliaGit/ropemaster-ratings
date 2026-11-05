@@ -25,13 +25,28 @@ Eventos del organizador con estado `publicado` o `finalizado` (los borradores no
 }] }
 ```
 
-## `GET /api/app/participantes`
-Directorio global. `ratings` trae un rating (escala de 1 a 10, un decimal) POR modalidad (`lazo`, `barriles`, …); una modalidad sin entrada significa que el participante nunca ha competido en ella. Hoy solo `lazo` está activo. Incluye `phone` (llave de coincidencia) porque solo lo reciben organizadores autenticados.
+## `GET /api/app/participantes?event_id=<uuid>&since=<ISO-8601>&cursor=<texto>`
+
+**La sincronización de participantes es SIEMPRE por evento (decisión del 2026-11-05).** No existe un modo "todo el
+directorio": devuelve solo a las personas inscritas en UN evento del organizador del código de conexión. Con decenas de
+miles de lazadores, bajar todo sería enorme y expondría correos de gente ajena a ese organizador. Reglas:
+
+- `event_id` es **obligatorio** (el `id` del evento en la web, el mismo que entrega `GET /api/app/eventos`). Sin él, `400`.
+- El evento debe ser del organizador del código. Si no existe o es de otro, `404` (sin revelar si existe).
+- Solo organizadores **activos** (licencia vigente o aprobación manual). Si no lo es, `403` con un mensaje claro y sin correos.
+- La identidad es el **correo** (único y en minúsculas). El celular ya no es llave ni se verifica, y no se envía.
+- `since` y `cursor` son por evento: la app guarda un `since` distinto para cada uno. `generated_at` es el corte de la
+  consulta; la app lo guarda como el próximo `since` solo si recibió todas las páginas.
+- `ratings` trae un rating (escala de 1 a 10, un decimal) POR modalidad (`lazo`, `barriles`, …); una modalidad sin entrada
+  significa que nunca ha competido en ella. Hoy solo `lazo` está activo.
 
 ```json
-{ "participants": [{ "global_id": "…", "name": "…", "phone": "+52…", "phone_verified": true,
-                     "ratings": { "lazo": { "rating": 9.4, "events": 18, "wins": 6 } } }] }
+{ "participants": [{ "global_id": "…", "name": "…", "email": "ana@example.com", "claimed": true,
+                     "ratings": { "lazo": { "rating": 9.4, "events": 18, "wins": 6, "updated_at": "2026-11-01T00:00:00Z" } } }],
+  "next_cursor": null, "generated_at": "2026-11-05T10:00:00Z" }
 ```
+
+Estado: formato acordado con la app (KIN-592); la API real es KIN-586 y hoy `/api/app/participantes` devuelve una lista vacía.
 
 ## Subida de resultados (contrato v1, BORRADOR para aprobar)
 
@@ -175,7 +190,9 @@ Revisado contra el esquema de la web (`supabase/migrations`) y el de la app (`ro
 ## Lado de la app (pendiente)
 - Guardar `events.remote_id` y `ropers.global_id` (columnas **nullable**, migración aditiva según
   `roping-manager-tauri/src-tauri/migrations/MIGRATIONS.md`) para que reimportar actualice y no duplique.
-- Coincidir participantes por `global_id`; si no existe, por celular normalizado (E.164) pidiendo confirmación.
+- Traer participantes **solo de un evento a la vez** (los eventos con `remote_id`), nunca el directorio completo.
+- Coincidir participantes por `global_id`; si no existe, por **correo** en minúsculas (y nombre sin acentos como pista débil),
+  siempre pidiendo confirmación del organizador: nunca se vincula ni se fusiona solo.
 - Pantalla de Ajustes → Cuenta web (token) y botón Sincronizar.
 
 ## Modalidades

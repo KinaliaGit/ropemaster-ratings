@@ -31,7 +31,7 @@ Estado al 2026-11-05, rama `feat/organizadores-reales` (PR #1). ✅ hecho y prob
 - ⛔ La fórmula del rating la define la FMR (KIN-571); el cálculo y la publicación (KIN-583) esperan eso.
 
 ## Plataforma y seguridad
-- 🟡 **Confirmación de correo ACTIVADA** (ya está encendida y el SMTP de Brevo manda el correo desde `servicios@kinalia.com.mx`; falta probar el enlace de punta a punta en el dominio real, que hoy sirve la versión vieja hasta unir el PR #1). **ACTIVADA** con SMTP real (Brevo): es obligatoria, porque el reclamo de perfiles por correo exige correo confirmado. Poner la URL de la web en las URLs permitidas de redirección de Auth y usar `{{ .ConfirmationURL }}`/`/auth/confirm` en la plantilla. El flujo ya está en el código (KIN-576) pero sin probar con correo real.
+- ✅ **Confirmación de correo ACTIVADA y probada en el dominio real** (2026-11-05): registro → correo de «Rope Master Verificacion» (`servicios@kinalia.com.mx`) → enlace → perfil de lazador y constancia de términos creados. El enlace vale 1 hora (decisión de Ana: se deja así; se reenvía desde el registro).
 - ⬜ Encender «protección contra contraseñas filtradas» (aviso `auth_leaked_password_protection`), CAPTCHA y límites de Auth.
 - ⬜ Dominio y SSL; respaldos (Supabase Pro) y plan de rollback.
 - ⬜ Borrar el archivo huérfano del flyer de «E1 Prueba» en el bucket `event-photos` (borrar un evento solo quita las filas; los archivos se quitan por la API con la service role).

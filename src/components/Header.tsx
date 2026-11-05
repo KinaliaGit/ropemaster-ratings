@@ -26,7 +26,7 @@ async function Account({ lang, t }: { lang: Lang; t: Dict }) {
 export function Header({ lang, t }: { lang: Lang; t: Dict }) {
   const items = [{ href: `/${lang}`, label: t.nav.events }, { href: `/${lang}/participantes`, label: t.nav.participants }];
   return (
-    <header className="fixed inset-x-0 top-0 z-50 backdrop-blur-md">
+    <header className="fixed inset-x-0 top-0 z-50 bg-cream/85 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-5 md:grid md:grid-cols-[1fr_auto_1fr]">
         <Link href={`/${lang}`} className="flex items-center gap-2.5 text-[17px] font-semibold tracking-tight">
           {/* eslint-disable-next-line @next/next/no-img-element */}

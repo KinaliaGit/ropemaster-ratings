@@ -27,8 +27,10 @@ export function EventPhotos({ eventSlug, photos, coverUrl, l }: { eventSlug: str
     for (const file of Array.from(files)) {
       if (file.size > MAX_UPLOAD_BYTES) { problems.add(l.tooBig); continue; }
       if (!file.type.startsWith("image/")) { problems.add(l.invalid); continue; }
+      let blob: Blob;
+      try { blob = await toLimitedJpeg(file, EVENT_PHOTO_SIDE, MAX_EVENT_PHOTO_BYTES); }
+      catch { problems.add(l.invalid); continue; } // el navegador no pudo leerlo como imagen
       try {
-        const blob = await toLimitedJpeg(file, EVENT_PHOTO_SIDE, MAX_EVENT_PHOTO_BYTES);
         const fd = new FormData();
         fd.set("event", eventSlug);
         fd.set("file", blob, "foto.jpg");

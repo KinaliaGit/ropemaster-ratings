@@ -18,8 +18,15 @@
   `src/legal/{es,en}.ts`. Son un BORRADOR: falta confirmar el domicilio del responsable y que un abogado los revise
   (al aprobarlos, poner `draft: false` en `src/lib/legal.ts`). Punto a revisar: los organizadores pueden registrar a
   personas con su celular sin que ellas hayan aceptado nada todavía.
-- Foto de perfil: el participante la sube desde Mi cuenta; se recorta cuadrada a 256 px en el navegador y el servidor
-  valida el tipo real por sus bytes. Es pública (perfil, ranking, inscritos). Migración 0007 (Storage).
+- Fotos (Supabase Storage, buckets públicos): `avatars/<roper_id>/<marca de tiempo>.jpg` y `event-photos/<event_id>/<uuid>.jpg`.
+  La web reduce en el navegador (perfil 256 px cuadrada; evento lado largo 1600 px; JPEG, lo que quita el EXIF), el servidor
+  vuelve a comprobar el tipo REAL por sus bytes (`src/lib/image-validate.ts`, con pruebas en `tests/`) y sube con la sesión de
+  la persona, así que las políticas de Storage (migraciones 0009 y 0011) deciden quién escribe dónde. Reemplazar o borrar elimina
+  el archivo anterior. Límite de 5 MB para el archivo original; los buckets aceptan hasta 300 KB (avatares) y 2 MB (eventos), solo
+  JPG/PNG/WebP. **Pendiente de endurecer:** Storage solo revisa el tipo *declarado* y no cuenta archivos, así que un organizador
+  con sesión que llame a Storage directo puede guardar bytes arbitrarios (hasta 2 MB por archivo) en la carpeta de sus eventos.
+  No es ejecutable (se sirve como image/*), pero conviene subir con la llave de servicio y quitar las políticas de escritura
+  directa cuando esa llave esté en el entorno.
 - Organizadores verificados: cualquiera puede crear una cuenta de organizador, pero solo los que un administrador marca como
   `profiles.organizer_verified = true` ven celulares y registran participantes (evita que alguien se registre solo para llevarse
   el directorio). Pendiente decidir el criterio: aprobación manual o licencia vigente de Rope Master.

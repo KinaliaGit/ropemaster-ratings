@@ -35,9 +35,10 @@ Estado al 2026-11-05, rama `feat/organizadores-reales` (PR #1). ✅ hecho y prob
 - ⬜ Encender «protección contra contraseñas filtradas» (aviso `auth_leaked_password_protection`), CAPTCHA y límites de Auth.
 - ⬜ Dominio y SSL; respaldos (Supabase Pro) y plan de rollback.
 - ⬜ Cerrar la escritura directa a Storage (hallazgo documentado en `docs/DISENO.md`) con la service role.
-- ⬜ Aviso de rendimiento en `event_categories` (varias políticas permisivas de lectura).
+- ✅ Aviso de rendimiento en `event_categories` resuelto (migración 0019).
+- 🟡 `db advisors` deja 5 avisos: 4 son **intencionales** (`event_registration_counts` y `event_registrants` son SECURITY DEFINER y públicas a propósito: solo devuelven números e ids de eventos publicados, sin pagos ni contactos) y 1 es la protección contra contraseñas filtradas (se enciende en el panel de Auth).
 - ⬜ CI en verde y protección de `main` (PR #2 de revisión automática).
-- 🟡 Migraciones `0001`–`0018` aplicadas en `rope-master-ratings` (la `0011` de Edgar queda por aplicar al unir ramas).
+- 🟡 Migraciones `0001`–`0019` aplicadas en `rope-master-ratings` (la `0011` de Edgar queda por aplicar al unir ramas).
 
 ## Legal
 - ⬜ Términos y Aviso de Privacidad aprobados por el abogado; quitar la etiqueta «Borrador» (`DRAFT` en `src/lib/legal.ts`). Cambió el contenido: ya no se pide celular, se usa el correo.

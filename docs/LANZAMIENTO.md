@@ -6,7 +6,7 @@ Estado al 2026-11-05, rama `feat/organizadores-reales` (PR #1). ✅ hecho y prob
 - ✅ Organizadores y participantes reales (correo y contraseña, selector de rol; un organizador también puede ser lazador).
 - ✅ Participante de demostración y `src/lib/mock.ts` eliminados de esta rama.
 - 🟡 **Códigos de conexión de la app:** en esta rama siguen en memoria (`src/lib/sync-tokens.ts`) y existe el atajo `APP_SYNC_TOKEN`. La versión en la base (KIN-584, migración `0011_codigos_de_conexion`) está en `main`: al unir las ramas se quita el atajo y se aplica con `npx supabase db push --remote --include-all`.
-- ⬜ Borrar de producción los datos de prueba que queden (hoy: el evento «E1 Prueba» y la cuenta vacía de `emilianoneaves@gmail.com`, sin perfil).
+- ✅ Evento de prueba «E1 Prueba» e inscripción borrados (la base quedó sin eventos). Queda la cuenta vacía de `emilianoneaves@gmail.com` (sin perfil).
 - ⬜ Dar de alta a los primeros organizadores reales (licencia vigente o aprobación de un admin).
 
 ## Acceso y licencia de organizadores
@@ -34,6 +34,7 @@ Estado al 2026-11-05, rama `feat/organizadores-reales` (PR #1). ✅ hecho y prob
 - ⬜ **Confirmación de correo ACTIVADA** con SMTP real (Brevo): es obligatoria, porque el reclamo de perfiles por correo exige correo confirmado. Poner la URL de la web en las URLs permitidas de redirección de Auth y usar `{{ .ConfirmationURL }}`/`/auth/confirm` en la plantilla. El flujo ya está en el código (KIN-576) pero sin probar con correo real.
 - ⬜ Encender «protección contra contraseñas filtradas» (aviso `auth_leaked_password_protection`), CAPTCHA y límites de Auth.
 - ⬜ Dominio y SSL; respaldos (Supabase Pro) y plan de rollback.
+- ⬜ Borrar el archivo huérfano del flyer de «E1 Prueba» en el bucket `event-photos` (borrar un evento solo quita las filas; los archivos se quitan por la API con la service role).
 - ⬜ Cerrar la escritura directa a Storage (hallazgo documentado en `docs/DISENO.md`) con la service role.
 - ✅ Aviso de rendimiento en `event_categories` resuelto (migración 0019).
 - 🟡 `db advisors` deja 5 avisos: 4 son **intencionales** (`event_registration_counts` y `event_registrants` son SECURITY DEFINER y públicas a propósito: solo devuelven números e ids de eventos publicados, sin pagos ni contactos) y 1 es la protección contra contraseñas filtradas (se enciende en el panel de Auth).

@@ -33,8 +33,14 @@ export const es = {
     organizedBy: "Organiza", photos: "Fotos", noPhotos: "El organizador aún no ha subido fotos.", enrolled: "Inscritos", noEnrolled: "Aún no hay inscritos.",
     enrollment: "Inscripción", enroll: "Inscribirme", needAccount: "Necesitas una cuenta de participante.", eventFinished: "Evento finalizado", full: "Cupo lleno",
   },
+  pay: {
+    method: { efectivo: "Efectivo", transferencia: "Transferencia", stripe: "En línea" }, markPaid: "Marcar pagado:", undo: "Deshacer", error: "No se pudo cambiar el pago. Intenta de nuevo.",
+    howTitle: "Cómo pagar", online: "Pagar en línea", onlineBusy: "Redirigiendo a Stripe…", onlineHint: "Con tarjeta, de forma segura con Stripe. Se marca pagado solo.",
+    offlineHint: "O paga en efectivo o por transferencia y el organizador marcará tu pago como recibido.", noInstructions: "El organizador no dejó instrucciones de pago: contáctalo para pagar en efectivo o por transferencia.",
+    returned: "¡Gracias! Estamos confirmando tu pago; en unos segundos aparecerá como pagado.", paidWith: "Pagado con", errors: { unauthenticated: "Inicia sesión para pagar.", invalid: "No encontramos esa inscripción.", already: "Esa inscripción ya está pagada.", noPayouts: "El organizador aún no activa los pagos en línea.", generic: "No se pudo iniciar el pago." },
+  },
   enroll: {
-    title: "Inscripción", category: "Categoría", discipline: "Modalidad", submit: "Inscribirme", pendingNote: "Tu lugar queda apartado como pendiente de pago. Puedes cancelarlo mientras no esté pagado.",
+    title: "Inscripción", category: "Categoría", discipline: "Modalidad", submit: "Inscribirme", pendingNote: "Tu lugar queda apartado como pendiente de pago. Después podrás pagar en línea o en efectivo/transferencia con el organizador. Puedes cancelarlo mientras no esté pagado.",
     errors: {
       forbidden: "Solo los participantes pueden inscribirse.", invalid_category: "Evento o categoría inválidos.", closed: "Las inscripciones están cerradas.", already: "Ya estás inscrito en esta categoría.",
       full: "El cupo está lleno.", paid: "Esa inscripción ya está pagada y no se puede cancelar aquí.", not_found: "No encontramos esa inscripción.", failed: "No se pudo completar. Intenta de nuevo.",
@@ -66,7 +72,7 @@ export const es = {
     photo: { add: "Agregar foto", change: "Cambiar foto", remove: "Quitar", saving: "Guardando…", tooBig: `La foto pesa más de ${MAX_UPLOAD_MB} MB. Elige una más ligera.`, error: "No se pudo guardar la foto. Usa una imagen JPG, PNG o WebP." },
     type: "Cuenta de participante", myRegistrations: "Mis inscripciones",
     noRegistrations: "Aún no te has inscrito a ningún evento.", available: "Eventos disponibles", noneAvailable: "No hay eventos nuevos por ahora.",
-    enrolledOk: "¡Listo! Tu lugar quedó apartado. El pago se habilitará pronto.", canceledOk: "Inscripción cancelada.", cancel: "Cancelar",
+    enrolledOk: "¡Listo! Tu lugar quedó apartado. Abajo ves cómo pagar.", canceledOk: "Inscripción cancelada.", cancel: "Cancelar",
     ranking: "Ranking", seeAll: "Ver todos", publicProfile: "Ver mi perfil público e historial", paid: "Pagado", pending: "Pago pendiente",
   },
   org: {
@@ -100,6 +106,7 @@ export const es = {
       name: "Nombre", email: "Correo", since: "Registro", verify: "Verificar", revoke: "Revocar", audit: "Historial", auditNone: "Aún no hay movimientos.", actionVerify: "verificó a", actionRevoke: "revocó a", error: "No se pudo completar el cambio.",
     },
     form: {
+      paymentInfo: "Instrucciones de pago (transferencia o efectivo)", paymentInfoHint: "Solo las ven quienes se inscriben a tu evento. Ej.: CLABE, banco y titular, o «paga en efectivo en la arena».", paymentInfoPlaceholder: "CLABE 0123 4567 8901 2345 67 · Banco · Titular",
       save: "Guardar cambios", editTitle: "Editar evento", editBlurb: "Los cambios se ven al momento en la página pública. Lo ya inscrito conserva el precio con el que se apartó.", saved: "Cambios guardados.", edit: "Editar",
       errors: { capacity: "El cupo no puede ser menor que los inscritos que ya hay.", catInUse: "No puedes quitar una categoría que ya tiene inscritos. Puedes renombrarla o cambiar su costo." },
       photosLater: "Después de crear el evento podrás agregar fotos y elegir la portada.", 

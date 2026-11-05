@@ -10,16 +10,18 @@ import { listRanking } from "@/lib/data/ropers";
 import { listMyRegistrations } from "@/lib/data/registrations";
 import { cancelRegistration } from "@/lib/registration-actions";
 import { createMyRoperProfile } from "@/lib/profile-actions";
+import { PayButton } from "@/components/PayButton";
 import { listPublicEvents } from "@/lib/data/events";
 import { fmtDate, mxn } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
 async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
   const lang = await resolveLang(props.params);
+  const stripeOn = !!process.env.STRIPE_SECRET_KEY && !!process.env.STRIPE_TEST_CONNECTED_ACCOUNT; // el pago en línea solo se ofrece si Stripe está configurado
   const sp = await props.searchParams;
   const t = getDictionary(lang);
   const [events, top] = await Promise.all([listPublicEvents(), listRanking("lazo").then((r) => r.slice(0, 4))]);
-  const notice = sp.perfil === "ok" ? t.account.profileCreated : sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
+  const notice = sp.pago === "ok" ? t.pay.returned : sp.perfil === "ok" ? t.account.profileCreated : sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
   return (
     <Gate lang={lang} role="any" next={`/${lang}/mi-cuenta`}>
       {async (s) => {
@@ -59,17 +61,27 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                   <>
                     <span><span className="font-medium">{m.event?.name ?? "—"}</span><span className="block text-sm text-muted">{m.category}{m.event?.date ? ` · ${fmtDate(m.event.date, lang)}` : ""}{m.event?.city ? ` · ${m.event.city}` : ""}</span></span>
                     <span className="text-right text-sm"><span className="block tabular-nums">{mxn(m.amountCents / 100, lang)}</span>
-                      <span className={`text-xs font-medium ${paid ? "text-brand-hot" : "text-red-700"}`}>{paid ? `${t.account.paid} ✓` : t.account.pending}</span></span>
+                      <span className={`text-xs font-medium ${paid ? "text-brand-hot" : "text-red-700"}`}>{paid ? `${t.account.paid} ✓${m.paymentMethod ? ` · ${t.pay.method[m.paymentMethod as "efectivo" | "transferencia" | "stripe"]}` : ""}` : t.account.pending}</span></span>
                   </>
                 );
                 return (
-                  <div key={m.id} className="card flex items-center justify-between gap-3 p-4">
-                    {m.event?.slug ? <Link href={`/${lang}/eventos/${m.event.slug}`} className="flex flex-1 items-center justify-between gap-3">{inner}</Link> : <div className="flex flex-1 items-center justify-between gap-3">{inner}</div>}
+                  <div key={m.id} className="card p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      {m.event?.slug ? <Link href={`/${lang}/eventos/${m.event.slug}`} className="flex flex-1 items-center justify-between gap-3">{inner}</Link> : <div className="flex flex-1 items-center justify-between gap-3">{inner}</div>}
+                      {!paid && (
+                        <form action={cancelRegistration}>
+                          <input type="hidden" name="lang" value={lang} /><input type="hidden" name="id" value={m.id} />
+                          <button className="rounded-full border border-line px-3 py-1.5 text-xs font-medium hover:border-ink">{t.account.cancel}</button>
+                        </form>
+                      )}
+                    </div>
                     {!paid && (
-                      <form action={cancelRegistration}>
-                        <input type="hidden" name="lang" value={lang} /><input type="hidden" name="id" value={m.id} />
-                        <button className="rounded-full border border-line px-3 py-1.5 text-xs font-medium hover:border-ink">{t.account.cancel}</button>
-                      </form>
+                      <div className="mt-4 rounded-2xl bg-sand p-4 text-sm">
+                        <p className="font-semibold">{t.pay.howTitle}</p>
+                        {stripeOn && <div className="mt-3 max-w-xs"><PayButton registrationId={m.id} lang={lang} label={`${t.pay.online} · ${mxn(m.amountCents / 100, lang)}`} busyLabel={t.pay.onlineBusy} errors={t.pay.errors} /><p className="mt-1.5 text-xs text-muted">{t.pay.onlineHint}</p></div>}
+                        <p className={`${stripeOn ? "mt-3" : "mt-2"} text-muted`}>{stripeOn ? t.pay.offlineHint : ""}</p>
+                        {m.event?.paymentInfo ? <p className="mt-1 whitespace-pre-line">{m.event.paymentInfo}</p> : <p className="mt-1 text-muted">{t.pay.noInstructions}</p>}
+                      </div>
                     )}
                   </div>
                 );

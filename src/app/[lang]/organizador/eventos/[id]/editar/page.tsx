@@ -7,6 +7,7 @@ import { OrgNav } from "@/components/OrgNav";
 import { EventForm } from "@/components/EventForm";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { getOrganizerEvent } from "@/lib/data/events";
+import { getPaymentInstructions } from "@/lib/data/registrations";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
 async function Page({ props }: { props: PageProps<"/[lang]/organizador/eventos/[id]/editar"> }) {
@@ -22,6 +23,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/eventos/[
         const e = await getOrganizerEvent(s.id, id);
         if (!e) notFound();
         if (e.status === "finalizado") redirect(`/${lang}/organizador/eventos/${id}`);
+        const paymentInfo = await getPaymentInstructions(e.uuid!);
         return (
           <>
             <OrgNav lang={lang} t={t} admin={s.isAdmin} />
@@ -32,7 +34,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/eventos/[
               <EventForm
                 lang={lang} error={typeof sp.error === "string" ? sp.error : undefined} labels={f}
                 disciplines={ACTIVE_DISCIPLINES.map((d) => ({ id: d.id, label: t.disc[d.id].label }))}
-                initial={{ slug: e.id, name: e.name, date: e.date, capacity: e.capacity, venue: e.venue, city: e.city, description: e.description, disciplines: e.disciplines, cats: e.categories.map((c) => ({ id: c.id, name: c.name, fee: c.fee })) }}
+                initial={{ slug: e.id, name: e.name, date: e.date, capacity: e.capacity, venue: e.venue, city: e.city, description: e.description, paymentInfo, disciplines: e.disciplines, cats: e.categories.map((c) => ({ id: c.id, name: c.name, fee: c.fee })) }}
               />
             </div>
           </>

@@ -8,6 +8,7 @@ import { setEventStatus } from "@/lib/event-actions";
 import { Gate } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
 import { listEventRegistrations } from "@/lib/data/registrations";
+import { setRegistrationPayment } from "@/lib/payment-actions";
 import { EventPhotos } from "@/components/EventPhotos";
 import { getOrganizerEvent } from "@/lib/data/events";
 import type { Session } from "@/lib/session";
@@ -16,9 +17,18 @@ import type { Lang } from "@/lib/format";
 import { fmtDate, mxn } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
-type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justEdited: boolean; shareUrl: string; stateLabel: Record<string, string> };
+type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justEdited: boolean; pagoError: boolean; shareUrl: string; stateLabel: Record<string, string> };
 
-async function Manage({ s, id, lang, t, justCreated, justEdited, shareUrl, stateLabel }: ManageProps) {
+function PayForm({ lang, slug, id, method, label, tone }: { lang: Lang; slug: string; id: string; method: string; label: string; tone: "solid" | "ghost" }) {
+  return (
+    <form action={setRegistrationPayment}>
+      <input type="hidden" name="lang" value={lang} /><input type="hidden" name="slug" value={slug} /><input type="hidden" name="id" value={id} /><input type="hidden" name="method" value={method} />
+      <button className={tone === "solid" ? "rounded-full bg-ink px-3 py-1 text-xs font-medium text-white hover:bg-brand-hot" : "rounded-full border border-line px-3 py-1 text-xs font-medium text-muted hover:border-ink hover:text-ink"}>{label}</button>
+    </form>
+  );
+}
+
+async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, shareUrl, stateLabel }: ManageProps) {
   // Un organizador solo gestiona sus propios eventos (la base además lo impone).
   const e = await getOrganizerEvent(s.id, id);
   if (!e) notFound();
@@ -44,6 +54,7 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, shareUrl, state
                   )}
                 </div>
               </div>
+              {pagoError && <p role="alert" className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-800">{t.pay.error}</p>}
               {justEdited && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.org.form.saved}</p>}
               <section aria-labelledby="share" className={`mt-6 rounded-2xl p-5 ${justCreated === "publicado" ? "bg-brand-soft" : "card"}`}>
                 {justCreated === "publicado" && <><h2 className="text-lg font-semibold">{t.org.share.publishedTitle}</h2><p className="mt-1 text-sm">{t.org.share.publishedText}</p></>}
@@ -73,7 +84,21 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, shareUrl, state
                         <tr key={r.id} className="border-t border-line">
                           <td className="p-3 font-medium"><Link href={`/${lang}/participantes/${r.roperId}`} className="hover:text-brand-hot">{r.name}</Link></td>
                           <td className="text-muted">{r.email ?? "–"}</td><td>{r.category}</td>
-                          <td className={`font-medium ${paid ? "text-brand-hot" : "text-red-700"}`}>{paid ? `${t.org.ev.paidAmount} ${mxn(r.amountCents / 100, lang)}` : t.org.ev.pending}</td>
+                          <td className="py-2 pr-3">
+                            {paid ? (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-medium text-brand-hot">{t.org.ev.paidAmount} {mxn(r.amountCents / 100, lang)} · {t.pay.method[(r.paymentMethod ?? "efectivo") as "efectivo" | "transferencia" | "stripe"]}</span>
+                                {r.paymentMethod !== "stripe" && <PayForm lang={lang} slug={e.id} id={r.id} method="pendiente" label={t.pay.undo} tone="ghost" />}
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-medium text-red-700">{t.org.ev.pending}</span>
+                                <span className="text-xs text-muted">{t.pay.markPaid}</span>
+                                <PayForm lang={lang} slug={e.id} id={r.id} method="efectivo" label={t.pay.method.efectivo} tone="solid" />
+                                <PayForm lang={lang} slug={e.id} id={r.id} method="transferencia" label={t.pay.method.transferencia} tone="solid" />
+                              </div>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
@@ -91,6 +116,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
   const { id } = await props.params;
   const sp = await props.searchParams;
   const justEdited = sp.editado === "1";
+  const pagoError = sp.pagoError === "1";
   const justCreated = sp.nuevo === "publicado" ? "publicado" : sp.nuevo === "borrador" ? "borrador" : null;
   // Enlace sin idioma: cada persona que lo abra llega a su idioma (el proxy elige es/en por su navegador).
   const h = await headers();
@@ -101,7 +127,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
   const stateLabel: Record<string, string> = { publicado: t.status.published, borrador: t.status.draft, finalizado: t.status.finished };
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador/eventos/${id}`}>
-      {(s) => <Manage s={s} id={id} lang={lang} t={t} justCreated={justCreated} justEdited={justEdited} shareUrl={shareUrl} stateLabel={stateLabel} />}
+      {(s) => <Manage s={s} id={id} lang={lang} t={t} justCreated={justCreated} justEdited={justEdited} pagoError={pagoError} shareUrl={shareUrl} stateLabel={stateLabel} />}
     </Gate>
   );
 }

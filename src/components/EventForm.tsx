@@ -4,9 +4,9 @@ import { createEvent, updateEvent } from "@/lib/event-actions";
 
 type Labels = {
   name: string; date: string; capacity: string; venue: string; city: string; disciplines: string; categories: string; categoryName: string; categoryNamePlaceholder: string; cost: string; costHint: string; addCategory: string;
-  error: string; description: string; saveDraft: string; publish: string; photosLater: string; save: string; errors: Record<string, string>;
+  error: string; description: string; saveDraft: string; publish: string; photosLater: string; save: string; errors: Record<string, string>; paymentInfo: string; paymentInfoHint: string; paymentInfoPlaceholder: string;
 };
-export type EventInitial = { slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; disciplines: string[]; cats: { id: string; name: string; fee: number }[] };
+export type EventInitial = { slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; paymentInfo: string; disciplines: string[]; cats: { id: string; name: string; fee: number }[] };
 
 const input = "mt-1 w-full rounded-xl border border-line bg-white px-4 py-2.5 outline-none focus:border-ink";
 
@@ -51,6 +51,10 @@ export function EventForm({ lang, labels: l, disciplines, error, initial }: { la
         ))}
         <button type="button" onClick={() => setCats([...cats, { id: "", name: "", fee: 0 }])} className="mt-3 text-sm font-medium text-brand-hot">{l.addCategory}</button>
       </fieldset>
+      <label className="block text-sm font-medium">{l.paymentInfo}
+        <textarea name="paymentInfo" rows={3} maxLength={1000} defaultValue={initial?.paymentInfo} placeholder={l.paymentInfoPlaceholder} className={input} />
+        <span className="mt-1 block text-xs font-normal text-muted">{l.paymentInfoHint}</span>
+      </label>
       {!initial && <p className="rounded-xl bg-sand p-3 text-sm text-muted">{l.photosLater}</p>}
       <label className="block text-sm font-medium">{l.description}<textarea name="description" rows={4} maxLength={1000} defaultValue={initial?.description} className={input} /></label>
       {initial ? (

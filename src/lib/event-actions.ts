@@ -52,8 +52,16 @@ export async function createEvent(formData: FormData) {
     redirect(`/${l}/organizador/eventos/nuevo?error=1`);
   }
 
+  await savePaymentInfo(supabase, id, formData.get("paymentInfo"));
   updateTag("events");
   redirect(`/${l}/organizador/eventos/${eventSlug}?nuevo=${status}`);
+}
+
+// Instrucciones de pago (transferencia/efectivo): solo las ven el organizador y quienes se inscriben. Vacío = se borran.
+async function savePaymentInfo(supabase: Awaited<ReturnType<typeof createServerSupabase>>, eventId: string, raw: FormDataEntryValue | null) {
+  const instructions = text(raw, 1000);
+  if (!instructions) await supabase.from("event_payment_info").delete().eq("event_id", eventId);
+  else await supabase.from("event_payment_info").upsert({ event_id: eventId, instructions, updated_at: new Date().toISOString() });
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -105,6 +113,7 @@ export async function updateEvent(formData: FormData) {
     else await supabase.from("event_categories").insert({ event_id: ev.id, name: r.name, fee_cents: r.fee * 100 });
   }
   if (toDelete.length) await supabase.from("event_categories").delete().in("id", toDelete);
+  await savePaymentInfo(supabase, ev.id, formData.get("paymentInfo"));
 
   updateTag("events");
   updateTag("registrations");

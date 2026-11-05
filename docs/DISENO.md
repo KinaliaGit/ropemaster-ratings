@@ -79,3 +79,13 @@ La licencia vencida solo afecta el lado de organizador: el perfil de lazador, su
 `main` ya trae `0011_codigos_de_conexion.sql` (KIN-584), así que nuestra `0011_fotos_storage.sql` pasó a **`0017_fotos_storage.sql`** (contenido idempotente y con el estado final de las políticas, ver su encabezado).
 En la base real el historial (`supabase_migrations.schema_migrations`) se cambió de `0011` a `0017` para que no se vuelva a ejecutar.
 Al unir las ramas, `0011_codigos_de_conexion` queda por detrás de la última migración aplicada: se aplica con `npx supabase db push --remote --include-all`.
+
+## Pagos de inscripción (migración 0018)
+
+La inscripción nace `pendiente`. Tres formas de pagarla:
+- **Efectivo o transferencia:** el organizador del evento (activo) la marca "pagado" con el método y puede deshacerlo (`set_registration_payment`; la tabla no se escribe directo).
+  Sus instrucciones de pago (CLABE, banco, "paga en la arena") van en `event_payment_info`, que SOLO ven él y quienes están inscritos en ese evento (no son públicas).
+- **En línea (Stripe):** el botón "Pagar en línea" solo aparece si Stripe está configurado. `/api/checkout` toma el monto de la inscripción en la base (nunca del navegador);
+  el webhook `/api/stripe/webhook` verifica la firma y confirma con la service role (`confirm_stripe_payment`, idempotente por id de cobro). Un pago en línea no se deshace a mano.
+**Falta para activar Stripe:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` y `SUPABASE_SERVICE_ROLE_KEY` en `.env.local`, y guardar en la base la cuenta conectada de cada organizador
+(hoy se usa `STRIPE_TEST_CONNECTED_ACCOUNT`). Sin probar contra Stripe real.

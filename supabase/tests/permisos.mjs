@@ -8,7 +8,7 @@ const dir = fileURLToPath(new URL("../migrations", import.meta.url));
 const db = new PGlite();
 
 await db.exec(`
-  create role anon; create role authenticated;
+  create role anon; create role authenticated; create role service_role;
   create schema auth; create table auth.users (id uuid primary key default gen_random_uuid(), email text, email_confirmed_at timestamptz);
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   create schema storage;
@@ -233,6 +233,39 @@ await db.exec(`update profiles set organizer_verified = false, license_valid_unt
 await as("authenticated", B, `select public.register_for_event('${EV}','${CAT1}')`, "con la licencia VENCIDA igual se inscribe como lazador", "some");
 await as("authenticated", B, "insert into events (id, name, organizer_id, status) values (gen_random_uuid(), 'x', '" + B + "', 'borrador')", "pero NO crea eventos con la licencia vencida", "deny");
 await as("authenticated", B, "update ropers set avatar_path = 'a/b.jpg' where id = (select public.my_roper_id())", "el organizador cambia la foto de su perfil de lazador", "some");
+console.log("— Métodos de pago (0018)");
+await db.exec(`update profiles set organizer_verified = true, license_valid_until = null where user_id in ('${A}','${B}')`);
+await db.exec(`insert into registrations (id, event_id, roper_id, category_id) values ('9e000000-0000-0000-0000-000000000001','${EV}','22222222-0000-0000-0000-000000000002','${CAT1}')`);
+const REG = "9e000000-0000-0000-0000-000000000001";
+await as("authenticated", P2, `select public.set_registration_payment('${REG}','efectivo')`, "el participante NO se marca a sí mismo como pagado", "deny");
+await as("authenticated", B, `select public.set_registration_payment('${REG}','efectivo')`, "otro organizador NO marca pagos de un evento ajeno", "deny");
+await as("anon", null, `select public.set_registration_payment('${REG}','efectivo')`, "anónimo NO marca pagos", "deny");
+await as("authenticated", A, `select public.set_registration_payment('${REG}','tarjeta')`, "método inválido se rechaza", "deny");
+await as("authenticated", A, `update registrations set payment_status = 'pagado' where id = '${REG}'`, "el organizador NO escribe la tabla directo", "deny");
+await as("authenticated", A, `select public.set_registration_payment('${REG}','efectivo')`, "el organizador marca pagado en efectivo", "some");
+await as("authenticated", P2, `select payment_status, payment_method from registrations where id = '${REG}' and payment_status = 'pagado' and payment_method = 'efectivo'`, "el participante ve su pago como pagado (efectivo)", "some");
+await as("authenticated", P2, `select public.cancel_registration('${REG}')`, "una inscripción pagada NO se cancela sola", "deny");
+await as("authenticated", A, `select public.set_registration_payment('${REG}','transferencia')`, "puede corregir el método a transferencia", "some");
+await as("authenticated", A, `select public.set_registration_payment('${REG}', null)`, "puede deshacer el pago (vuelve a pendiente)", "some");
+await as("authenticated", A, `select paid_at from registrations where id = '${REG}' and paid_at is null and payment_status = 'pendiente'`, "queda pendiente y sin fecha de pago", "some");
+await db.exec(`update registrations set payment_status = 'pagado', payment_method = 'stripe', provider_payment_id = 'cs_1' where id = '${REG}'`);
+await as("authenticated", A, `select public.set_registration_payment('${REG}', null)`, "un pago en línea (Stripe) NO se deshace a mano", "deny");
+await as("authenticated", A, `select public.set_registration_payment('${REG}','efectivo')`, "ni se cambia el método de un pago en línea", "deny");
+await as("authenticated", A, `select public.confirm_stripe_payment('${REG}','cs_x',100)`, "el organizador NO confirma pagos de Stripe", "deny");
+await as("authenticated", P2, `select public.confirm_stripe_payment('${REG}','cs_x',100)`, "el participante NO confirma pagos de Stripe", "deny");
+await as("anon", null, `select public.confirm_stripe_payment('${REG}','cs_x',100)`, "anónimo NO confirma pagos de Stripe", "deny");
+await as("service_role", null, `select public.confirm_stripe_payment('${REG}','cs_1',120000)`, "el servidor SÍ confirma (idempotente, mismo id)", "some");
+await db.exec(`update registrations set payment_status = 'pendiente', payment_method = null, provider_payment_id = null where id = '${REG}'`);
+// instrucciones de pago
+await as("authenticated", A, `insert into event_payment_info (event_id, instructions) values ('${EV}', 'CLABE 012345678901234567 · Banco X · Juan Pérez')`, "el organizador escribe las instrucciones de pago", "some");
+await as("authenticated", P2, `select instructions from event_payment_info where event_id = '${EV}'`, "un INSCRITO ve las instrucciones", "some");
+await as("authenticated", C, `select instructions from event_payment_info where event_id = '${EV}'`, "otro inscrito también", "some");
+await as("authenticated", B, `select instructions from event_payment_info where event_id = '${EV}'`, "otro organizador que también está inscrito (como lazador) SÍ las ve", "some");
+await as("anon", null, `select instructions from event_payment_info`, "anónimo NO las ve", "deny");
+await as("authenticated", D, `select instructions from event_payment_info where event_id = '${EV}'`, "un no inscrito (admin sin inscripción) NO las ve", "deny");
+await as("authenticated", B, `insert into event_payment_info (event_id, instructions) values ('e0000000-0000-0000-0000-000000000002', 'x')`, "no escribe instrucciones en eventos ajenos", "deny");
+await as("authenticated", A, `update event_payment_info set instructions = 'Efectivo en la arena' where event_id = '${EV}'`, "el organizador edita las instrucciones", "some");
+await as("authenticated", A, `insert into event_payment_info (event_id, instructions) values ('e0000000-0000-0000-0000-000000000002', '   ')`, "instrucciones vacías se rechazan", "deny");
 console.log("— Participante");
 await as("authenticated", C, "select phone_e164 from roper_contacts", "ve SOLO su propio contacto (1)", "some");
 await as("authenticated", C, "select organizer_verified from profiles", "ve su perfil (1)", "some");

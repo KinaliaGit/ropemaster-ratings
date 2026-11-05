@@ -33,8 +33,14 @@ export const en: Dict = {
     organizedBy: "Hosted by", photos: "Photos", noPhotos: "The organizer hasn't uploaded photos yet.", enrolled: "Registered", noEnrolled: "No one has registered yet.",
     enrollment: "Registration", enroll: "Register", needAccount: "You need a participant account.", eventFinished: "Event finished", full: "Full",
   },
+  pay: {
+    method: { efectivo: "Cash", transferencia: "Bank transfer", stripe: "Online" }, markPaid: "Mark paid:", undo: "Undo", error: "Couldn't change the payment. Please try again.",
+    howTitle: "How to pay", online: "Pay online", onlineBusy: "Redirecting to Stripe…", onlineHint: "By card, securely with Stripe. It's marked paid automatically.",
+    offlineHint: "Or pay in cash or by bank transfer and the organizer will mark your payment as received.", noInstructions: "The organizer didn't leave payment instructions: contact them to pay in cash or by transfer.",
+    returned: "Thank you! We're confirming your payment; it will show as paid in a few seconds.", paidWith: "Paid with", errors: { unauthenticated: "Sign in to pay.", invalid: "We couldn't find that registration.", already: "That registration is already paid.", noPayouts: "The organizer hasn't enabled online payments yet.", generic: "Couldn't start the payment." },
+  },
   enroll: {
-    title: "Registration", category: "Category", discipline: "Discipline", submit: "Register", pendingNote: "Your spot is reserved as pending payment. You can cancel it while it isn't paid.",
+    title: "Registration", category: "Category", discipline: "Discipline", submit: "Register", pendingNote: "Your spot is reserved as pending payment. Afterwards you can pay online or in cash/by transfer with the organizer. You can cancel it while it isn't paid.",
     errors: {
       forbidden: "Only participants can register.", invalid_category: "Invalid event or category.", closed: "Registration is closed.", already: "You're already registered in this category.",
       full: "The event is full.", paid: "That registration is already paid and can't be canceled here.", not_found: "We couldn't find that registration.", failed: "Couldn't complete that. Please try again.",
@@ -66,7 +72,7 @@ export const en: Dict = {
     photo: { add: "Add photo", change: "Change photo", remove: "Remove", saving: "Saving…", tooBig: `The photo is larger than ${MAX_UPLOAD_MB} MB. Choose a lighter one.`, error: "Couldn't save the photo. Use a JPG, PNG or WebP image." },
     type: "Participant account", myRegistrations: "My registrations",
     noRegistrations: "You haven't registered for any event yet.", available: "Available events", noneAvailable: "No new events right now.",
-    enrolledOk: "Done! Your spot is reserved. Payment will be available soon.", canceledOk: "Registration canceled.", cancel: "Cancel",
+    enrolledOk: "Done! Your spot is reserved. Below you can see how to pay.", canceledOk: "Registration canceled.", cancel: "Cancel",
     ranking: "Ranking", seeAll: "See all", publicProfile: "View my public profile and history", paid: "Paid", pending: "Payment pending",
   },
   org: {
@@ -100,6 +106,7 @@ export const en: Dict = {
       name: "Name", email: "Email", since: "Signed up", verify: "Verify", revoke: "Revoke", audit: "History", auditNone: "No activity yet.", actionVerify: "verified", actionRevoke: "revoked", error: "Couldn't complete the change.",
     },
     form: {
+      paymentInfo: "Payment instructions (transfer or cash)", paymentInfoHint: "Only people who register for your event can see them. E.g. bank account, bank and holder, or \"pay cash at the arena\".", paymentInfoPlaceholder: "Account 0123 4567 8901 2345 67 · Bank · Holder",
       save: "Save changes", editTitle: "Edit event", editBlurb: "Changes show up right away on the public page. Anyone already registered keeps the price they reserved at.", saved: "Changes saved.", edit: "Edit",
       errors: { capacity: "Capacity can't be lower than the number already registered.", catInUse: "You can't remove a category that already has registrations. You can rename it or change its price." },
       photosLater: "After creating the event you can add photos and choose the cover. ", 

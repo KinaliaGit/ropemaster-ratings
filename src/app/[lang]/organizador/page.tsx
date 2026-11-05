@@ -21,7 +21,7 @@ async function Panel({ s, lang, t, welcome }: { s: Session; lang: Lang; t: Dict;
     <>
       <OrgNav lang={lang} t={t} admin={s.isAdmin} />
       <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
-        {welcome && <p role="status" className="mb-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.org.welcome}</p>}
+        {welcome && s.verified && <p role="status" className="mb-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.org.welcome}</p>}
         {!s.verified && (
           <div role="note" className="mb-6 rounded-2xl border border-line bg-sand p-4 text-sm">
             <p className="font-semibold">{s.license === "expired" ? t.org.license.expiredTitle : t.org.license.noneTitle}</p>

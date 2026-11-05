@@ -14,13 +14,14 @@ function Table({ rows, lang, a, verify }: { rows: OrganizerRow[]; lang: Lang; a:
   return (
     <div className="card mt-3 overflow-x-auto">
       <table className="w-full text-left text-sm">
-        <thead className="bg-sand label"><tr><th className="p-3">{a.name}</th><th>{a.email}</th><th>{a.since}</th><th></th></tr></thead>
+        <thead className="bg-sand label"><tr><th className="p-3">{a.name}</th><th>{a.email}</th><th>{a.since}</th><th>{a.license}</th><th></th></tr></thead>
         <tbody>
           {rows.map((o) => (
             <tr key={o.userId} className="border-t border-line">
               <td className="p-3 font-medium">{o.name}</td>
               <td>{o.email ?? "–"}</td>
               <td className="tabular-nums">{fmtDate(o.createdAt.slice(0, 10), lang)}</td>
+              <td className="text-muted">{!o.licenseUntil ? a.noLicense : o.licenseUntil === "infinity" ? a.licenseNoExpiry : new Date(o.licenseUntil) > new Date() ? `${a.licenseUntil} ${fmtDate(o.licenseUntil.slice(0, 10), lang)}` : a.licenseExpired}</td>
               <td className="pr-3 text-right">
                 <form action={setOrganizerVerified}>
                   <input type="hidden" name="lang" value={lang} /><input type="hidden" name="target" value={o.userId} /><input type="hidden" name="value" value={verify ? "true" : "false"} />

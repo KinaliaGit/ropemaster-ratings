@@ -68,7 +68,10 @@ export const es = {
     ranking: "Ranking", seeAll: "Ver todos", publicProfile: "Ver mi perfil público e historial", paid: "Pagado", pending: "Pago pendiente",
   },
   org: {
-    verify: { title: "Tu cuenta está pendiente de verificación.", text: "Mientras tanto puedes crear y publicar eventos. Para ver los correos de los participantes y registrarlos, un administrador debe verificar tu cuenta." },
+    license: {
+      noneTitle: "Tu cuenta está en revisión.", noneText: "Para crear eventos y ver participantes necesitas una licencia de Rope Master vigente o la aprobación de un administrador. Mientras tanto no puedes publicar nada.",
+      expiredTitle: "Tu licencia venció.", expiredText: "Renuévala para volver a crear y publicar eventos. Venció el", validUntil: "Licencia vigente hasta el",
+    },
     welcome: "¡Cuenta creada! Ya puedes crear tu primer evento.", noEvents: "Aún no tienes eventos. Crea el primero.", noParticipants: "Todavía no hay participantes registrados.",
     accountType: "Cuenta de organizador", newEvent: "+ Nuevo evento", events: "Eventos", enrolled: "Inscritos", collected: "Cobrado", myEvents: "Mis eventos", manage: "Gestionar",
     tabs: { admin: "Administración", summary: "Resumen", participants: "Participantes", app: "App local" },
@@ -90,6 +93,7 @@ export const es = {
       draftTitle: "Guardado como borrador", draftText: "Todavía no es visible para nadie. Publícalo cuando esté listo y aquí tendrás el enlace.", draftLink: "El enlace funcionará cuando publiques el evento.",
     },
     admin: {
+      license: "Licencia", noLicense: "Sin licencia", licenseNoExpiry: "Vigente, sin vencimiento", licenseUntil: "Vigente hasta", licenseExpired: "Vencida",
       title: "Administración", blurb: "Aprueba a los organizadores que pueden ver correos y registrar participantes.", pending: "Pendientes de verificación", verifiedTitle: "Verificados", none: "No hay organizadores en esta lista.",
       name: "Nombre", email: "Correo", since: "Registro", verify: "Verificar", revoke: "Revocar", audit: "Historial", auditNone: "Aún no hay movimientos.", actionVerify: "verificó a", actionRevoke: "revocó a", error: "No se pudo completar el cambio.",
     },

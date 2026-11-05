@@ -68,7 +68,10 @@ export const en: Dict = {
     ranking: "Ranking", seeAll: "See all", publicProfile: "View my public profile and history", paid: "Paid", pending: "Payment pending",
   },
   org: {
-    verify: { title: "Your account is pending verification.", text: "Meanwhile you can create and publish events. To see participants' emails and register them, an administrator must verify your account." },
+    license: {
+      noneTitle: "Your account is under review.", noneText: "To create events and see participants you need an active Rope Master license or an administrator's approval. Until then you can't publish anything.",
+      expiredTitle: "Your license has expired.", expiredText: "Renew it to create and publish events again. It expired on", validUntil: "License valid until",
+    },
     welcome: "Account created! You can now create your first event.", noEvents: "You have no events yet. Create the first one.", noParticipants: "No participants have registered yet.",
     accountType: "Organizer account", newEvent: "+ New event", events: "Events", enrolled: "Registered", collected: "Collected", myEvents: "My events", manage: "Manage",
     tabs: { admin: "Administration", summary: "Overview", participants: "Participants", app: "Local app" },
@@ -90,6 +93,7 @@ export const en: Dict = {
       draftTitle: "Saved as a draft", draftText: "It isn't visible to anyone yet. Publish it when it's ready and you'll have the link here.", draftLink: "The link will work once you publish the event.",
     },
     admin: {
+      license: "License", noLicense: "No license", licenseNoExpiry: "Active, no expiry", licenseUntil: "Active until", licenseExpired: "Expired",
       title: "Administration", blurb: "Approve the organizers who can see emails and register participants.", pending: "Pending verification", verifiedTitle: "Verified", none: "No organizers in this list.",
       name: "Name", email: "Email", since: "Signed up", verify: "Verify", revoke: "Revoke", audit: "History", auditNone: "No activity yet.", actionVerify: "verified", actionRevoke: "revoked", error: "Couldn't complete the change.",
     },

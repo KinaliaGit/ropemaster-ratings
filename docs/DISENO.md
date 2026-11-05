@@ -52,3 +52,16 @@ insertar: dos personas no toman el último lugar a la vez. El precio sale de la 
 Hasta que exista el pago (Stripe) la inscripción queda `pendiente` y ocupa lugar; se puede cancelar mientras no esté pagada.
 Conteo y lista pública: `event_registration_counts()` / `event_registrants(evento)` (solo eventos publicados, sin pagos).
 Si un evento se pasa a borrador, las inscripciones se conservan (el participante las sigue viendo; el público ya no).
+
+## Licencia de organizadores (migración 0015, KIN-572)
+
+Un organizador **opera** (crea y edita eventos, categorías y fotos, ve el directorio, registra participantes) solo si está **activo**:
+`private.organizer_active()` = licencia vigente (`profiles.license_valid_until > now()`, `infinity` = sin vencimiento) **o** aprobado a mano por un admin (`organizer_verified`).
+- Licencia vigente: activo automático, hasta que venza (la base compara con `now()`, no hace falta ningún proceso).
+- Sin licencia: queda **en revisión manual**; hasta que un admin lo apruebe no puede hacer nada (solo ve su cuenta y sus datos).
+- Licencia vencida (y sin aprobación manual): ya no crea ni edita nada; sigue viendo sus propios eventos.
+Las columnas `license_*` NO son editables desde la API: las escribe solo el servidor con la service role tras comprobar la licencia.
+
+**Pendiente (bloquea la vinculación automática):** la comprobación contra la base de licencias (proyecto `rope-master-licencias`, con compradores reales)
+y la `SUPABASE_SERVICE_ROLE_KEY` de ratings en `.env.local`. Regla acordada: el correo de la licencia debe coincidir con el de la cuenta; un folio (`order_id`) solo
+se vincula a una cuenta (índice único). Mientras tanto la vía manual (admin) funciona.

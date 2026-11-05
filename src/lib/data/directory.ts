@@ -27,19 +27,19 @@ export async function listDirectory(lang: "es" | "en", labels: { verified: strin
   });
 }
 
-export type OrganizerRow = { userId: string; name: string; email: string | null; verified: boolean; createdAt: string };
+export type OrganizerRow = { userId: string; name: string; email: string | null; verified: boolean; licenseUntil: string | null; createdAt: string };
 export type AuditRow = { id: string; admin: string; target: string; action: "verify" | "revoke"; at: string };
 
 // Organizadores y auditoría para la pantalla de administración (la base solo lo deja ver a administradores).
 export async function listOrganizersForAdmin(): Promise<{ organizers: OrganizerRow[]; audit: AuditRow[] }> {
   const supabase = await createServerSupabase();
   const [orgs, audit] = await Promise.all([
-    supabase.from("profiles").select("user_id, display_name, email, organizer_verified, created_at").eq("role", "organizador")
+    supabase.from("profiles").select("user_id, display_name, email, organizer_verified, license_valid_until, created_at").eq("role", "organizador")
       .order("organizer_verified", { ascending: true }).order("created_at", { ascending: false }).limit(500),
     supabase.from("admin_audit").select("id, admin_id, target_user_id, action, created_at").order("created_at", { ascending: false }).limit(20),
   ]);
   if (orgs.error) throw new Error(`No se pudieron leer los organizadores: ${orgs.error.message}`);
-  const organizers = (orgs.data ?? []).map((p) => ({ userId: p.user_id, name: p.display_name, email: p.email, verified: p.organizer_verified, createdAt: p.created_at }));
+  const organizers = (orgs.data ?? []).map((p) => ({ userId: p.user_id, name: p.display_name, email: p.email, verified: p.organizer_verified, licenseUntil: p.license_valid_until, createdAt: p.created_at }));
   const names = new Map(organizers.map((o) => [o.userId, o.name]));
   return {
     organizers,

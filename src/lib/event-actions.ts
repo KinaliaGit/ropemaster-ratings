@@ -19,6 +19,7 @@ export async function createEvent(formData: FormData) {
   const l = lang(formData.get("lang"));
   const session = await getSession();
   if (session?.role !== "organizador") redirect(`/${l}/entrar?role=organizador`);
+  if (!session.verified) redirect(`/${l}/organizador`); // sin licencia vigente ni aprobación no se crean eventos (la base también lo impone)
 
   const name = text(formData.get("name"), 120);
   const date = text(formData.get("date"), 10);

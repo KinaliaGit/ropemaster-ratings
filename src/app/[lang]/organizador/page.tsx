@@ -24,16 +24,17 @@ async function Panel({ s, lang, t, welcome }: { s: Session; lang: Lang; t: Dict;
         {welcome && <p role="status" className="mb-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.org.welcome}</p>}
         {!s.verified && (
           <div role="note" className="mb-6 rounded-2xl border border-line bg-sand p-4 text-sm">
-            <p className="font-semibold">{t.org.verify.title}</p>
-            <p className="mt-1 text-muted">{t.org.verify.text}</p>
+            <p className="font-semibold">{s.license === "expired" ? t.org.license.expiredTitle : t.org.license.noneTitle}</p>
+            <p className="mt-1 text-muted">{s.license === "expired" ? `${t.org.license.expiredText} ${s.licenseUntil ? fmtDate(s.licenseUntil.slice(0, 10), lang) : ""}` : t.org.license.noneText}</p>
           </div>
         )}
+        {s.verified && s.license === "valid" && s.licenseUntil && <p className="mb-6 text-sm text-muted">{t.org.license.validUntil} {fmtDate(s.licenseUntil.slice(0, 10), lang)}</p>}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="label">{t.org.accountType}</p>
             <h1 className="text-3xl font-semibold">{s.name}</h1>
           </div>
-          <Link href={`/${lang}/organizador/eventos/nuevo`} className="rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-hot">{t.org.newEvent}</Link>
+          {s.verified ? <Link href={`/${lang}/organizador/eventos/nuevo`} className="rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-hot">{t.org.newEvent}</Link> : <span className="rounded-full bg-sand px-5 py-2.5 text-sm font-medium text-muted">{t.org.newEvent}</span>}
         </div>
         <dl className="mt-6 grid gap-3 sm:grid-cols-3">
           {stats.map(([l, v]) => <div key={l} className="card p-4"><dd className="text-3xl font-semibold tabular-nums">{v}</dd><dt className="label mt-1">{l}</dt></div>)}

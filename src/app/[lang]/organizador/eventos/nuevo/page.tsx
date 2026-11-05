@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
@@ -13,7 +14,9 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/eventos/n
   const f = t.org.form;
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador/eventos/nuevo`}>
-      {(s) => (
+      {(s) => {
+        if (!s.verified) redirect(`/${lang}/organizador`);
+        return (
         <>
           <OrgNav lang={lang} t={t} admin={s.isAdmin} />
           <div className="mx-auto max-w-2xl px-5 pb-10 pt-8">
@@ -26,7 +29,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/eventos/n
             />
           </div>
         </>
-      )}
+      );}}
     </Gate>
   );
 }

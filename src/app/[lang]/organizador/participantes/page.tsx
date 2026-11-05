@@ -25,7 +25,7 @@ async function Page({ params }: { params: PageProps<"/[lang]/organizador/partici
               <h1 className="text-3xl font-semibold">{d.title}</h1>
               <p className="mt-1 text-sm text-muted">{d.blurb}</p>
               {!canSee
-                ? <div role="note" className="mt-6 rounded-2xl border border-line bg-sand p-4 text-sm"><p className="font-semibold">{t.org.verify.title}</p><p className="mt-1 text-muted">{t.org.verify.text}</p></div>
+                ? <div role="note" className="mt-6 rounded-2xl border border-line bg-sand p-4 text-sm"><p className="font-semibold">{s.license === "expired" ? t.org.license.expiredTitle : t.org.license.noneTitle}</p><p className="mt-1 text-muted">{s.license === "expired" ? t.org.license.expiredText : t.org.license.noneText}</p></div>
                 : <>
                     <AddParticipantForm l={{ title: d.addTitle, blurb: d.addBlurb, name: d.addName, email: d.addEmail, emailHint: d.addEmailHint, consent: d.addConsent, btn: d.addBtn, added: d.added, duplicate: d.duplicate, errors: d.errors }} />
                     {rows.length === 0

@@ -5,7 +5,7 @@ Estado al 2026-11-05, rama `feat/organizadores-reales` (PR #1). ✅ hecho y prob
 ## Cuentas y datos
 - ✅ Organizadores y participantes reales (correo y contraseña, selector de rol; un organizador también puede ser lazador).
 - ✅ Participante de demostración y `src/lib/mock.ts` eliminados de esta rama.
-- 🟡 **Códigos de conexión de la app:** en esta rama siguen en memoria (`src/lib/sync-tokens.ts`) y existe el atajo `APP_SYNC_TOKEN`. La versión en la base (KIN-584, migración `0011_codigos_de_conexion`) está en `main`: al unir las ramas se quita el atajo y se aplica con `npx supabase db push --remote --include-all`.
+- ✅ **Códigos de conexión de la app** en la base (KIN-584): migración `0011_codigos_de_conexion` aplicada en `rope-master-ratings` y unida a esta rama. Sin la service role key usan memoria solo en desarrollo y se niegan a funcionar en producción: **hace falta `SUPABASE_SERVICE_ROLE_KEY` en Vercel (Production)** para que la pestaña «App local» funcione.
 - ✅ Evento de prueba «E1 Prueba» e inscripción borrados (la base quedó sin eventos). Queda la cuenta vacía de `emilianoneaves@gmail.com` (sin perfil).
 - ⬜ Dar de alta a los primeros organizadores reales (licencia vigente o aprobación de un admin).
 
@@ -31,7 +31,7 @@ Estado al 2026-11-05, rama `feat/organizadores-reales` (PR #1). ✅ hecho y prob
 - ⛔ La fórmula del rating la define la FMR (KIN-571); el cálculo y la publicación (KIN-583) esperan eso.
 
 ## Plataforma y seguridad
-- ⬜ **Confirmación de correo ACTIVADA** con SMTP real (Brevo): es obligatoria, porque el reclamo de perfiles por correo exige correo confirmado. Poner la URL de la web en las URLs permitidas de redirección de Auth y usar `{{ .ConfirmationURL }}`/`/auth/confirm` en la plantilla. El flujo ya está en el código (KIN-576) pero sin probar con correo real.
+- 🟡 **Confirmación de correo ACTIVADA** (ya está encendida y el SMTP de Brevo manda el correo desde `servicios@kinalia.com.mx`; falta probar el enlace de punta a punta en el dominio real, que hoy sirve la versión vieja hasta unir el PR #1). **ACTIVADA** con SMTP real (Brevo): es obligatoria, porque el reclamo de perfiles por correo exige correo confirmado. Poner la URL de la web en las URLs permitidas de redirección de Auth y usar `{{ .ConfirmationURL }}`/`/auth/confirm` en la plantilla. El flujo ya está en el código (KIN-576) pero sin probar con correo real.
 - ⬜ Encender «protección contra contraseñas filtradas» (aviso `auth_leaked_password_protection`), CAPTCHA y límites de Auth.
 - ⬜ Dominio y SSL; respaldos (Supabase Pro) y plan de rollback.
 - ⬜ Borrar el archivo huérfano del flyer de «E1 Prueba» en el bucket `event-photos` (borrar un evento solo quita las filas; los archivos se quitan por la API con la service role).
@@ -39,7 +39,7 @@ Estado al 2026-11-05, rama `feat/organizadores-reales` (PR #1). ✅ hecho y prob
 - ✅ Aviso de rendimiento en `event_categories` resuelto (migración 0019).
 - 🟡 `db advisors` deja 5 avisos: 4 son **intencionales** (`event_registration_counts` y `event_registrants` son SECURITY DEFINER y públicas a propósito: solo devuelven números e ids de eventos publicados, sin pagos ni contactos) y 1 es la protección contra contraseñas filtradas (se enciende en el panel de Auth).
 - ⬜ CI en verde y protección de `main` (PR #2 de revisión automática).
-- 🟡 Migraciones `0001`–`0019` aplicadas en `rope-master-ratings` (la `0011` de Edgar queda por aplicar al unir ramas).
+- ✅ Migraciones `0001`–`0019` aplicadas en `rope-master-ratings` (con la `0011` de Edgar).
 
 ## Legal
 - ⬜ Términos y Aviso de Privacidad aprobados por el abogado; quitar la etiqueta «Borrador» (`DRAFT` en `src/lib/legal.ts`). Cambió el contenido: ya no se pide celular, se usa el correo.

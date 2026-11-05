@@ -21,7 +21,7 @@
 - Fotos (Supabase Storage, buckets públicos): `avatars/<roper_id>/<marca de tiempo>.jpg` y `event-photos/<event_id>/<uuid>.jpg`.
   La web reduce en el navegador (perfil 256 px cuadrada; evento lado largo 1600 px; JPEG, lo que quita el EXIF), el servidor
   vuelve a comprobar el tipo REAL por sus bytes (`src/lib/image-validate.ts`, con pruebas en `tests/`) y sube con la sesión de
-  la persona, así que las políticas de Storage (migraciones 0009 y 0011) deciden quién escribe dónde. Reemplazar o borrar elimina
+  la persona, así que las políticas de Storage (migraciones 0009 y 0017) deciden quién escribe dónde. Reemplazar o borrar elimina
   el archivo anterior. Límite de 5 MB para el archivo original; los buckets aceptan hasta 300 KB (avatares) y 2 MB (eventos), solo
   JPG/PNG/WebP. **Pendiente de endurecer:** Storage solo revisa el tipo *declarado* y no cuenta archivos, así que un organizador
   con sesión que llame a Storage directo puede guardar bytes arbitrarios (hasta 2 MB por archivo) en la carpeta de sus eventos.
@@ -73,3 +73,9 @@ y **lazador** (su fila en `ropers`, enlazada por `user_id`). Cualquier cuenta pu
 (`claim_my_roper`: reclama el que otro organizador haya registrado con su correo, si no, crea uno) y con él puede inscribirse a eventos.
 La licencia vencida solo afecta el lado de organizador: el perfil de lazador, su historial y sus inscripciones siguen igual.
 "Entrar como" elige el espacio al que se llega; una cuenta de participante no tiene espacio de organizador (pendiente: solicitarlo, pasando por licencia o aprobación).
+
+## Renumeración de 0011 → 0017
+
+`main` ya trae `0011_codigos_de_conexion.sql` (KIN-584), así que nuestra `0011_fotos_storage.sql` pasó a **`0017_fotos_storage.sql`** (contenido idempotente y con el estado final de las políticas, ver su encabezado).
+En la base real el historial (`supabase_migrations.schema_migrations`) se cambió de `0011` a `0017` para que no se vuelva a ejecutar.
+Al unir las ramas, `0011_codigos_de_conexion` queda por detrás de la última migración aplicada: se aplica con `npx supabase db push --remote --include-all`.

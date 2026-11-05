@@ -1,4 +1,8 @@
--- Fotos reales en Supabase Storage (perfil y eventos). Solo cambios aditivos.
+-- Fotos reales en Supabase Storage (perfil y eventos). Antes era 0011_fotos_storage.sql.
+-- RENUMERADA a 0017: `main` ya trae 0011_codigos_de_conexion.sql (KIN-584) y dos migraciones con el mismo número chocan al unir las ramas.
+-- En la base real esta migración ya se aplicó (con el número 0011) y su historial se pasó a 0017 sin volver a ejecutarla.
+-- El contenido se dejó IDEMPOTENTE y con el estado FINAL de las políticas de fotos (con el candado de licencia de 0015): como ahora corre después
+-- de 0012–0016, no debe deshacer nada de ellas. Una base nueva termina en el mismo estado que la real.
 
 -- 1) El id de participante de quien consulta. Es INVOKER (corre con los permisos de quien llama) y delega en la
 --    función privada de 0009; así la web puede construir la ruta de su carpeta (<roper_id>/...) sin leer ropers.user_id.
@@ -8,19 +12,20 @@ create or replace function public.my_roper_id() returns uuid
 revoke all on function public.my_roper_id() from public, anon;
 grant execute on function public.my_roper_id() to authenticated;
 
--- 2) Fotos de evento: el dueño puede subir, reemplazar y borrar los archivos de la carpeta <event_id>/ de SUS eventos.
---    (0004 solo permitía subir; sin borrar quedarían archivos huérfanos al reemplazar o eliminar una foto.)
+-- 2) Fotos de evento: el dueño (organizador ACTIVO) puede subir, reemplazar y borrar los archivos de la carpeta <event_id>/ de SUS eventos.
 drop policy if exists "organizador escribe fotos" on storage.objects;
 create policy "organizador escribe fotos" on storage.objects for insert to authenticated
-  with check (bucket_id = 'event-photos'
+  with check (bucket_id = 'event-photos' and (select private.organizer_active())
     and (storage.foldername(name))[1]::uuid in (select id from public.events where organizer_id = (select auth.uid())));
+drop policy if exists "organizador reemplaza fotos" on storage.objects;
 create policy "organizador reemplaza fotos" on storage.objects for update to authenticated
-  using (bucket_id = 'event-photos'
+  using (bucket_id = 'event-photos' and (select private.organizer_active())
     and (storage.foldername(name))[1]::uuid in (select id from public.events where organizer_id = (select auth.uid())))
-  with check (bucket_id = 'event-photos'
+  with check (bucket_id = 'event-photos' and (select private.organizer_active())
     and (storage.foldername(name))[1]::uuid in (select id from public.events where organizer_id = (select auth.uid())));
+drop policy if exists "organizador borra archivos de fotos" on storage.objects;
 create policy "organizador borra archivos de fotos" on storage.objects for delete to authenticated
-  using (bucket_id = 'event-photos'
+  using (bucket_id = 'event-photos' and (select private.organizer_active())
     and (storage.foldername(name))[1]::uuid in (select id from public.events where organizer_id = (select auth.uid())));
 
 -- 3) Defensa en profundidad: los buckets mismos rechazan archivos grandes o que no sean imágenes.

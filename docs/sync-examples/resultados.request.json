@@ -1,0 +1,42 @@
+{
+  "contract_version": 1,
+  "client_batch_id": "5b0f9d1e-3c64-4e4e-9a52-0d6f4f1c7a10",
+  "results": [
+    {
+      "id": "a1c2e3f4-0000-4000-8000-000000000001",
+      "revision": 1,
+      "event_id": "e7d1b9a0-1111-4222-8333-444455556666",
+      "roper_global_id": "0c9a7d52-2222-4333-8444-555566667777",
+      "discipline": "lazo",
+      "time_ms": 8420,
+      "penalty_ms": 0,
+      "disqualified": false,
+      "place": 1,
+      "recorded_at": "2026-12-06T21:14:03Z"
+    },
+    {
+      "id": "a1c2e3f4-0000-4000-8000-000000000002",
+      "revision": 1,
+      "event_id": "e7d1b9a0-1111-4222-8333-444455556666",
+      "roper_global_id": "7f31c0de-3333-4444-8555-666677778888",
+      "discipline": "lazo",
+      "time_ms": 9150,
+      "penalty_ms": 5000,
+      "disqualified": false,
+      "place": 2,
+      "recorded_at": "2026-12-06T21:16:41Z"
+    },
+    {
+      "id": "a1c2e3f4-0000-4000-8000-000000000003",
+      "revision": 1,
+      "event_id": "e7d1b9a0-1111-4222-8333-444455556666",
+      "roper_global_id": "b2e8a611-4444-4555-8666-777788889999",
+      "discipline": "lazo",
+      "time_ms": null,
+      "penalty_ms": 0,
+      "disqualified": true,
+      "place": null,
+      "recorded_at": "2026-12-06T21:19:12Z"
+    }
+  ]
+}

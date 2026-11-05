@@ -481,6 +481,52 @@ console.log("- Resultados que sube la app (0021)");
   await as("authenticated", B, `select action from event_results_log where event_id = '${EV}'`, "otro organizador NO ve esa bitácora", "deny");
   await as("anon", null, "select id from result_uploads", "anónimo NO ve las subidas", "deny");
   await as("service_role", null, `select * from public.app_close_event_results('${A}', '${EV}', 0)`, "el servidor SÍ ejecuta las funciones", "some");
+
+  // 9) Resumen con rondas por dentro (0022): contadores derivados, orden estable, validación y correcciones de una ronda.
+  console.log("- Resumen con rondas por dentro (0022)");
+  const rid = (n) => `a1c2e3f4-0000-4000-8000-0000000001${String(n).padStart(2, "0")}`;
+  const round = (r, status, time, extra = {}) => ({ round: r, stage: "preliminary", status, time_ms: status === "completed" ? time : null, penalty_ms: 0, ...extra });
+  const withRounds = (n, rounds, extra = {}) => ({ ...one({ id: rid(n), roper_global_id: R1, place: 5, time_ms: 17000, penalty_ms: 0, completed_runs: undefined, nt_count: undefined, dq_count: undefined }), rounds, ...extra });
+  const stored = async (n) => (await db.query(`select rounds, completed_runs, nt_count, dq_count, revision from event_results where id = '${rid(n)}'`)).rows[0];
+  const flat = (rounds) => rounds.map((x) => [x.round, x.stage, x.status, x.time_ms, x.penalty_ms]);
+
+  const ok = await upload(A, [withRounds(1, [round(1, "completed", 8000), round(2, "no_time"), round(3, "completed", 9000)])]);
+  await check("con rondas y sin contadores: se acepta", ok[0].r_status === "accepted");
+  const row1 = await stored(1);
+  await check("los contadores salen de las rondas (2 completadas, 1 no time, 0 descalificaciones)", row1.completed_runs === 2 && row1.nt_count === 1 && row1.dq_count === 0);
+  await check("un no time cuenta como intento fallido y se guarda sin tiempo", JSON.stringify(flat(row1.rounds)) === JSON.stringify([[1, "preliminary", "completed", 8000, 0], [2, "preliminary", "no_time", null, 0], [3, "preliminary", "completed", 9000, 0]]));
+
+  const shuffled = await upload(A, [withRounds(2, [{ ...round(1, "completed", 7000), stage: "final" }, round(2, "completed", 7100), round(1, "completed", 7200)])]);
+  await check("las rondas se guardan ordenadas (preliminares y luego la final)", shuffled[0].r_status === "accepted"
+    && JSON.stringify(flat((await stored(2)).rounds)) === JSON.stringify([[1, "preliminary", "completed", 7200, 0], [2, "preliminary", "completed", 7100, 0], [1, "final", "completed", 7000, 0]]));
+  const reordered = await upload(A, [withRounds(2, [round(2, "completed", 7100), { ...round(1, "completed", 7000), stage: "final" }, round(1, "completed", 7200)])]);
+  await check("reenviar las mismas rondas en otro orden: unchanged", reordered[0].r_status === "unchanged");
+
+  const fixedRound = await upload(A, [withRounds(1, [round(1, "completed", 8000), round(2, "completed", 8100), round(3, "completed", 9000)], { revision: 2 })]);
+  await check("corregir una ronda (el no time pasó a tener tiempo): updated y contadores nuevos", fixedRound[0].r_status === "updated" && fixedRound[0].r_revision === 2
+    && (await stored(1)).completed_runs === 3 && (await stored(1)).nt_count === 0);
+  const sameRevision = await upload(A, [withRounds(1, [round(1, "completed", 8000), round(2, "completed", 8100), round(3, "completed", 9500)], { revision: 2 })]);
+  await check("otra ronda distinta con la misma revisión: stale_revision", sameRevision[0].r_code === "stale_revision");
+
+  const badRounds = (n, rounds, extra = {}) => withRounds(n, rounds, extra);
+  const invalid = await upload(A, [
+    badRounds(11, [round(1, "pending", null)]), badRounds(12, [{ ...round(1, "completed", null), time_ms: null }]), badRounds(13, [{ ...round(1, "no_time", null), time_ms: 5000 }]),
+    badRounds(14, [round(1, "completed", 8000, { penalty_ms: -1 })]), badRounds(15, [round(1, "completed", 8000), round(1, "no_time")]), badRounds(16, [round(0, "completed", 8000)]),
+    badRounds(17, Array.from({ length: 21 }, (_, i) => round(i + 1, "completed", 8000))), badRounds(18, [round(1, "completed", 8000, { stage: "semifinal" })]),
+    badRounds(19, "no es una lista"), badRounds(20, [42]), badRounds(21, [round(1, "completed", 8000)], { completed_runs: 2 }), badRounds(22, [round(1, "no_time")], { nt_count: 0 }),
+    badRounds(23, [round(1, "completed", 8000)], { dq_count: 1 }), badRounds(24, [round(1, "completed", 8000, { time_ms: 8000.5 })]),
+  ]);
+  await check("rondas inválidas o contadores que no coinciden: cada una se rechaza como invalid_field", invalid.length === 14 && invalid.every((r) => r.r_status === "rejected" && r.r_code === "invalid_field" && r.r_retry === false));
+  await check("lo rechazado no dejó nada guardado", (await count("select count(*)::int as n from event_results where id::text like 'a1c2e3f4-0000-4000-8000-0000000001%' and id::text > '" + rid(10) + "'")) === 0);
+  const twenty = await upload(A, [withRounds(30, Array.from({ length: 20 }, (_, i) => round(i + 1, "completed", 8000 + i)))]);
+  await check("20 rondas es el máximo permitido", twenty[0].r_status === "accepted" && (await stored(30)).completed_runs === 20);
+
+  // Sin rondas también se acepta (solo el resumen); si luego llegan rondas con revisión mayor, se completan.
+  const summaryOnly = await upload(A, [{ ...one({ id: rid(40), roper_global_id: R2 }), completed_runs: 3, nt_count: 0, dq_count: 0, rounds: undefined }]);
+  await check("solo el resumen, sin rondas: se acepta y las rondas quedan vacías", summaryOnly[0].r_status === "accepted" && (await stored(40)).rounds === null);
+  const completed = await upload(A, [{ ...one({ id: rid(40), roper_global_id: R2 }), completed_runs: 3, nt_count: 0, dq_count: 0, revision: 2,
+    rounds: [round(1, "completed", 8000), round(2, "completed", 8000), round(3, "completed", 8000)] }]);
+  await check("llegan las rondas con revisión mayor: se completa el mismo resultado", completed[0].r_status === "updated" && (await stored(40)).rounds.length === 3);
 }
 
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");

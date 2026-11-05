@@ -8,10 +8,18 @@
       "event_id": "e7d1b9a0-1111-4222-8333-444455556666",
       "roper_global_id": "0c9a7d52-2222-4333-8444-555566667777",
       "discipline": "lazo",
-      "time_ms": 8420,
+      "place": 1,
+      "time_ms": 25280,
       "penalty_ms": 0,
       "disqualified": false,
-      "place": 1,
+      "completed_runs": 3,
+      "nt_count": 0,
+      "dq_count": 0,
+      "rounds": [
+        { "round": 1, "stage": "preliminary", "status": "completed", "time_ms": 8420, "penalty_ms": 0 },
+        { "round": 2, "stage": "preliminary", "status": "completed", "time_ms": 8300, "penalty_ms": 0 },
+        { "round": 3, "stage": "preliminary", "status": "completed", "time_ms": 8560, "penalty_ms": 0 }
+      ],
       "recorded_at": "2026-12-06T21:14:03Z"
     },
     {
@@ -20,10 +28,18 @@
       "event_id": "e7d1b9a0-1111-4222-8333-444455556666",
       "roper_global_id": "7f31c0de-3333-4444-8555-666677778888",
       "discipline": "lazo",
-      "time_ms": 9150,
+      "place": 2,
+      "time_ms": 18550,
       "penalty_ms": 5000,
       "disqualified": false,
-      "place": 2,
+      "completed_runs": 2,
+      "nt_count": 1,
+      "dq_count": 0,
+      "rounds": [
+        { "round": 1, "stage": "preliminary", "status": "completed", "time_ms": 9150, "penalty_ms": 5000 },
+        { "round": 2, "stage": "preliminary", "status": "no_time", "time_ms": null, "penalty_ms": 0 },
+        { "round": 3, "stage": "preliminary", "status": "completed", "time_ms": 9400, "penalty_ms": 0 }
+      ],
       "recorded_at": "2026-12-06T21:16:41Z"
     },
     {
@@ -32,10 +48,16 @@
       "event_id": "e7d1b9a0-1111-4222-8333-444455556666",
       "roper_global_id": "b2e8a611-4444-4555-8666-777788889999",
       "discipline": "lazo",
+      "place": 4,
       "time_ms": null,
       "penalty_ms": 0,
-      "disqualified": true,
-      "place": null,
+      "disqualified": false,
+      "completed_runs": 0,
+      "nt_count": 0,
+      "dq_count": 1,
+      "rounds": [
+        { "round": 1, "stage": "preliminary", "status": "disqualified", "time_ms": null, "penalty_ms": 0 }
+      ],
       "recorded_at": "2026-12-06T21:19:12Z"
     },
     {
@@ -45,10 +67,18 @@
       "roper_global_id": null,
       "participant_name": "Chuy Rodríguez",
       "discipline": "lazo",
-      "time_ms": 9800,
+      "place": 3,
+      "time_ms": 29800,
       "penalty_ms": 0,
       "disqualified": false,
-      "place": 3,
+      "completed_runs": 3,
+      "nt_count": 0,
+      "dq_count": 0,
+      "rounds": [
+        { "round": 1, "stage": "preliminary", "status": "completed", "time_ms": 9800, "penalty_ms": 0 },
+        { "round": 2, "stage": "preliminary", "status": "completed", "time_ms": 9900, "penalty_ms": 0 },
+        { "round": 3, "stage": "preliminary", "status": "completed", "time_ms": 10100, "penalty_ms": 0 }
+      ],
       "recorded_at": "2026-12-06T21:22:30Z"
     }
   ]

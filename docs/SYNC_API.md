@@ -91,6 +91,12 @@ Sube un lote de resultados. Misma autenticación `Authorization: Bearer <código
 
 Campos del cuerpo: `contract_version`, `client_batch_id` (UUID del envío, solo para bitácora) y `results[]`.
 
+**Un resultado es un RESUMEN por lazador y por evento, con sus rondas por dentro** (decisión del 2026-11-06). El resumen trae el lugar (lo
+calcula la app con su propia clasificación, sea round robin o con final), el tiempo total y los contadores; `rounds` trae el detalle de las
+rondas que **sí se intentaron**. Lo que no se intentó (pendiente, no se presentó, retirado, saltado) **no se manda**. Un **no time cuenta como
+intento fallido**: va en `rounds` con estado `no_time` y suma en `nt_count`. El **rating no se calcula** todavía (KIN-571 y KIN-583, en pausa):
+las rondas se guardan para cuando se defina la fórmula, y reenviar el resumen o corregir una ronda actualiza el mismo resultado.
+
 | Campo del resultado | Tipo | Regla |
 |---|---|---|
 | `id` | UUID | Lo genera la app y no cambia nunca. Es la llave de idempotencia |
@@ -99,11 +105,28 @@ Campos del cuerpo: `contract_version`, `client_batch_id` (UUID del envío, solo 
 | `roper_global_id` | UUID o `null` | `global_id` del participante en el directorio. `null` si la persona no tiene lazador en la web (ver abajo) |
 | `participant_name` | texto (1 a 120) | **Obligatorio si `roper_global_id` es `null`**; si hay lazador ligado se ignora |
 | `discipline` | texto | `lazo` o `barriles`. Solo las modalidades activas en la web |
-| `time_ms` | entero o `null` | >= 0. `null` si no hubo tiempo (descalificado o sin tiempo) |
-| `penalty_ms` | entero | >= 0. Ya viene separado: el tiempo final es `time_ms + penalty_ms` |
-| `disqualified` | booleano | Si es `true`, `place` debe ser `null` |
-| `place` | entero o `null` | Lugar >= 1 dentro de esa modalidad y evento, o `null` si no puntúa |
+| `time_ms` | entero o `null` | >= 0. **Tiempo total del evento**: la suma de los tiempos de las rondas completadas. `null` si no completó ninguna |
+| `penalty_ms` | entero | >= 0. Suma de los castigos. Ya viene separado: el tiempo final es `time_ms + penalty_ms` |
+| `disqualified` | booleano | Descalificado de TODO el evento, sin lugar: si es `true`, `place` debe ser `null`. La app hoy no descalifica de un evento completo y manda `false`; las descalificaciones por ronda van en `rounds` y en `dq_count` |
+| `place` | entero o `null` | Lugar >= 1 dentro de esa modalidad y evento, tal como lo calculó la app (con rondas preliminares y final). `null` si no puntúa |
+| `completed_runs` | entero >= 0 | Rondas completadas. Opcional si viene `rounds` (se calcula de ahí; si la app también lo manda, debe coincidir) |
+| `nt_count` | entero >= 0 | Rondas con no time. Igual que el anterior |
+| `dq_count` | entero >= 0 | Rondas con descalificación. Igual que el anterior |
+| `rounds` | lista (máx. 20) | Las rondas que se intentaron (ver abajo). Opcional: sin ella solo queda el resumen |
 | `recorded_at` | fecha ISO-8601 | Cuándo se capturó en la app. Informativo |
+
+Cada elemento de `rounds`:
+
+| Campo | Tipo | Regla |
+|---|---|---|
+| `round` | entero 1 a 20 | Número de ronda. No se repite dentro de la misma `stage` |
+| `stage` | `preliminary` o `final` | Etapa. Si falta, `preliminary` (sirve para saber quién llegó a la final) |
+| `status` | `completed`, `no_time` o `disqualified` | `completed` exige `time_ms`; los otros dos exigen `time_ms: null` |
+| `time_ms` | entero o `null` | >= 0 |
+| `penalty_ms` | entero | >= 0. Por defecto 0 |
+
+La web guarda las rondas ordenadas (preliminares y luego la final), así que reenviar las mismas en otro orden responde `unchanged`. Si una ronda no
+cumple las reglas, o los contadores no coinciden con `rounds`, el resultado se rechaza con `invalid_field`.
 
 **Tamaño del lote:** máximo 200 resultados y 256 KB por petición. Si se pasa, `413`: la app parte el lote en mitades y reenvía.
 
@@ -208,8 +231,9 @@ Revisado contra el esquema de la web (`supabase/migrations`) y el de la app (`ro
 
 **Lo que falta o hay que ajustar (del lado de la app, KIN-593)**
 3. **La app captura por EQUIPO, no por lazador.** Una corrida (`run`) es de un equipo (cabecero + pialador), no de una persona. El
-   contrato es por lazador, así que cada corrida genera dos resultados, uno por integrante. La app necesita un UUID estable por
-   (corrida, rol) para usarlo como `id`; la tabla `run` hoy solo tiene `id` entero local.
+   contrato es por lazador y por evento, así que cada equipo genera dos resultados (uno por integrante) con el mismo resumen del equipo
+   y las mismas rondas. El `id` de cada resultado se genera una vez por (evento, lazador) y se guarda en la cola de envío (`outbox`); no
+   hace falta tocar la tabla `run`.
 4. **Unidades:** la app guarda segundos con decimales (`time_sec`, `penalty`, `official_time_sec`, `REAL`). El contrato usa
    milisegundos enteros, así que la app redondea al convertir.
 5. **Estados de la app:** `result_status` tiene `qualified`, `no_time`, `disqualified`, `rerun`, `dns`, `scratched`, `skipped`. El

@@ -8,10 +8,18 @@
       "event_id": "e7d1b9a0-1111-4222-8333-444455556666",
       "roper_global_id": "7f31c0de-3333-4444-8555-666677778888",
       "discipline": "lazo",
-      "time_ms": 9150,
+      "place": 2,
+      "time_ms": 18550,
       "penalty_ms": 0,
       "disqualified": false,
-      "place": 2,
+      "completed_runs": 2,
+      "nt_count": 1,
+      "dq_count": 0,
+      "rounds": [
+        { "round": 1, "stage": "preliminary", "status": "completed", "time_ms": 9150, "penalty_ms": 0 },
+        { "round": 2, "stage": "preliminary", "status": "no_time", "time_ms": null, "penalty_ms": 0 },
+        { "round": 3, "stage": "preliminary", "status": "completed", "time_ms": 9400, "penalty_ms": 0 }
+      ],
       "recorded_at": "2026-12-06T21:16:41Z"
     }
   ]

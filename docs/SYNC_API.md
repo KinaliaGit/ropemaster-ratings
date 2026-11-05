@@ -94,7 +94,10 @@ Campos del cuerpo: `contract_version`, `client_batch_id` (UUID del envío, solo 
 **Un resultado es un RESUMEN por lazador y por evento, con sus rondas por dentro** (decisión del 2026-11-06). El resumen trae el lugar (lo
 calcula la app con su propia clasificación, sea round robin o con final), el tiempo total y los contadores; `rounds` trae el detalle de las
 rondas que **sí se intentaron**. Lo que no se intentó (pendiente, no se presentó, retirado, saltado) **no se manda**. Un **no time cuenta como
-intento fallido**: va en `rounds` con estado `no_time` y suma en `nt_count`. El **rating no se calcula** todavía (KIN-571 y KIN-583, en pausa):
+intento fallido**: va en `rounds` con estado `no_time` y suma en `nt_count`. Las **corridas extra**, las **ayudas** y los **desempates** también se
+mandan y se muestran con su etiqueta, para que se sepa que fueron así, pero **no entran al resumen** (ni al tiempo total ni a los contadores): el
+resumen sale solo de las rondas `regular` de etapa `preliminary` o `final`. Quien corrió en **sustitución** de alguien se anota dentro de esa ronda
+(la corrida se queda con el lazador original). El **rating no se calcula** todavía (KIN-571 y KIN-583, en pausa):
 las rondas se guardan para cuando se defina la fórmula, y reenviar el resumen o corregir una ronda actualiza el mismo resultado.
 
 | Campo del resultado | Tipo | Regla |
@@ -109,7 +112,7 @@ las rondas se guardan para cuando se defina la fórmula, y reenviar el resumen o
 | `penalty_ms` | entero | >= 0. Suma de los castigos. Ya viene separado: el tiempo final es `time_ms + penalty_ms` |
 | `disqualified` | booleano | Descalificado de TODO el evento, sin lugar: si es `true`, `place` debe ser `null`. La app hoy no descalifica de un evento completo y manda `false`; las descalificaciones por ronda van en `rounds` y en `dq_count` |
 | `place` | entero o `null` | Lugar >= 1 dentro de esa modalidad y evento, tal como lo calculó la app (con rondas preliminares y final). `null` si no puntúa |
-| `completed_runs` | entero >= 0 | Rondas completadas. Opcional si viene `rounds` (se calcula de ahí; si la app también lo manda, debe coincidir) |
+| `completed_runs` | entero >= 0 | Rondas regulares completadas (preliminares y final; sin extras, ayudas ni desempates). Opcional si viene `rounds` (se calcula de ahí; si la app también lo manda, debe coincidir) |
 | `nt_count` | entero >= 0 | Rondas con no time. Igual que el anterior |
 | `dq_count` | entero >= 0 | Rondas con descalificación. Igual que el anterior |
 | `rounds` | lista (máx. 20) | Las rondas que se intentaron (ver abajo). Opcional: sin ella solo queda el resumen |
@@ -119,14 +122,21 @@ Cada elemento de `rounds`:
 
 | Campo | Tipo | Regla |
 |---|---|---|
-| `round` | entero 1 a 20 | Número de ronda. No se repite dentro de la misma `stage` |
-| `stage` | `preliminary` o `final` | Etapa. Si falta, `preliminary` (sirve para saber quién llegó a la final) |
+| `round` | entero 1 a 20 | Número de ronda. Las `regular` no repiten número dentro de la misma `stage`; las `extra` y `help` sí pueden |
+| `stage` | `preliminary`, `final` o `tiebreak` | Etapa. Si falta, `preliminary` (sirve para saber quién llegó a la final). `tiebreak` es una ronda de desempate |
+| `kind` | `regular`, `extra` o `help` | Si falta, `regular`. `extra` es una corrida extra y `help` una ayuda de una vacante del sorteo |
 | `status` | `completed`, `no_time` o `disqualified` | `completed` exige `time_ms`; los otros dos exigen `time_ms: null` |
 | `time_ms` | entero o `null` | >= 0 |
 | `penalty_ms` | entero | >= 0. Por defecto 0 |
+| `substitution` | objeto, opcional | Quién corrió en sustitución en esa ronda (ver abajo). `null` equivale a no ponerlo |
 
-La web guarda las rondas ordenadas (preliminares y luego la final), así que reenviar las mismas en otro orden responde `unchanged`. Si una ronda no
-cumple las reglas, o los contadores no coinciden con `rounds`, el resultado se rechaza con `invalid_field`.
+`substitution`: `role` (`header` o `heeler`: qué lugar del equipo ocupó el sustituto), `substitute_name` (1 a 120, obligatorio),
+`substitute_global_id` (UUID o `null` si no tiene lazador en la web) y `counts_for_substitute` (booleano, por defecto `false`: si la corrida también
+cuenta para el sustituto). La corrida se queda con el lazador original: **no se crea un resultado aparte para el sustituto**.
+
+La web guarda las rondas siempre en el mismo orden (regulares, luego extras, luego ayudas; dentro, preliminares, final y desempates), así que
+reenviar las mismas en otro orden responde `unchanged`. Si una ronda no cumple las reglas, o los contadores no coinciden con las rondas que cuentan,
+el resultado se rechaza con `invalid_field`.
 
 **Tamaño del lote:** máximo 200 resultados y 256 KB por petición. Si se pasa, `413`: la app parte el lote en mitades y reenvía.
 

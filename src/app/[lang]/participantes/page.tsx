@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { ParticipantList } from "@/components/ParticipantList";
 import { listRanking } from "@/lib/data/ropers";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
@@ -5,6 +6,8 @@ import { fmtRating, initials, publicAvatarUrl, statOf } from "@/lib/people";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
 export default async function Participantes({ params }: PageProps<"/[lang]/participantes">) {
+  // Los datos públicos se leen al atender la visita, no al compilar (así el build no necesita conectarse a la base).
+  await connection();
   const lang = await resolveLang(params);
   const t = getDictionary(lang);
   // Una lista por modalidad activa; el cambio de pestaña y la búsqueda ocurren en el navegador.

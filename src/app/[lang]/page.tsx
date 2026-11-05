@@ -1,9 +1,12 @@
+import { connection } from "next/server";
 import { listPublicEvents } from "@/lib/data/events";
 import { EventCard } from "@/components/EventCard";
 import { RopeMasterPromo } from "@/components/RopeMasterPromo";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
 export default async function Home({ params }: PageProps<"/[lang]">) {
+  // Los datos públicos se leen al atender la visita, no al compilar (así el build no necesita conectarse a la base).
+  await connection();
   const lang = await resolveLang(params);
   const t = getDictionary(lang);
   const all = await listPublicEvents();

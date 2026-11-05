@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import Link from "next/link";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
@@ -9,6 +10,8 @@ import { enroll } from "@/lib/registration-actions";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
 async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/inscribirse"> }) {
+  // Los datos públicos se leen al atender la visita, no al compilar (así el build no necesita conectarse a la base).
+  await connection();
   const lang: Lang = await resolveLang(props.params);
   const { id } = await props.params;
   const sp = await props.searchParams;

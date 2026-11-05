@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import Link from "next/link";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
@@ -11,6 +12,8 @@ import { EventCover } from "@/components/EventCover";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
 async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]">["params"] }) {
+  // Los datos públicos se leen al atender la visita, no al compilar (así el build no necesita conectarse a la base).
+  await connection();
   const lang = await resolveLang(params);
   const { id } = await params;
   const t = getDictionary(lang);

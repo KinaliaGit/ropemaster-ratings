@@ -50,3 +50,19 @@ Estado al 2026-11-05, rama `feat/organizadores-reales` (PR #1). ✅ hecho y prob
 
 ## Hecho cuando
 Los tres (Ana, Edgar, Neaves) revisan esta lista y están de acuerdo en abrir.
+
+## Seguridad (revisión del 2026-11-05)
+**Verificado:**
+- ✅ Inyección SQL: la web no arma SQL ni filtros con texto del usuario (solo la API de Supabase con parámetros); las funciones de la base reciben parámetros y fijan `search_path`.
+- ✅ Permisos de la base: RLS en todas las tablas y 200+ comprobaciones automáticas en CI (`npm run test:db`). Las únicas funciones con permisos elevados que un visitante puede llamar son 2, públicas a propósito (conteos de eventos publicados).
+- ✅ Secretos: ninguno en el código ni en el historial de git; `.env.local` no se versiona; las `NEXT_PUBLIC_*` solo llevan datos públicos; la llave de servicio solo se usa en servidor.
+- ✅ Dependencias: `npm audit` sin vulnerabilidades; Dependabot activo.
+- ✅ Cabeceras de seguridad (clickjacking, nosniff, referrer, permisos, HSTS, `form-action`/`base-uri`/`object-src`).
+- ✅ Fotos validadas por sus bytes reales, con tope de tamaño; redirecciones solo a rutas internas; webhook de Stripe con firma.
+**Pendiente / recomendado antes de lanzar:**
+- ⬜ CSP completa para scripts (hace falta un *nonce* por petición con Next; hoy solo hay el subconjunto seguro).
+- ⬜ CAPTCHA y límites en Supabase Auth (*Attack Protection*) contra fuerza bruta y registros masivos; protección contra contraseñas filtradas (plan Pro).
+- ⬜ 2FA en las cuentas con acceso a Supabase, Vercel y GitHub (quien tiene la llave de servicio puede leer todo).
+- ⬜ `main` publica directo a producción y no tiene protección de rama (en GitHub gratis con repo privado no está disponible): acordar que todo pase por PR con CI en verde.
+- ⬜ Respaldos (Supabase Pro), plan de rollback y rotación de llaves si alguna se comparte por error.
+- ⬜ Revisión externa / prueba de penetración antes de abrir al público.

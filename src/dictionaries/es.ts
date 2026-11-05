@@ -34,10 +34,10 @@ export const es = {
     enrollment: "Inscripción", enroll: "Inscribirme", needAccount: "Necesitas una cuenta de participante.", eventFinished: "Evento finalizado", full: "Cupo lleno",
   },
   enroll: {
-    title: "Inscripción", category: "Categoría", discipline: "Modalidad", pay: "Pagar inscripción", paying: "Redirigiendo a Stripe…", secure: "El pago se procesa de forma segura con Stripe.",
+    title: "Inscripción", category: "Categoría", discipline: "Modalidad", submit: "Inscribirme", pendingNote: "Tu lugar queda apartado como pendiente de pago. Puedes cancelarlo mientras no esté pagado.",
     errors: {
-      unauthenticated: "Inicia sesión para inscribirte", forbidden: "Solo los participantes pueden inscribirse", invalid: "Evento o categoría inválidos",
-      closed: "Las inscripciones están cerradas", already: "Ya estás inscrito en este evento", noPayouts: "El organizador aún no activa sus cobros", generic: "No se pudo iniciar el pago",
+      forbidden: "Solo los participantes pueden inscribirse.", invalid_category: "Evento o categoría inválidos.", closed: "Las inscripciones están cerradas.", already: "Ya estás inscrito en esta categoría.",
+      full: "El cupo está lleno.", paid: "Esa inscripción ya está pagada y no se puede cancelar aquí.", not_found: "No encontramos esa inscripción.", failed: "No se pudo completar. Intenta de nuevo.",
     },
   },
   people: {
@@ -64,6 +64,7 @@ export const es = {
     photo: { add: "Agregar foto", change: "Cambiar foto", remove: "Quitar", saving: "Guardando…", tooBig: `La foto pesa más de ${MAX_UPLOAD_MB} MB. Elige una más ligera.`, error: "No se pudo guardar la foto. Usa una imagen JPG, PNG o WebP." },
     type: "Cuenta de participante", myRegistrations: "Mis inscripciones",
     noRegistrations: "Aún no te has inscrito a ningún evento.", available: "Eventos disponibles", noneAvailable: "No hay eventos nuevos por ahora.",
+    enrolledOk: "¡Listo! Tu lugar quedó apartado. El pago se habilitará pronto.", canceledOk: "Inscripción cancelada.", cancel: "Cancelar",
     ranking: "Ranking", seeAll: "Ver todos", publicProfile: "Ver mi perfil público e historial", paid: "Pagado", pending: "Pago pendiente",
   },
   org: {

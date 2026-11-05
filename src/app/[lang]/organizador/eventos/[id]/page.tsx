@@ -7,8 +7,8 @@ import { CopyLink } from "@/components/CopyLink";
 import { setEventStatus } from "@/lib/event-actions";
 import { Gate } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
+import { listEventRegistrations } from "@/lib/data/registrations";
 import { EventPhotos } from "@/components/EventPhotos";
-import { getRopersByIds } from "@/lib/data/ropers";
 import { getOrganizerEvent } from "@/lib/data/events";
 import type { Session } from "@/lib/session";
 import type { Dict } from "@/dictionaries/es";
@@ -22,8 +22,7 @@ async function Manage({ s, id, lang, t, justCreated, shareUrl, stateLabel }: Man
   // Un organizador solo gestiona sus propios eventos (la base además lo impone).
   const e = await getOrganizerEvent(s.id, id);
   if (!e) notFound();
-  const enrolled = await getRopersByIds(e.registered);
-  const rows = enrolled.map((r) => ({ r, paid: !e.unpaid?.includes(r.id) }));
+  const rows = await listEventRegistrations(e.uuid!);
   return (
           <>
             <OrgNav lang={lang} t={t} admin={s.isAdmin} />
@@ -53,8 +52,8 @@ async function Manage({ s, id, lang, t, justCreated, shareUrl, stateLabel }: Man
                 {e.status === "borrador" && <p className="mt-2 text-xs text-muted">{t.org.share.draftLink}</p>}
               </section>
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{e.registered.length}/{e.capacity}</p><p className="label mt-1">{t.org.enrolled}</p></div>
-                <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{rows.filter((x) => x.paid).length}</p><p className="label mt-1">{t.org.ev.paid}</p></div>
+                <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{e.enrolled}/{e.capacity}</p><p className="label mt-1">{t.org.enrolled}</p></div>
+                <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{rows.filter((x) => x.paymentStatus === "pagado").length}</p><p className="label mt-1">{t.org.ev.paid}</p></div>
                 <div className="card p-4"><p className="text-2xl font-semibold">{stateLabel[e.status]}</p><p className="label mt-1">{t.org.ev.state}</p></div>
               </div>
               <div className="card mt-8 p-6">
@@ -64,18 +63,19 @@ async function Manage({ s, id, lang, t, justCreated, shareUrl, stateLabel }: Man
               <h2 className="mt-10 text-xl font-semibold">{t.org.ev.enrolledTitle}</h2>
               <div className="card mt-3 overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-sand label"><tr><th className="p-3">{t.org.ev.participant}</th><th>{t.org.ev.phone}</th><th>{t.org.ev.rating}</th><th>{t.org.ev.category}</th><th>{t.org.ev.payment}</th></tr></thead>
+                  <thead className="bg-sand label"><tr><th className="p-3">{t.org.ev.participant}</th><th>{t.org.ev.phone}</th><th>{t.org.ev.category}</th><th>{t.org.ev.payment}</th></tr></thead>
                   <tbody>
-                    {rows.map(({ r, paid }) => {
+                    {rows.map((r) => {
+                      const paid = r.paymentStatus === "pagado";
                       return (
                         <tr key={r.id} className="border-t border-line">
-                          <td className="p-3 font-medium"><Link href={`/${lang}/participantes/${r.id}`} className="hover:text-brand-hot">{r.name}</Link></td>
-                          {/* TODO: correo (roper_contacts) y rating, solo para organizadores verificados. */}<td className="tabular-nums text-muted">–</td><td className="tabular-nums text-muted">–</td><td>{e.categories[0].name}</td>
-                          <td className={`font-medium ${paid ? "text-brand-hot" : "text-red-700"}`}>{paid ? `${t.org.ev.paidAmount} ${mxn(e.categories[0].fee, lang)}` : t.org.ev.pending}</td>
+                          <td className="p-3 font-medium"><Link href={`/${lang}/participantes/${r.roperId}`} className="hover:text-brand-hot">{r.name}</Link></td>
+                          <td className="text-muted">{r.email ?? "–"}</td><td>{r.category}</td>
+                          <td className={`font-medium ${paid ? "text-brand-hot" : "text-red-700"}`}>{paid ? `${t.org.ev.paidAmount} ${mxn(r.amountCents / 100, lang)}` : t.org.ev.pending}</td>
                         </tr>
                       );
                     })}
-                    {rows.length === 0 && <tr><td colSpan={5} className="p-4 text-muted">{t.org.ev.noneEnrolled}</td></tr>}
+                    {rows.length === 0 && <tr><td colSpan={4} className="p-4 text-muted">{t.org.ev.noneEnrolled}</td></tr>}
                   </tbody>
                 </table>
               </div>

@@ -43,3 +43,12 @@ mismo correo, `claim_my_roper` (se llama al registrarse y al entrar) enlaza la c
 **Pendiente antes del lanzamiento (KIN-600):** el reclamo exige correo CONFIRMADO. Con "Confirm email" apagado en Auth (como en desarrollo)
 cualquiera podría reclamar el perfil de otra persona con solo escribir su correo: hay que encenderlo y tener SMTP real (Brevo).
 Los textos legales ya hablan de correo en lugar de celular; conviene que los revise quien los redactó.
+
+## Inscripciones (migración 0014, KIN-581)
+
+`registrations` no se escribe desde la API: solo `register_for_event` y `cancel_registration` (SECURITY DEFINER, esquema `private`).
+`register_for_event` bloquea la fila del evento (`FOR UPDATE`), valida (evento publicado, categoría del evento, sin repetir) y cuenta antes de
+insertar: dos personas no toman el último lugar a la vez. El precio sale de la categoría. El cupo cuenta inscripciones (dos categorías = dos lugares).
+Hasta que exista el pago (Stripe) la inscripción queda `pendiente` y ocupa lugar; se puede cancelar mientras no esté pagada.
+Conteo y lista pública: `event_registration_counts()` / `event_registrants(evento)` (solo eventos publicados, sin pagos).
+Si un evento se pasa a borrador, las inscripciones se conservan (el participante las sigue viendo; el público ya no).

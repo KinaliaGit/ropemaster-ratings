@@ -50,7 +50,7 @@ async function Panel({ s, lang, t, welcome }: { s: Session; lang: Lang; t: Dict;
                     <td className="p-3 font-medium">{e.name}</td>
                     <td className="tabular-nums">{e.date ? fmtDate(e.date, lang) : "–"}</td>
                     <td><span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badge[e.status]}`}>{stateLabel[e.status]}</span></td>
-                    <td className="tabular-nums">{e.registered.length}/{e.capacity}</td>
+                    <td className="tabular-nums">{e.enrolled}/{e.capacity}</td>
                     <td className="pr-3 text-right"><Link href={`/${lang}/organizador/eventos/${e.id}`} className="font-medium text-brand-hot hover:underline">{t.org.manage} →</Link></td>
                   </tr>
                 ))}

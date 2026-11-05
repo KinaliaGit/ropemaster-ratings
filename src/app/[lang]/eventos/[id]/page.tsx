@@ -4,6 +4,7 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
 import { getRopersByIds } from "@/lib/data/ropers";
 import { getPublicEvent } from "@/lib/data/events";
+import { getRegistrantIds } from "@/lib/data/registrations";
 import { fmtDate, mxn } from "@/lib/format";
 import { RoperCard } from "@/components/RoperCard";
 import { EventCover } from "@/components/EventCover";
@@ -15,8 +16,8 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   const t = getDictionary(lang);
   const e = await getPublicEvent(id);
   if (!e) notFound();
-  const inscritos = await getRopersByIds(e.registered);
-  const open = e.status === "publicado" && e.registered.length < e.capacity;
+  const inscritos = await getRopersByIds(e.uuid ? await getRegistrantIds(e.uuid) : []);
+  const open = e.status === "publicado" && e.enrolled < e.capacity;
   return (
     <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
       <div className="relative h-64 overflow-hidden rounded-[28px] bg-sand sm:h-80">
@@ -43,7 +44,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
             </div>
           ) : <p className="mt-3 text-muted">{t.event.noPhotos}</p>}
 
-          <h2 className="mt-12 text-xl font-semibold">{t.event.enrolled} <span className="font-normal text-muted">{inscritos.length}/{e.capacity}</span></h2>
+          <h2 className="mt-12 text-xl font-semibold">{t.event.enrolled} <span className="font-normal text-muted">{e.enrolled}/{e.capacity}</span></h2>
           <div className="mt-2">
             {inscritos.length ? inscritos.map((r) => <RoperCard key={r.id} r={r} lang={lang} t={t} discipline={e.disciplines[0] as "lazo"} />) : <p className="mt-3 text-muted">{t.event.noEnrolled}</p>}
           </div>

@@ -7,19 +7,24 @@ import { EventCard } from "@/components/EventCard";
 import { RoperCard } from "@/components/RoperCard";
 import { initials, publicAvatarUrl } from "@/lib/people";
 import { listRanking } from "@/lib/data/ropers";
+import { listMyRegistrations } from "@/lib/data/registrations";
+import { cancelRegistration } from "@/lib/registration-actions";
 import { listPublicEvents } from "@/lib/data/events";
 import { fmtDate, mxn } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
-async function Page({ params }: { params: PageProps<"/[lang]/mi-cuenta">["params"] }) {
-  const lang = await resolveLang(params);
+async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
+  const lang = await resolveLang(props.params);
+  const sp = await props.searchParams;
   const t = getDictionary(lang);
   const [events, top] = await Promise.all([listPublicEvents(), listRanking("lazo").then((r) => r.slice(0, 4))]);
+  const notice = sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
   return (
     <Gate lang={lang} role="participante" next={`/${lang}/mi-cuenta`}>
-      {(s) => {
-        const mine = events.filter((e) => e.registered.includes(s.id));
-        const available = events.filter((e) => e.status === "publicado" && !e.registered.includes(s.id));
+      {async (s) => {
+        const mine = await listMyRegistrations();
+        const mineSlugs = new Set(mine.map((m) => m.event?.slug));
+        const available = events.filter((e) => e.status === "publicado" && !mineSlugs.has(e.id));
         return (
           <div className="mx-auto max-w-6xl px-5 pb-10 pt-10">
             <div className="flex flex-wrap items-center gap-5">
@@ -30,17 +35,29 @@ async function Page({ params }: { params: PageProps<"/[lang]/mi-cuenta">["params
               </div>
             </div>
 
+            {notice && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{notice}</p>}
             <h2 className="mt-12 text-xl font-semibold">{t.account.myRegistrations}</h2>
             <div className="mt-3 space-y-3">
               {mine.length === 0 && <p className="text-muted">{t.account.noRegistrations}</p>}
-              {mine.map((e) => {
-                const paid = !e.unpaid?.includes(s.id);
-                return (
-                  <Link key={e.id} href={`/${lang}/eventos/${e.id}`} className="card card-link flex items-center justify-between p-4">
-                    <span><span className="font-medium">{e.name}</span><span className="block text-sm text-muted">{fmtDate(e.date, lang)} · {e.city}</span></span>
-                    <span className="text-right text-sm"><span className="block tabular-nums">{mxn(e.categories[0].fee, lang)}</span>
+              {mine.map((m) => {
+                const paid = m.paymentStatus === "pagado";
+                const inner = (
+                  <>
+                    <span><span className="font-medium">{m.event?.name ?? "—"}</span><span className="block text-sm text-muted">{m.category}{m.event?.date ? ` · ${fmtDate(m.event.date, lang)}` : ""}{m.event?.city ? ` · ${m.event.city}` : ""}</span></span>
+                    <span className="text-right text-sm"><span className="block tabular-nums">{mxn(m.amountCents / 100, lang)}</span>
                       <span className={`text-xs font-medium ${paid ? "text-brand-hot" : "text-red-700"}`}>{paid ? `${t.account.paid} ✓` : t.account.pending}</span></span>
-                  </Link>
+                  </>
+                );
+                return (
+                  <div key={m.id} className="card flex items-center justify-between gap-3 p-4">
+                    {m.event?.slug ? <Link href={`/${lang}/eventos/${m.event.slug}`} className="flex flex-1 items-center justify-between gap-3">{inner}</Link> : <div className="flex flex-1 items-center justify-between gap-3">{inner}</div>}
+                    {!paid && (
+                      <form action={cancelRegistration}>
+                        <input type="hidden" name="lang" value={lang} /><input type="hidden" name="id" value={m.id} />
+                        <button className="rounded-full border border-line px-3 py-1.5 text-xs font-medium hover:border-ink">{t.account.cancel}</button>
+                      </form>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -63,5 +80,5 @@ async function Page({ params }: { params: PageProps<"/[lang]/mi-cuenta">["params
 }
 
 export default function MiCuenta(props: PageProps<"/[lang]/mi-cuenta">) {
-  return <Suspense fallback={<PageSkeleton />}><Page params={props.params} /></Suspense>;
+  return <Suspense fallback={<PageSkeleton />}><Page props={props} /></Suspense>;
 }

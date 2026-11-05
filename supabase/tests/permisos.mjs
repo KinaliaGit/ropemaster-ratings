@@ -148,10 +148,61 @@ await as("authenticated", G, "insert into profiles (user_id, role, display_name)
 await as("authenticated", G, "select public.claim_my_roper('Sin confirmar')", "correo SIN confirmar NO reclama ni crea perfil", "deny");
 await as("authenticated", B, "select public.claim_my_roper('Org')", "un organizador NO usa claim_my_roper", "deny");
 await as("anon", null, "select public.claim_my_roper('Anon')", "anónimo NO usa claim_my_roper", "deny");
+console.log("— Inscripciones (0014)");
+const EV = "e0000000-0000-0000-0000-000000000001"; // publicado, sin cupo definido
+await db.exec(`
+  insert into event_categories (id, event_id, name, fee_cents) values ('ca000000-0000-0000-0000-000000000001','${EV}','Libre',50000), ('ca000000-0000-0000-0000-000000000002','${EV}','Amateur',30000);
+  insert into events (id, name, organizer_id, status, slug, capacity) values ('e0000000-0000-0000-0000-000000000003','Con cupo 1','${A}','publicado','cupo1',1);
+  insert into event_categories (id, event_id, name, fee_cents) values ('ca000000-0000-0000-0000-000000000003','e0000000-0000-0000-0000-000000000003','Libre',10000);
+  insert into auth.users (id, email, email_confirmed_at) values ('11111111-aaaa-0000-0000-000000000001','p2@x.com',now());
+  insert into profiles (user_id, role, display_name) values ('11111111-aaaa-0000-0000-000000000001','participante','P2');
+  insert into ropers (id, full_name, user_id) values ('22222222-0000-0000-0000-000000000002','Participante Dos','11111111-aaaa-0000-0000-000000000001');
+`);
+const P2 = "11111111-aaaa-0000-0000-000000000001";
+const CAT1 = "ca000000-0000-0000-0000-000000000001", CAT2 = "ca000000-0000-0000-0000-000000000002", CUPO = "e0000000-0000-0000-0000-000000000003", CATC = "ca000000-0000-0000-0000-000000000003";
+await as("authenticated", C, `insert into registrations (event_id, roper_id, category_id) values ('${EV}','11111111-0000-0000-0000-000000000001','${CAT1}')`, "NADIE inscribe escribiendo la tabla directo", "deny");
+await as("anon", null, "select id from registrations", "anónimo NO lee inscripciones", "deny");
+await as("authenticated", C, `select public.register_for_event('${EV}','${CAT1}')`, "participante se inscribe", "some");
+await as("authenticated", C, `select public.register_for_event('${EV}','${CAT1}')`, "NO se inscribe dos veces en la misma categoría", "deny");
+await as("authenticated", C, `select public.register_for_event('${EV}','${CAT2}')`, "SÍ puede inscribirse en otra categoría", "some");
+await as("authenticated", C, `select public.register_for_event('${EV}','${CATC}')`, "categoría de otro evento se rechaza", "deny");
+await as("authenticated", C, "select public.register_for_event('e0000000-0000-0000-0000-000000000002','" + CAT1 + "')", "evento en borrador no acepta inscripciones", "deny");
+await as("authenticated", A, `select public.register_for_event('${EV}','${CAT1}')`, "un organizador NO se inscribe", "deny");
+await as("anon", null, `select public.register_for_event('${EV}','${CAT1}')`, "anónimo NO se inscribe", "deny");
+await as("authenticated", C, "select amount_cents from registrations where category_id = '" + CAT1 + "' and amount_cents = 50000", "el precio sale de la categoría (no del navegador)", "some");
+await as("authenticated", C, "select id from registrations", "el participante ve sus inscripciones (2)", "some");
+await as("authenticated", P2, "select id from registrations", "otro participante NO ve inscripciones ajenas", "deny");
+await as("authenticated", A, "select id from registrations", "el organizador ve las inscripciones de SU evento", "some");
+await as("authenticated", B, "select id from registrations", "otro organizador NO las ve", "deny");
+await as("anon", null, "select n from public.event_registration_counts() where n = 2", "conteo público de inscritos", "some");
+await as("anon", null, `select roper_id from public.event_registrants('${EV}')`, "lista pública de inscritos (ids)", "some");
+await as("anon", null, "select roper_id from public.event_registrants('e0000000-0000-0000-0000-000000000002')", "la lista de un borrador NO es pública", "deny");
+// cupo: 1 lugar; el segundo falla
+await as("authenticated", C, `select public.register_for_event('${CUPO}','${CATC}')`, "toma el último lugar", "some");
+await as("authenticated", P2, `select public.register_for_event('${CUPO}','${CATC}')`, "cupo lleno: el siguiente se rechaza", "deny");
+// carrera: dos inscripciones al mismo tiempo al último lugar de un evento nuevo
+await db.exec(`insert into events (id, name, organizer_id, status, slug, capacity) values ('e0000000-0000-0000-0000-000000000004','Carrera','${A}','publicado','carrera',1);
+  insert into event_categories (id, event_id, name, fee_cents) values ('ca000000-0000-0000-0000-000000000004','e0000000-0000-0000-0000-000000000004','Libre',1000);`);
+{
+  const results = await Promise.allSettled([C, P2].map(async (u) => {
+    const r = await db.transaction(async (tx) => {
+      await tx.exec(`select set_config('request.jwt.claim.sub','${u}',true); set local role authenticated`);
+      return tx.query("select public.register_for_event('e0000000-0000-0000-0000-000000000004','ca000000-0000-0000-0000-000000000004')");
+    });
+    return r;
+  }));
+  const ok = results.filter((x) => x.status === "fulfilled").length;
+  const n = (await db.query("select count(*)::int as n from registrations where event_id = 'e0000000-0000-0000-0000-000000000004'")).rows[0].n;
+  const pass = n === 1 && ok === 1; if (!pass) failures++;
+  console.log(`${pass ? "✔" : "✘ FALLO"}  dos inscripciones al último lugar: solo una entra               → inscritos=${n}, aceptadas=${ok}`);
+}
+await as("authenticated", C, "select public.cancel_registration((select id from registrations where category_id = '" + CAT2 + "'))", "cancela su inscripción pendiente", "some");
+await as("authenticated", P2, "select public.cancel_registration((select id from registrations where category_id = '" + CAT1 + "'))", "NO cancela la de otra persona", "deny");
+await db.exec("update registrations set payment_status = 'pagado' where category_id = '" + CAT1 + "'");
+await as("authenticated", C, "select public.cancel_registration((select id from registrations where category_id = '" + CAT1 + "'))", "una inscripción pagada NO se cancela sola", "deny");
 console.log("— Participante");
 await as("authenticated", C, "select phone_e164 from roper_contacts", "ve SOLO su propio contacto (1)", "some");
 await as("authenticated", C, "select organizer_verified from profiles", "ve su perfil (1)", "some");
-await as("authenticated", C, "select id from registrations", "puede consultar inscripciones sin error (0 propias)", "deny");
 await as("authenticated", C, "update ropers set avatar_path='mi/foto.jpg' where user_id = '" + C + "'", "NO edita ropers por user_id (columna oculta)", "deny");
 await as("authenticated", C, "update ropers set avatar_path='mi/foto.jpg' where id = '11111111-0000-0000-0000-000000000001'", "SÍ cambia la foto de SU perfil", "some");
 await as("authenticated", B, "update ropers set avatar_path='hack.jpg' where id = '11111111-0000-0000-0000-000000000001'", "NO cambia la foto de otra persona", "deny");

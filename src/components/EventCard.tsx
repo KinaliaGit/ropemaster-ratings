@@ -6,7 +6,7 @@ import type { Dict } from "@/dictionaries/es";
 
 // Tarjeta de foto con el texto encima (estilo galería).
 export function EventCard({ e, lang, t }: { e: EventItem; lang: Lang; t: Dict }) {
-  const full = e.registered.length >= e.capacity;
+  const full = e.enrolled >= e.capacity;
   const tag = e.status === "finalizado" ? t.status.finished : full ? t.status.full : t.status.open;
   return (
     <Link href={`/${lang}/eventos/${e.id}`} className="group relative block aspect-[4/3] overflow-hidden rounded-[28px] bg-sand">

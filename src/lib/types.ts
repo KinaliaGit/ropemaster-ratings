@@ -2,12 +2,12 @@ import type { DisciplineId } from "@/lib/disciplines";
 
 // Tipos compartidos de la web. Los datos salen de Supabase (ver src/lib/data/).
 
-export type Category = { name: string; fee: number };
+export type Category = { id: string; name: string; fee: number };
 
 export type EventItem = {
   id: string; name: string; date: string; city: string; venue: string;
-  disciplines: string[]; categories: Category[]; capacity: number; registered: string[];
-  organizer: string; uuid?: string; organizerId?: string; tone: number; cover?: string; photos: { id: string; url: string }[]; unpaid?: string[];
+  disciplines: string[]; categories: Category[]; capacity: number; enrolled: number;
+  organizer: string; uuid?: string; organizerId?: string; tone: number; cover?: string; photos: { id: string; url: string }[];
   updatedAt: string; description: string; status: "publicado" | "borrador" | "finalizado";
 };
 

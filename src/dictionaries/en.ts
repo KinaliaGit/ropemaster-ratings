@@ -34,10 +34,10 @@ export const en: Dict = {
     enrollment: "Registration", enroll: "Register", needAccount: "You need a participant account.", eventFinished: "Event finished", full: "Full",
   },
   enroll: {
-    title: "Registration", category: "Category", discipline: "Discipline", pay: "Pay registration", paying: "Redirecting to Stripe…", secure: "Payment is processed securely by Stripe.",
+    title: "Registration", category: "Category", discipline: "Discipline", submit: "Register", pendingNote: "Your spot is reserved as pending payment. You can cancel it while it isn't paid.",
     errors: {
-      unauthenticated: "Sign in to register", forbidden: "Only participants can register", invalid: "Invalid event or category",
-      closed: "Registration is closed", already: "You are already registered for this event", noPayouts: "The organizer hasn't enabled payments yet", generic: "Couldn't start the payment",
+      forbidden: "Only participants can register.", invalid_category: "Invalid event or category.", closed: "Registration is closed.", already: "You're already registered in this category.",
+      full: "The event is full.", paid: "That registration is already paid and can't be canceled here.", not_found: "We couldn't find that registration.", failed: "Couldn't complete that. Please try again.",
     },
   },
   people: {
@@ -64,6 +64,7 @@ export const en: Dict = {
     photo: { add: "Add photo", change: "Change photo", remove: "Remove", saving: "Saving…", tooBig: `The photo is larger than ${MAX_UPLOAD_MB} MB. Choose a lighter one.`, error: "Couldn't save the photo. Use a JPG, PNG or WebP image." },
     type: "Participant account", myRegistrations: "My registrations",
     noRegistrations: "You haven't registered for any event yet.", available: "Available events", noneAvailable: "No new events right now.",
+    enrolledOk: "Done! Your spot is reserved. Payment will be available soon.", canceledOk: "Registration canceled.", cancel: "Cancel",
     ranking: "Ranking", seeAll: "See all", publicProfile: "View my public profile and history", paid: "Paid", pending: "Payment pending",
   },
   org: {

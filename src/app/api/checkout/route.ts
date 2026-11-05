@@ -15,8 +15,7 @@ export async function POST(request: Request) {
   const event = eventId ? await getPublicEvent(eventId) : null;
   const cat = event?.categories.find((c) => c.name === category);
   if (!event || !cat) return Response.json({ error: "invalid" }, { status: 400 });
-  if (event.registered.includes(roperId)) return Response.json({ error: "already" }, { status: 409 });
-  if (event.status !== "publicado" || event.registered.length >= event.capacity)
+  if (event.status !== "publicado" || event.enrolled >= event.capacity)
     return Response.json({ error: "closed" }, { status: 409 });
 
   // TODO: leer de la base de datos la cuenta conectada del organizador del evento.

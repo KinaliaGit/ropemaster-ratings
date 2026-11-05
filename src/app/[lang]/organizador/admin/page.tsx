@@ -11,8 +11,27 @@ import type { Lang } from "@/lib/format";
 
 function Table({ rows, lang, a, verify }: { rows: OrganizerRow[]; lang: Lang; a: ReturnType<typeof getDictionary>["org"]["admin"]; verify: boolean }) {
   if (!rows.length) return <p className="mt-3 rounded-2xl bg-sand p-6 text-center text-muted">{a.none}</p>;
+  const lic = (o: OrganizerRow) => (!o.licenseUntil ? a.noLicense : o.licenseUntil === "infinity" ? a.licenseNoExpiry : new Date(o.licenseUntil) > new Date() ? `${a.licenseUntil} ${fmtDate(o.licenseUntil.slice(0, 10), lang)}` : a.licenseExpired);
+  const button = (o: OrganizerRow) => (
+    <form action={setOrganizerVerified}>
+      <input type="hidden" name="lang" value={lang} /><input type="hidden" name="target" value={o.userId} /><input type="hidden" name="value" value={verify ? "true" : "false"} />
+      <button className={verify ? "rounded-full bg-brand px-4 py-1.5 text-xs font-medium text-white hover:bg-brand-hot" : "rounded-full border border-line px-4 py-1.5 text-xs font-medium hover:border-ink"}>{verify ? a.verify : a.revoke}</button>
+    </form>
+  );
   return (
-    <div className="card mt-3 overflow-x-auto">
+    <>
+    {/* Celular: una tarjeta por organizador. */}
+    <div className="mt-3 space-y-3 sm:hidden">
+      {rows.map((o) => (
+        <div key={o.userId} className="card p-4">
+          <p className="font-semibold">{o.name}</p>
+          <p className="break-all text-sm text-muted">{o.email ?? "–"}</p>
+          <p className="mt-1 text-sm text-muted">{a.since} {fmtDate(o.createdAt.slice(0, 10), lang)} · {lic(o)}</p>
+          <div className="mt-3">{button(o)}</div>
+        </div>
+      ))}
+    </div>
+    <div className="card mt-3 hidden overflow-x-auto sm:block">
       <table className="w-full text-left text-sm">
         <thead className="bg-sand label"><tr><th className="p-3">{a.name}</th><th>{a.email}</th><th>{a.since}</th><th>{a.license}</th><th></th></tr></thead>
         <tbody>
@@ -33,6 +52,7 @@ function Table({ rows, lang, a, verify }: { rows: OrganizerRow[]; lang: Lang; a:
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 

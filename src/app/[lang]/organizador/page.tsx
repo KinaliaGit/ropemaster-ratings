@@ -42,7 +42,21 @@ async function Panel({ s, lang, t, welcome }: { s: Session; lang: Lang; t: Dict;
         <StripeConnectButton lang={lang} {...t.org.stripe} />
         <h2 className="mt-10 text-xl font-semibold">{t.org.myEvents}</h2>
         {mine.length === 0 ? <p className="mt-3 rounded-2xl bg-sand p-6 text-center text-muted">{t.org.noEvents}</p> : (
-          <div className="card mt-3 overflow-x-auto">
+          <>
+          {/* Celular: una tarjeta por evento (la tabla obligaría a deslizar de lado). */}
+          <div className="mt-3 space-y-3 sm:hidden">
+            {mine.map((e) => (
+              <Link key={e.id} href={`/${lang}/organizador/eventos/${e.id}`} className="card block p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="font-semibold leading-snug">{e.name}</p>
+                  <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${badge[e.status]}`}>{stateLabel[e.status]}</span>
+                </div>
+                <p className="mt-1 text-sm text-muted">{e.date ? fmtDate(e.date, lang) : "–"} · {t.org.tbl.enrolled} <span className="tabular-nums">{e.enrolled}/{e.capacity}</span></p>
+                <p className="mt-3 text-sm font-medium text-brand-hot">{t.org.manage} →</p>
+              </Link>
+            ))}
+          </div>
+          <div className="card mt-3 hidden overflow-x-auto sm:block">
             <table className="w-full text-left text-sm">
               <thead className="bg-sand label"><tr><th className="p-3">{t.org.tbl.event}</th><th>{t.org.tbl.date}</th><th>{t.org.tbl.state}</th><th>{t.org.tbl.enrolled}</th><th></th></tr></thead>
               <tbody>
@@ -58,6 +72,7 @@ async function Panel({ s, lang, t, welcome }: { s: Session; lang: Lang; t: Dict;
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
     </>

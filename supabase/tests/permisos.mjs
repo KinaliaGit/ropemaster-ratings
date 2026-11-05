@@ -375,5 +375,113 @@ console.log("- Participantes de UN evento para la app (0020)");
   await as("service_role", null, `select * from public.app_event_participants('${EX}', null, now(), null, null, 10)`, "el servidor SÍ la ejecuta", "some");
 }
 
+console.log("- Resultados que sube la app (0021)");
+{
+  // Los ejemplos del contrato (docs/sync-examples) son los datos de prueba: aquí se comprueba que la base responde lo que dicen.
+  const example = (name) => JSON.parse(readFileSync(fileURLToPath(new URL(`../../docs/sync-examples/${name}`, import.meta.url)), "utf8"));
+  const request = example("resultados.request.json"), expected = example("resultados.response.json");
+  const correction = example("resultados.correccion.request.json"), correctionExpected = example("resultados.correccion.response.json");
+  const EV = request.results[0].event_id, EV_OTHER = "f7d1b9a0-1111-4222-8333-444455556666";
+  const R1 = request.results[0].roper_global_id, R2 = request.results[1].roper_global_id;
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug) values ('${EV}','Evento resultados','${A}','publicado','res-0021'), ('${EV_OTHER}','Evento de otro','${B}','publicado','otro-0021');
+    insert into ropers (id, full_name) values ('${R1}','Lazador Uno'), ('${R2}','Lazador Dos');
+  `);
+  const sqlText = (value) => `'${String(value).replace(/'/g, "''")}'`;
+  // Siempre vuelve al rol original, aunque la consulta falle (si no, las comprobaciones siguientes correrían como service_role).
+  const asServer = async (sql) => {
+    await db.exec("reset role; set role service_role");
+    try { return (await db.query(sql)).rows; } finally { await db.exec("reset role"); }
+  };
+  const upload = (organizer, results, active = ["lazo"]) =>
+    asServer(`select * from public.app_upload_results('${organizer}', ${sqlText(JSON.stringify(results))}::jsonb, array[${active.map(sqlText).join(",")}]::text[], null)`);
+  const close = (organizer, event, expectedCount) => asServer(`select * from public.app_close_event_results('${organizer}', '${event}', ${expectedCount})`).then((r) => r[0]);
+  const reopen = (organizer, event, reason) => asServer(`select * from public.app_reopen_event_results('${organizer}', '${event}', ${sqlText(reason)})`).then((r) => r[0]);
+  const outcome = (rows) => rows.map((r) => [r.r_status, r.r_code ?? null]);
+  const one = (overrides) => ({ ...request.results[0], id: "a1c2e3f4-0000-4000-8000-0000000000ff", ...overrides });
+  const count = async (sql) => (await db.query(sql)).rows[0].n;
+
+  // 1) El ejemplo del contrato: lo que la base responde es lo que el ejemplo dice (por resultado y en orden).
+  const first = await upload(A, request.results);
+  await check("ejemplo del contrato: estado y motivo de cada resultado", JSON.stringify(first.map((r) => [r.r_id, r.r_status, r.r_code ?? null, r.r_revision, r.r_retry]))
+    === JSON.stringify(expected.results.map((r) => [r.id, r.status, r.code ?? null, r.revision ?? null, r.retry ?? false])));
+  await check("lo aceptado quedó guardado (3) y lo rechazado no", (await count(`select count(*)::int as n from event_results where event_id = '${EV}'`)) === 3);
+  const unlinked = (await db.query(`select roper_id, participant_name, place from event_results where id = '${request.results[3].id}'`)).rows[0];
+  await check("sin lazador en la web: se guarda solo para el evento, con el nombre y sin ligarlo a nadie", unlinked.roper_id === null && unlinked.participant_name === "Chuy Rodríguez" && unlinked.place === 3);
+  await check("los resultados sin lazador no tocan ratings ni historial de nadie", (await count("select count(*)::int as n from roper_ratings where roper_id in (select id from ropers where full_name like 'Lazador%')")) === 0
+    && (await count(`select count(*)::int as n from event_results where roper_id is not null and event_id = '${EV}'`)) === 2);
+
+  // 2) Idempotencia: reenviar el lote no cambia nada.
+  const again = await upload(A, request.results);
+  await check("reenviar el mismo lote: sin cambios y nada duplicado", JSON.stringify(outcome(again)) === JSON.stringify([["unchanged", null], ["unchanged", null], ["rejected", "roper_unknown"], ["unchanged", null]])
+    && (await count(`select count(*)::int as n from event_results where event_id = '${EV}'`)) === 3);
+
+  // 3) Correcciones con revision mayor; una revision vieja no pisa la nueva.
+  const fixed = await upload(A, correction.results);
+  await check("corrección del contrato (revision 2): updated", fixed[0].r_status === correctionExpected.results[0].status && fixed[0].r_revision === correctionExpected.results[0].revision);
+  await check("la corrección cambió el castigo y la revisión", JSON.stringify((await db.query(`select penalty_ms, revision from event_results where id = '${correction.results[0].id}'`)).rows[0]) === JSON.stringify({ penalty_ms: 0, revision: 2 }));
+  const stale = await upload(A, [request.results[1]]);
+  await check("un reenvío viejo con datos distintos se rechaza (stale_revision)", stale[0].r_status === "rejected" && stale[0].r_code === "stale_revision" && stale[0].r_retry === false);
+
+  // 4) Evento ajeno, inexistente y validaciones: cada resultado se juzga solo.
+  const foreign = await upload(A, [one({ event_id: EV_OTHER }), one({ event_id: "e7d1b9a0-1111-4222-8333-0000000000aa" })]);
+  await check("evento de otro organizador o inexistente: se ven igual (event_not_found)", foreign.every((r) => r.r_code === "event_not_found") && foreign[0].r_message === foreign[1].r_message);
+  const bad = await upload(A, [
+    one({ id: "no-es-uuid" }), one({ time_ms: -5 }), one({ penalty_ms: -1 }), one({ time_ms: 8420.5 }), one({ place: 0 }),
+    one({ disqualified: true, place: 1 }), one({ roper_global_id: null, participant_name: null }), one({ roper_global_id: null, participant_name: "x".repeat(121) }),
+    one({ discipline: "" }), one({ revision: 0 }), one({ event_id: "no-es-uuid" }),
+  ]);
+  await check("campos inválidos: cada uno se rechaza como invalid_field sin tirar a los demás", bad.length === 11 && bad.every((r) => r.r_status === "rejected" && r.r_code === "invalid_field" && r.r_retry === false));
+  const disc = await upload(A, [one({ discipline: "barriles" })]);
+  await check("modalidad inactiva: discipline_inactive", disc[0].r_code === "discipline_inactive");
+  const mixed = await upload(A, [one({ time_ms: -5 }), one({ id: "a1c2e3f4-0000-4000-8000-0000000000fe", roper_global_id: R1, time_ms: 7000, place: 4 })]);
+  await check("un resultado malo no impide guardar el siguiente", mixed[0].r_status === "rejected" && mixed[1].r_status === "accepted");
+  await check("más de 200 resultados en un lote se rechaza completo", await upload(A, Array.from({ length: 201 }, () => one())).then(() => false, () => true));
+  const uploadsLog = (await db.query(`select received, accepted, unchanged, updated, rejected from result_uploads where organizer_id = '${A}' order by created_at`)).rows;
+  await check("cada lote quedó en la bitácora con sus cantidades", uploadsLog.length > 0 && JSON.stringify(uploadsLog[0]) === JSON.stringify({ received: 4, accepted: 3, unchanged: 0, updated: 0, rejected: 1 }));
+
+  // 5) Cierre: cuenta lo recibido, es idempotente y solo del dueño.
+  const total = await count(`select count(*)::int as n from event_results where event_id = '${EV}'`);
+  const incomplete = await close(A, EV, total - 1);
+  await check("cerrar con otra cantidad: incomplete y NO se cierra", incomplete.outcome === "incomplete" && incomplete.results_count === total && (await count(`select count(*)::int as n from events where id = '${EV}' and results_closed_at is null`)) === 1);
+  await check("cerrar un evento ajeno o inexistente: not_found", (await close(B, EV, total)).outcome === "not_found" && (await close(A, "e7d1b9a0-1111-4222-8333-0000000000aa", 0)).outcome === "not_found");
+  const closed = await close(A, EV, total);
+  await check("cerrar con la cantidad correcta: closed", closed.outcome === "closed" && closed.results_count === total);
+  await check("el evento queda finalizado y con el candado puesto", (await count(`select count(*)::int as n from events where id = '${EV}' and status = 'finalizado' and results_closed_at is not null`)) === 1);
+  await check("cerrar otra vez es inofensivo: already_closed", (await close(A, EV, total)).outcome === "already_closed");
+
+  // 6) Evento cerrado: lo idéntico se acepta como sin cambios; lo nuevo o distinto se rechaza.
+  const locked = await upload(A, [request.results[0], { ...correction.results[0], revision: 3, penalty_ms: 1000 }, one({ id: "a1c2e3f4-0000-4000-8000-0000000000fd", roper_global_id: R2, time_ms: 6000 })]);
+  await check("cerrado: igual = unchanged; distinto o nuevo = event_closed", JSON.stringify(outcome(locked)) === JSON.stringify([["unchanged", null], ["rejected", "event_closed"], ["rejected", "event_closed"]]));
+
+  // 7) Reabrir: motivo obligatorio, quita el candado y NO cambia el estado (así nadie puede inscribirse).
+  await check("reabrir sin motivo suficiente: reason_required y sigue cerrado", (await reopen(A, EV, "  ya  ")).outcome === "reason_required" && (await count(`select count(*)::int as n from events where id = '${EV}' and results_closed_at is not null`)) === 1);
+  await check("reabrir un evento ajeno: not_found", (await reopen(B, EV, "motivo suficiente")).outcome === "not_found");
+  const reopened = await reopen(A, EV, "Corregí un castigo mal capturado en la segunda corrida");
+  await check("reabrir con motivo: reopened", reopened.outcome === "reopened");
+  await check("reabrir NO cambia el estado: sigue finalizado (nadie puede inscribirse) y el candado se quita", (await count(`select count(*)::int as n from events where id = '${EV}' and status = 'finalizado' and results_closed_at is null`)) === 1);
+  await check("reabrir uno ya abierto es inofensivo: already_open", (await reopen(A, EV, "otro motivo suficiente")).outcome === "already_open");
+  const afterReopen = await upload(A, [{ ...correction.results[0], revision: 3, penalty_ms: 1000 }]);
+  await check("con el candado quitado la corrección se acepta", afterReopen[0].r_status === "updated" && afterReopen[0].r_revision === 3);
+  await check("la bitácora guarda el cierre y la reapertura con su motivo", JSON.stringify((await db.query(`select action, reason from event_results_log where event_id = '${EV}' order by created_at, action`)).rows.map((r) => [r.action, r.reason]))
+    === JSON.stringify([["close", null], ["reopen", "Corregí un castigo mal capturado en la segunda corrida"]]));
+
+  // 8) Permisos: solo el servidor escribe; la lectura de resultados sigue siendo pública.
+  for (const [role, uid, label] of [["anon", null, "anónimo"], ["authenticated", A, "un organizador"], ["authenticated", C, "un participante"]]) {
+    await as(role, uid, `select * from public.app_upload_results('${A}', '[]'::jsonb, array['lazo'], null)`, `${label} NO sube resultados`, "deny");
+    await as(role, uid, `select * from public.app_close_event_results('${A}', '${EV}', 0)`, `${label} NO cierra eventos por la API pública`, "deny");
+    await as(role, uid, `select * from public.app_reopen_event_results('${A}', '${EV}', 'motivo suficiente')`, `${label} NO reabre por la API pública`, "deny");
+  }
+  await as("authenticated", A, `insert into event_results (id, event_id, roper_id, discipline, disqualified) values (gen_random_uuid(), '${EV}', '${R1}', 'lazo', false)`, "un organizador NO escribe resultados directo", "deny");
+  await as("authenticated", A, `update event_results set time_ms = 1 where event_id = '${EV}'`, "un organizador NO edita resultados directo", "deny");
+  await as("authenticated", A, `delete from event_results where event_id = '${EV}'`, "un organizador NO borra resultados directo", "deny");
+  await as("authenticated", A, `update events set results_closed_at = null where id = '${EV}'`, "un organizador NO quita el candado por su cuenta", "deny");
+  await as("anon", null, `select id, discipline, time_ms, participant_name from event_results where event_id = '${EV}'`, "los resultados siguen siendo públicos", "some");
+  await as("authenticated", A, `select action from event_results_log where event_id = '${EV}'`, "el organizador ve la bitácora de SU evento", "some");
+  await as("authenticated", B, `select action from event_results_log where event_id = '${EV}'`, "otro organizador NO ve esa bitácora", "deny");
+  await as("anon", null, "select id from result_uploads", "anónimo NO ve las subidas", "deny");
+  await as("service_role", null, `select * from public.app_close_event_results('${A}', '${EV}', 0)`, "el servidor SÍ ejecuta las funciones", "some");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

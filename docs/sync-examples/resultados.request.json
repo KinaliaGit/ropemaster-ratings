@@ -37,6 +37,19 @@
       "disqualified": true,
       "place": null,
       "recorded_at": "2026-12-06T21:19:12Z"
+    },
+    {
+      "id": "a1c2e3f4-0000-4000-8000-000000000004",
+      "revision": 1,
+      "event_id": "e7d1b9a0-1111-4222-8333-444455556666",
+      "roper_global_id": null,
+      "participant_name": "Chuy Rodríguez",
+      "discipline": "lazo",
+      "time_ms": 9800,
+      "penalty_ms": 0,
+      "disqualified": false,
+      "place": 3,
+      "recorded_at": "2026-12-06T21:22:30Z"
     }
   ]
 }

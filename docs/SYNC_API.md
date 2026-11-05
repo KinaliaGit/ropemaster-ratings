@@ -37,8 +37,11 @@ miles de lazadores, bajar todo sería enorme y expondría correos de gente ajena
 - La identidad es el **correo** (único y en minúsculas). El celular ya no es llave ni se verifica, y no se envía.
 - `since` y `cursor` son por evento: la app guarda un `since` distinto para cada uno. `generated_at` es el corte de la
   consulta; la app lo guarda como el próximo `since` solo si recibió todas las páginas.
-- `ratings` trae un rating (escala de 1 a 10, un decimal) POR modalidad (`lazo`, `barriles`, …); una modalidad sin entrada
-  significa que nunca ha competido en ella. Hoy solo `lazo` está activo.
+- `ratings` trae un rating (escala de 1 a 10, un decimal) POR modalidad **activa** (hoy solo `lazo`). Quien aún no tiene rating en
+  una modalidad viene con el rating inicial (1, igual que se muestra en la web), `events: 0`, `wins: 0` y `updated_at: null`. Las
+  modalidades que la web no tiene activas no se envían.
+- Cada participante lleva solo `global_id`, `name`, `email`, `claimed` y `ratings`. Nunca celular ni ids de cuenta.
+- Un perfil fusionado (`merged_into`) no se incluye.
 
 ```json
 { "participants": [{ "global_id": "…", "name": "…", "email": "ana@example.com", "claimed": true,
@@ -46,7 +49,26 @@ miles de lazadores, bajar todo sería enorme y expondría correos de gente ajena
   "next_cursor": null, "generated_at": "2026-11-05T10:00:00Z" }
 ```
 
-Estado: formato acordado con la app (KIN-592); la API real es KIN-586 y hoy `/api/app/participantes` devuelve una lista vacía.
+Ejemplo completo y versionado, para las pruebas de la web y de la app: [`sync-examples/participantes.response.json`](sync-examples/participantes.response.json).
+
+**Paginación y corte.** Cada página trae hasta 200 personas ordenadas por su último cambio. Si hay más, `next_cursor` trae un
+texto opaco que la app manda tal cual en `?cursor=`, junto con el mismo `event_id` y `since`. Todas las páginas de una descarga
+comparten el mismo `generated_at` (el de la primera). Un participante cuenta como "cambiado" cuando cambia su perfil, su correo o su
+estado de reclamo, sus ratings o su inscripción en ese evento. `since` es inclusivo: reenviar a alguien dos veces es inofensivo.
+
+| HTTP | Cuándo | ¿Reintentar? |
+|---|---|---|
+| `200` | Página entregada (puede traer `participants: []`) | no hace falta |
+| `400` | Falta `event_id`, o `event_id`, `since` o `cursor` no son válidos | no, es un error de la app |
+| `401` | Código de conexión inválido o revocado | no, hay que reconectar |
+| `403` | El organizador no está activo (sin licencia vigente ni aprobación) | no, hasta que lo apruebe un admin |
+| `404` | El evento no existe o no es del organizador (no se distingue) | no |
+| `429` | Demasiados intentos con un código inválido (trae `Retry-After`) | sí, después de esperar |
+| `503` | Falla temporal | sí |
+
+Las respuestas llevan `Cache-Control: no-store`. Los correos nunca se escriben en los registros del servidor.
+
+Estado: implementada (KIN-586). La app la usa desde KIN-592 con este mismo formato.
 
 ## Subida de resultados (contrato v1, BORRADOR para aprobar)
 

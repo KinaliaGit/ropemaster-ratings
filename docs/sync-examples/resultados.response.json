@@ -3,13 +3,14 @@
   "client_batch_id": "5b0f9d1e-3c64-4e4e-9a52-0d6f4f1c7a10",
   "results": [
     { "id": "a1c2e3f4-0000-4000-8000-000000000001", "status": "accepted", "revision": 1 },
-    { "id": "a1c2e3f4-0000-4000-8000-000000000002", "status": "unchanged", "revision": 1 },
+    { "id": "a1c2e3f4-0000-4000-8000-000000000002", "status": "accepted", "revision": 1 },
     {
       "id": "a1c2e3f4-0000-4000-8000-000000000003",
       "status": "rejected",
       "code": "roper_unknown",
-      "message": "roper_global_id no existe en el directorio",
+      "message": "roper_global_id no existe en la web",
       "retry": false
-    }
+    },
+    { "id": "a1c2e3f4-0000-4000-8000-000000000004", "status": "accepted", "revision": 1 }
   ]
 }

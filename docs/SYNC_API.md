@@ -70,10 +70,14 @@ Las respuestas llevan `Cache-Control: no-store`. Los correos nunca se escriben e
 
 Estado: implementada (KIN-586). La app la usa desde KIN-592 con este mismo formato.
 
-## Subida de resultados (contrato v1, BORRADOR para aprobar)
+## Subida de resultados (contrato v1)
 
-Estado: propuesta pendiente de revisión por Ana (rating) y Edgar (app). Los ejemplos JSON completos están en
-[`docs/sync-examples/`](sync-examples/) y ambos lados los usan como datos de prueba.
+Estado: **implementada en la web** (KIN-587): `POST /api/app/resultados`, `POST /api/app/eventos/<id>/cierre` y `POST /api/app/eventos/<id>/reabrir`.
+La app la usará desde KIN-593. Los ejemplos JSON completos están en [`docs/sync-examples/`](sync-examples/); la web los usa como datos de
+prueba (`npm run test:db` y `npm run test:unit`) y la app debe poder reproducirlos tal cual.
+
+Decisiones (2026-11-06): un resultado de alguien **sin lazador en la web** se acepta igual, solo para el evento y sin ligarlo a nadie; un
+evento **cerrado** no cambia hasta reabrirlo con un motivo, y reabrir se hace **desde la app**; reabrir **no** cambia el estado del evento.
 
 ### Versión del contrato
 - El cuerpo de cada petición lleva `contract_version` (entero) y la respuesta lo repite. Hoy es `1`.
@@ -92,7 +96,8 @@ Campos del cuerpo: `contract_version`, `client_batch_id` (UUID del envío, solo 
 | `id` | UUID | Lo genera la app y no cambia nunca. Es la llave de idempotencia |
 | `revision` | entero >= 1 | La app lo sube en 1 cada vez que corrige ese resultado |
 | `event_id` | UUID | Id del evento en la web (el mismo `id` que recibió en `GET /api/app/eventos`) |
-| `roper_global_id` | UUID | `global_id` del participante en el directorio |
+| `roper_global_id` | UUID o `null` | `global_id` del participante en el directorio. `null` si la persona no tiene lazador en la web (ver abajo) |
+| `participant_name` | texto (1 a 120) | **Obligatorio si `roper_global_id` es `null`**; si hay lazador ligado se ignora |
 | `discipline` | texto | `lazo` o `barriles`. Solo las modalidades activas en la web |
 | `time_ms` | entero o `null` | >= 0. `null` si no hubo tiempo (descalificado o sin tiempo) |
 | `penalty_ms` | entero | >= 0. Ya viene separado: el tiempo final es `time_ms + penalty_ms` |
@@ -115,11 +120,10 @@ Códigos de rechazo por resultado:
 
 | `code` | Causa | `retry` |
 |---|---|---|
-| `invalid_field` | Un campo no cumple las reglas de la tabla | no |
-| `event_not_found` | El `event_id` no existe | no |
-| `event_forbidden` | El evento no es de este organizador | no |
-| `event_closed` | El evento está `finalizado` (ver abajo) | no, hasta reabrir |
-| `roper_unknown` | El `roper_global_id` no existe en el directorio | no |
+| `invalid_field` | Un campo no cumple las reglas de la tabla (también: falta el nombre sin lazador, o el `id` ya es de otro evento) | no |
+| `event_not_found` | El `event_id` no existe **o no es de este organizador** (no se distingue, para no revelar qué eventos existen) | no |
+| `event_closed` | Los resultados del evento están cerrados y este cambia algo (ver abajo) | no, hasta reabrir |
+| `roper_unknown` | Viene un `roper_global_id` que no existe en el directorio (si no hay lazador, se manda `null` y el nombre) | no |
 | `discipline_inactive` | La modalidad no está activa en la web | no |
 | `stale_revision` | Llegó una `revision` menor o igual con datos distintos a los guardados | no |
 | `temporary_error` | Falla interna al guardar ese resultado | sí |
@@ -131,7 +135,8 @@ Códigos de rechazo por resultado:
 | `200` | Lote procesado (revisar el estado de cada resultado) | no hace falta |
 | `400` | Cuerpo mal formado o campos obligatorios ausentes | no, es un error de la app |
 | `401` | Código de conexión inválido o revocado | no. La app pide reconectar en Ajustes → Cuenta web |
-| `403` | Organizador no verificado | no, hasta que lo verifiquen |
+| `403` | El organizador no está activo (sin licencia vigente ni aprobación) | no, hasta que lo apruebe un admin |
+| `404` | Cierre o reapertura de un evento que no existe o no es del organizador | no |
 | `409` | Conflicto a nivel de lote (solo en el cierre, ver abajo) | no, hay que corregir |
 | `413` | Lote demasiado grande | sí, partido en mitades |
 | `426` | Versión del contrato no soportada | no, hay que actualizar la app |
@@ -150,43 +155,58 @@ es seguro.
 - El servidor guarda la `revision` junto al resultado (columna nueva, aditiva, en `event_results`).
 - Un resultado nunca se borra por este canal. Para quitar uno, la app lo manda con `disqualified: true` y `place: null`, o se
   borra desde la web por el organizador (fuera de este contrato).
+- **Evento con los resultados cerrados:** reenviar un resultado **idéntico** responde `unchanged` (inofensivo, por ejemplo un envío viejo que
+  llega tarde). Un resultado nuevo o con datos distintos responde `event_closed` hasta que el evento se reabra.
+
+### Resultados de gente sin lazador en la web
+Si la persona no tiene lazador en la web, la app manda `roper_global_id: null` y `participant_name`. El resultado se **acepta** y queda
+**solo para el evento**: se ve en sus resultados, pero no se liga a nadie, así que no afecta ratings, perfiles ni historial de ninguna persona.
+Si la app manda un `roper_global_id` que **no existe**, sigue siendo error (`roper_unknown`): eso es un dato malo, distinto de "no hay lazador".
+La web muestra el nombre y el tiempo de esas personas, así que el Aviso de Privacidad debe cubrirlo.
 
 ### Cerrar un evento: `POST /api/app/eventos/<event_id>/cierre`
-El evento pasa a `finalizado`. **El recálculo de ratings NO es parte de este contrato**: está en pausa hasta definir la solución
-(KIN-571). Cerrar solo cambia el estado; cuando exista el cálculo, se enganchará aquí sin cambiar la forma de la petición. Cuerpo: `{ "contract_version": 1, "expected_results": <n> }`.
+El evento pasa a `finalizado` y se pone el **candado de los resultados** (`events.results_closed_at`). **El recálculo de ratings NO es parte
+de este contrato**: está en pausa hasta definir la solución (KIN-571 y KIN-583). Cerrar solo cambia el estado y el candado; cuando exista el
+cálculo, se enganchará aquí sin cambiar la forma de la petición. Cuerpo: `{ "contract_version": 1, "expected_results": <n> }`.
 
 - `expected_results` es el total de resultados que la app tiene para ese evento. Si el servidor tiene otra cantidad:
-  `409` con `code: "incomplete"` y `results_count`. La app reenvía lo que falte y vuelve a cerrar. Así un cierre nunca deja
-  resultados a medias.
-- Cerrar un evento ya finalizado responde `200` con `already_closed: true` (es idempotente).
+  `409` con `code: "incomplete"` y `results_count`, y **no se cierra**. La app reenvía lo que falte y vuelve a cerrar. Así un cierre nunca
+  deja resultados a medias.
+- Cerrar un evento ya cerrado responde `200` con `already_closed: true` (es idempotente).
 - La respuesta no trae ratings. Los ratings siguen saliendo de `GET /api/app/participantes` con los valores que tenga la web.
-- Solo el organizador dueño del evento (`403` si no).
+- Un evento que no existe o no es del organizador responde `404` (no se distingue). Cada cierre queda en la bitácora.
 
-### Corregir un evento ya finalizado: `POST /api/app/eventos/<event_id>/reabrir`
-Cuerpo: `{ "contract_version": 1, "reason": "texto" }` (el motivo es obligatorio y queda en bitácora). El evento vuelve a
-`publicado`, la app reenvía los resultados corregidos (con `revision` mayor) y vuelve a cerrar.
+### Corregir un evento ya cerrado: `POST /api/app/eventos/<event_id>/reabrir`
+Cuerpo: `{ "contract_version": 1, "reason": "texto" }`. El motivo es **obligatorio** (de 5 a 500 caracteres) y queda en la bitácora.
+
+- **Se hace desde la app.** Al desbloquear un evento finalizado se pide el motivo; la app reabre, reenvía lo corregido (con `revision` mayor)
+  y vuelve a cerrar. La web solo guarda y muestra el estado y la bitácora; no tiene un botón para reabrir.
+- **Reabrir NO cambia el estado del evento**: solo quita el candado de los resultados. El evento sigue `finalizado`, porque en la web
+  `publicado` es lo que permite inscribirse, y reabrir no debe volver a abrir las inscripciones de un evento pasado.
+- Reabrir uno ya abierto responde `200` con `already_open: true`. Sin motivo suficiente, `400` con `code: "reason_required"`.
 
 ### Pruebas
 Los archivos de `docs/sync-examples/` forman los casos base. Web y app deben poder reproducirlos tal cual:
 
 | Caso | Archivos |
 |---|---|
-| Lote con 1 aceptado, 1 repetido y 1 rechazado | `resultados.request.json` / `resultados.response.json` |
+| Primer envío: 3 aceptados (uno de ellos **sin lazador en la web**) y 1 rechazado (`roper_unknown`). Reenviarlo da `unchanged` en los 3 | `resultados.request.json` / `resultados.response.json` |
 | Corrección con `revision` 2 | `resultados.correccion.request.json` / `resultados.correccion.response.json` |
 | Cierre del evento | `cierre.request.json` / `cierre.response.json` |
+| Reabrir con motivo | `reabrir.request.json` / `reabrir.response.json` |
+| Lo que devuelve `GET /api/app/participantes` | `participantes.response.json` |
 
 ### Cómo encaja con la app y con la web (revisado contra el código)
 Revisado contra el esquema de la web (`supabase/migrations`) y el de la app (`roping-manager-tauri/src-tauri/migrations`).
 
 **Lo que ya cuadra**
-- `event_results` ya existe en la web con `id` UUID, `event_id`, `roper_id`, `discipline`, `time_ms`, `penalty_ms`, `disqualified`.
+- `event_results` ya existía en la web con `id` UUID, `event_id`, `roper_id`, `discipline`, `time_ms`, `penalty_ms`, `disqualified`.
 - La app ya tiene UUID estable para eventos (`event.uuid`, migración 0023) y para lazadores (`roper.public_id`).
-- `events.status` ya acepta `finalizado`, y reabrir (volver a `publicado`) no necesita cambios.
+- Los tres endpoints ya existen en la web (KIN-587), con la migración 0021: `event_results` ganó `revision`, `place`, `recorded_at`,
+  `participant_name`, `updated_at` y `uploaded_by`, `roper_id` dejó de ser obligatorio (resultados sin lazador), `events` ganó el candado
+  `results_closed_at`, y hay bitácoras de lotes subidos y de cierres y reaperturas.
 
-**Lo que falta o hay que ajustar**
-1. **La web no tiene los endpoints.** `POST /api/app/resultados`, `/cierre` y `/reabrir` no existen. Las rutas actuales de
-   `/api/app` leen datos de ejemplo (`src/lib/mock.ts`), no de la base.
-2. **Columnas nuevas en `event_results`:** `revision`, `place` y `recorded_at` (aditivas). Hoy no existen.
+**Lo que falta o hay que ajustar (del lado de la app, KIN-593)**
 3. **La app captura por EQUIPO, no por lazador.** Una corrida (`run`) es de un equipo (cabecero + pialador), no de una persona. El
    contrato es por lazador, así que cada corrida genera dos resultados, uno por integrante. La app necesita un UUID estable por
    (corrida, rol) para usarlo como `id`; la tabla `run` hoy solo tiene `id` entero local.
@@ -200,9 +220,8 @@ Revisado contra el esquema de la web (`supabase/migrations`) y el de la app (`ro
 7. **Vínculo de ids:** la app necesita guardar el id de la web de cada evento y lazador (`remote_id`, `global_id`). Es KIN-589.
 
 ### Preguntas abiertas (a resolver al aprobar)
-1. **Participantes que solo existen en la app.** Un resultado exige `roper_global_id`. Si el participante es nuevo y aún no está en el
-   directorio, hoy se rechaza con `roper_unknown`. Falta decidir cómo se da de alta (ligado a KIN-592 y a la decisión de que el
-   celular ya no es la llave de identidad ni se verifica).
+1. ~~**Participantes que solo existen en la app.**~~ Resuelto (2026-11-06): se mandan con `roper_global_id: null` y `participant_name`, y quedan
+   solo para el evento (ver "Resultados de gente sin lazador en la web").
 2. **Fórmula del rating** (KIN-571): el recálculo está en pausa y no es parte de este contrato. Si la fórmula necesita datos que no
    están aquí (por ejemplo número de participantes por ronda), habrá que añadirlos de forma compatible.
 3. **Límites** de 200 resultados y 256 KB: razonables para un evento típico, confirmar con un evento grande real.

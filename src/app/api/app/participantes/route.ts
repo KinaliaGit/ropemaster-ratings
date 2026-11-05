@@ -2,7 +2,8 @@ import { organizerFromRequest } from "@/lib/app-auth";
 import { adminClient } from "@/lib/supabase/admin";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { INITIAL_RATING } from "@/lib/rating";
-import { PAGE_SIZE, buildPage, isOrganizerActive, isUuid, parseParticipantsQuery, type ParticipantRow } from "@/lib/app-participants";
+import { checkActiveOrganizer } from "@/lib/app-organizer";
+import { PAGE_SIZE, buildPage, parseParticipantsQuery, type ParticipantRow } from "@/lib/app-participants";
 
 // Participantes de UN evento del organizador para la app local (KIN-586).
 //
@@ -27,12 +28,8 @@ export async function GET(request: Request) {
   if (!db) return json({ error: "Servicio no disponible" }, 503);
 
   try {
-    // El código de conexión debe ser de una cuenta real (con la base, el organizador es el id de auth.users).
-    const notActive = { error: "Tu cuenta de organizador no está activa: necesita licencia vigente o aprobación de un administrador." };
-    if (!isUuid(auth.organizer)) return json(notActive, 403);
-    const profile = await db.from("profiles").select("organizer_verified, license_valid_until").eq("user_id", auth.organizer).eq("role", "organizador").maybeSingle();
-    if (profile.error) return json({ error: "Servicio no disponible" }, 503);
-    if (!isOrganizerActive(profile.data)) return json(notActive, 403);
+    const organizer = await checkActiveOrganizer(db, auth.organizer);
+    if (!organizer.ok) return json({ error: organizer.error }, organizer.status);
 
     // Solo de eventos propios. Uno ajeno y uno inexistente se ven igual (404) para no revelar cuáles existen.
     const event = await db.from("events").select("id, organizer_id").eq("id", eventId).maybeSingle();

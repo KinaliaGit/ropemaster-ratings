@@ -1,0 +1,4 @@
+{
+  "contract_version": 1,
+  "reason": "Corregí un castigo mal capturado en la segunda corrida"
+}

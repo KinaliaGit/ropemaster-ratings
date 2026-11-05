@@ -15,7 +15,7 @@ async function Form({ props }: { props: PageProps<"/[lang]/entrar"> }) {
   const next = typeof sp.next === "string" ? sp.next : "";
   const role = sp.role === "participante" ? "participante" : "organizador";
   const q = (r: string) => `/${lang}/entrar?role=${r}${next ? `&next=${encodeURIComponent(next)}` : ""}`;
-  const errors: Record<string, string> = { invalid: a.errorInvalid, role: a.errorRoleOrganizer };
+  const errors: Record<string, string> = { invalid: a.errorInvalid, role: a.errorRoleOrganizer, unconfirmed: a.errorUnconfirmed, confirm: a.errorConfirm };
   return (
     <div className="mx-auto max-w-md px-5 pb-10 pt-14">
       <h1 className="text-3xl font-semibold">{a.signInTitle}</h1>

@@ -50,6 +50,7 @@ export const en: Dict = {
     ratingsByMode: "Rating by discipline",
   },
   auth: {
+    errorUnconfirmed: "Confirm your email first: we sent you a link when you signed up.", errorConfirm: "The confirmation link is invalid or has expired. Sign in with your email and password or request another.", resend: "Resend confirmation email", resent: "We sent it again.",
     password: "Password", passwordHint: "At least 8 characters", signInBtn: "Sign in", participantAccess: "Participant access", errorRoleOrganizer: "That account isn't an organizer account. Choose \"Participant\" to sign in.", errorRoleParticipant: "That account isn't a participant account. Choose \"Organizer\" to sign in.", organizerAccess: "Organizer access", or: "or",
     errorInvalid: "Incorrect email or password.", errorExists: "An account with that email already exists.", errorPassword: "The password must be at least 8 characters.",
     errorGeneric: "Couldn't complete that. Please try again.", checkEmail: "We sent you an email to confirm your account. Open it and sign in again.",

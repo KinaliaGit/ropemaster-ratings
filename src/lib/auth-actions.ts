@@ -1,7 +1,9 @@
 "use server";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { LEGAL } from "@/lib/legal";
+import { ensureProfile } from "@/lib/account";
 
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
 const str = (v: FormDataEntryValue | null, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -19,7 +21,8 @@ const home = (l: string, role: Role) => `/${l}/${role === "organizador" ? "organ
 
 // Entrar: el rol elegido es el espacio al que se llega. Una cuenta de organizador también puede entrar a su perfil de lazador;
 // una cuenta de participante no tiene espacio de organizador (eso pasa por licencia o aprobación).
-// Quien tiene cuenta enlaza aquí su perfil de lazador con el que un organizador pudo crear con su correo (idempotente).
+// Si es la primera vez tras confirmar el correo, aquí se crea su perfil (ensureProfile); un participante enlaza su perfil con el
+// que un organizador pudo crear con su correo.
 export async function signIn(formData: FormData) {
   const l = lang(formData.get("lang"));
   const role = roleOf(formData.get("role"));
@@ -27,15 +30,20 @@ export async function signIn(formData: FormData) {
   const back = (error: string) => redirect(`/${l}/entrar?role=${role}&error=${error}${next ? `&next=${encodeURIComponent(next)}` : ""}`);
   const supabase = await createServerSupabase();
   const { data, error } = await supabase.auth.signInWithPassword({ email: str(formData.get("email"), 200), password: str(formData.get("password"), 100) });
-  if (error || !data.user) return back("invalid");
-  const { data: profile } = await supabase.from("profiles").select("role, display_name").eq("user_id", data.user.id).maybeSingle();
+  if (error || !data.user) return back(/confirm/i.test(error?.message ?? "") ? "unconfirmed" : "invalid");
+  const profile = await ensureProfile(supabase, data.user);
   if (!profile || (role === "organizador" && profile.role !== "organizador")) { await supabase.auth.signOut(); return back(profile ? "role" : "invalid"); }
-  if (profile.role === "participante") await supabase.rpc("claim_my_roper", { p_name: profile.display_name });
   redirect(safeNext(next, home(l, role)));
 }
 
-// Crea la cuenta y su perfil, y deja constancia de la aceptación de términos y privacidad.
-// Un participante además reclama el perfil que un organizador haya creado con su correo (o se crea uno nuevo).
+const siteOrigin = async () => {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  return `${h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https")}://${host}`;
+};
+
+// Crea la cuenta y deja en sus metadatos el rol, el nombre y la versión de términos aceptados. Con sesión inmediata crea el perfil
+// y la constancia al instante; si el proyecto exige confirmar el correo, se crean al confirmar o al entrar por primera vez (ensureProfile).
 export async function registerAccount(formData: FormData) {
   const l = lang(formData.get("lang"));
   const role = roleOf(formData.get("role"));
@@ -49,23 +57,30 @@ export async function registerAccount(formData: FormData) {
   if (password.length < 8) return fail("password");
 
   const supabase = await createServerSupabase();
-  const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { display_name: name } } });
+  const { data, error } = await supabase.auth.signUp({
+    email, password,
+    options: { emailRedirectTo: `${await siteOrigin()}/auth/confirm?lang=${l}`, data: { display_name: name, role, terms_version: LEGAL.version } },
+  });
   if (error) return fail(/registered|exists/i.test(error.message) ? "exists" : /password/i.test(error.message) ? "password" : "generic");
-  // Si el proyecto exige confirmar el correo, aún no hay sesión: se pide revisar el correo (el perfil se crea al primer inicio de sesión).
-  if (!data.session || !data.user) redirect(`/${l}/registro?role=${role}&check=email`);
+  if (!data.session || !data.user) redirect(`/${l}/registro?role=${role}&check=email&email=${encodeURIComponent(email)}`);
 
-  const userId = data.user.id;
-  const { error: profileError } = await supabase.from("profiles").insert({ user_id: userId, role, display_name: name, email });
-  const { error: consentError } = await supabase.from("consents").insert([
-    { user_id: userId, document: "terms", version: LEGAL.version },
-    { user_id: userId, document: "privacy", version: LEGAL.version },
-  ]);
-  const { error: claimError } = !profileError && role === "participante" ? await supabase.rpc("claim_my_roper", { p_name: name }) : { error: null };
-  if (profileError || consentError || claimError) {
+  const profile = await ensureProfile(supabase, data.user);
+  if (!profile) {
     await supabase.auth.signOut(); // no dejar una cuenta a medias (sin perfil, sin constancia o sin participante)
     return fail("generic");
   }
   redirect(`${home(l, role)}?bienvenido=1`);
+}
+
+// Reenvía el correo de confirmación.
+export async function resendConfirmation(formData: FormData) {
+  const l = lang(formData.get("lang"));
+  const role = roleOf(formData.get("role"));
+  const email = str(formData.get("email"), 200).toLowerCase();
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    await (await createServerSupabase()).auth.resend({ type: "signup", email, options: { emailRedirectTo: `${await siteOrigin()}/auth/confirm?lang=${l}` } });
+  }
+  redirect(`/${l}/registro?role=${role}&check=email&resent=1&email=${encodeURIComponent(email)}`);
 }
 
 export async function logout(formData: FormData) {

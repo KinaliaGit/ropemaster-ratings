@@ -50,6 +50,7 @@ export const es = {
     ratingsByMode: "Rating por modalidad",
   },
   auth: {
+    errorUnconfirmed: "Primero confirma tu correo: te enviamos un enlace al registrarte.", errorConfirm: "El enlace de confirmación no es válido o ya venció. Entra con tu correo y contraseña o pide otro.", resend: "Reenviar correo de confirmación", resent: "Te lo enviamos de nuevo.",
     password: "Contraseña", passwordHint: "Mínimo 8 caracteres", signInBtn: "Entrar", participantAccess: "Acceso de participantes", errorRoleOrganizer: "Esa cuenta no es de organizador. Elige «Participante» para entrar.", errorRoleParticipant: "Esa cuenta no es de participante. Elige «Organizador» para entrar.", organizerAccess: "Acceso de organizadores", or: "o",
     errorInvalid: "Correo o contraseña incorrectos.", errorExists: "Ya existe una cuenta con ese correo.", errorPassword: "La contraseña debe tener al menos 8 caracteres.",
     errorGeneric: "No se pudo completar. Intenta de nuevo.", checkEmail: "Te enviamos un correo para confirmar tu cuenta. Ábrelo y vuelve a entrar.",

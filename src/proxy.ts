@@ -16,7 +16,7 @@ function pickLocale(request: NextRequest) {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   // La API no lleva idioma: solo se renueva la sesión.
-  if (pathname.startsWith("/api")) return refreshSession(request);
+  if (pathname.startsWith("/api") || pathname.startsWith("/auth")) return refreshSession(request);
   if (LOCALES.some((l) => pathname === `/${l}` || pathname.startsWith(`/${l}/`))) return refreshSession(request);
   request.nextUrl.pathname = `/${pickLocale(request)}${pathname === "/" ? "" : pathname}`;
   return NextResponse.redirect(request.nextUrl);

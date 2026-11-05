@@ -30,6 +30,7 @@ export const en: Dict = {
     openEvents: "open events", registered: "registered", participants: "participants", upcoming: "Upcoming", finished: "Finished",
   },
   event: {
+    from: "From", 
     organizedBy: "Hosted by", photos: "Photos", noPhotos: "The organizer hasn't uploaded photos yet.", enrolled: "Registered", noEnrolled: "No one has registered yet.",
     enrollment: "Registration", enroll: "Register", needAccount: "You need a participant account.", eventFinished: "Event finished", full: "Full",
   },

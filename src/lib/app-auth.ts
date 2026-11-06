@@ -10,7 +10,7 @@ const MAX_FAILURES = 20;     // intentos con un código inválido permitidos por
 const WINDOW_SECONDS = 300;  // ...dentro de esta ventana (5 minutos)
 
 // IP del cliente. En Vercel x-forwarded-for lo pone la plataforma; en otro hosting hay que confirmar que un cliente no pueda inventarlo.
-function clientIp(request: Request) {
+export function clientIp(request: Request) {
   const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   return forwarded || request.headers.get("x-real-ip") || "unknown";
 }

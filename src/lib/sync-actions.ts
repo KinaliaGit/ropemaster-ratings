@@ -1,6 +1,6 @@
 "use server";
 import { getSession } from "@/lib/session";
-import { createSyncToken, revokeSyncToken } from "@/lib/sync-tokens";
+import { createSyncToken, revokeDevice, revokeSyncToken } from "@/lib/sync-tokens";
 
 // Devuelve el código en claro UNA sola vez; después solo queda su hash.
 export async function generateSyncToken(): Promise<{ token?: string; error?: string }> {
@@ -20,6 +20,17 @@ export async function revokeSyncTokenAction(): Promise<{ ok?: true; error?: stri
   try {
     await revokeSyncToken(s.id);
     return { ok: true };
+  } catch {
+    return { error: "failed" };
+  }
+}
+
+// Revoca UN equipo conectado con correo y contraseña (desde el panel): ese equipo deja de sincronizar al instante.
+export async function revokeDeviceAction(id: string): Promise<{ ok?: true; error?: string }> {
+  const s = await getSession();
+  if (s?.role !== "organizador") return { error: "unauthorized" };
+  try {
+    return (await revokeDevice(s.id, id)) ? { ok: true } : { error: "not_found" };
   } catch {
     return { error: "failed" };
   }

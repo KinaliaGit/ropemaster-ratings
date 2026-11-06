@@ -3,9 +3,41 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
 import { ConnectionCode } from "@/components/ConnectionCode";
+import { DeviceRevoke } from "@/components/DeviceRevoke";
 import { getDictionary, resolveLang } from "@/lib/i18n";
-import { activeSyncToken } from "@/lib/sync-tokens";
+import { activeSyncToken, listDevices } from "@/lib/sync-tokens";
 import { fmtDate, type Lang } from "@/lib/format";
+
+// Equipos que entraron a la app con correo y contraseña: uno por computadora, hasta 3. Cada uno se puede revocar por separado.
+async function DevicesSection({ organizer, lang }: { organizer: string; lang: Lang }) {
+  const d = getDictionary(lang).org.app.devices;
+  const devices = await listDevices(organizer).catch(() => []);
+  const day = (iso: string) => fmtDate(iso.slice(0, 10), lang);
+  return (
+    <section className="card mt-8 p-6" aria-labelledby="devices-title">
+      <h2 id="devices-title" className="text-lg font-semibold">{d.title}</h2>
+      <p className="mt-1 text-sm text-muted">{d.blurb}</p>
+      {devices.length === 0 ? (
+        <p className="mt-4 text-sm text-muted">{d.none}</p>
+      ) : (
+        <ul className="mt-4 divide-y divide-line">
+          {devices.map((device) => (
+            <li key={device.id} className="flex items-start justify-between gap-3 py-3">
+              <div className="min-w-0">
+                <p className="truncate font-medium">{device.name}</p>
+                <p className="mt-0.5 text-sm text-muted">
+                  {d.since} {day(device.createdAt)}. {d.lastUsed}: {device.lastUsedAt ? day(device.lastUsedAt) : d.neverUsed}.{" "}
+                  {device.expired ? <span className="font-medium text-red-700">{d.expired}</span> : `${d.expires} ${day(device.expiresAt)}.`}
+                </p>
+              </div>
+              <DeviceRevoke id={device.id} l={{ revoke: d.revoke, revokeConfirm: d.revokeConfirm, revokeError: d.revokeError }} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 // Tarjeta del código de conexión: lee de la base cuándo se creó y cuándo se usó por última vez.
 async function CodeSection({ organizer, lang }: { organizer: string; lang: Lang }) {
@@ -19,6 +51,7 @@ async function CodeSection({ organizer, lang }: { organizer: string; lang: Lang 
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="code-title" className="text-lg font-semibold">{a.code.title}</h2>
+          <p className="mt-1 text-sm text-muted">{a.code.backup}</p>
           <p className="mt-1 text-sm text-muted">{details}</p>
         </div>
         <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${active ? "bg-brand-soft text-brand-hot" : "bg-sand text-muted"}`}>{active ? a.code.connected : a.code.notConnected}</span>
@@ -55,6 +88,7 @@ async function Page({ params }: { params: PageProps<"/[lang]/organizador/app">["
               ))}
             </ol>
 
+            <DevicesSection organizer={s.id} lang={lang} />
             <CodeSection organizer={s.id} lang={lang} />
           </div>
         </>

@@ -18,7 +18,10 @@
       "rounds": [
         { "round": 1, "stage": "preliminary", "status": "completed", "time_ms": 9150, "penalty_ms": 0 },
         { "round": 2, "stage": "preliminary", "status": "no_time", "time_ms": null, "penalty_ms": 0 },
-        { "round": 3, "stage": "preliminary", "status": "completed", "time_ms": 9400, "penalty_ms": 0 }
+        {
+          "round": 3, "stage": "preliminary", "status": "completed", "time_ms": 9400, "penalty_ms": 0,
+          "substitution": { "role": "heeler", "substitute_name": "Beto Sustituto", "substitute_global_id": null, "counts_for_substitute": false }
+        }
       ],
       "recorded_at": "2026-12-06T21:16:41Z"
     }

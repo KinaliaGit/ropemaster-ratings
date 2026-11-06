@@ -118,12 +118,14 @@ test("los ejemplos del contrato son coherentes: contadores, tiempos y castigos s
     const { results } = JSON.parse(example(name));
     for (const result of results) {
       if (!result.rounds) continue;
-      const done = result.rounds.filter((r) => r.status === "completed");
+      // Al resumen entran SOLO las rondas regulares preliminares o de la final; extras, ayudas y desempates son informativos.
+      const counted = result.rounds.filter((r) => (r.kind ?? "regular") === "regular" && r.stage !== "tiebreak");
+      const done = counted.filter((r) => r.status === "completed");
       assert.equal(result.completed_runs, done.length, `${name} ${result.id}: completed_runs`);
-      assert.equal(result.nt_count, result.rounds.filter((r) => r.status === "no_time").length, `${name} ${result.id}: nt_count`);
-      assert.equal(result.dq_count, result.rounds.filter((r) => r.status === "disqualified").length, `${name} ${result.id}: dq_count`);
-      assert.equal(result.time_ms, done.length ? done.reduce((sum, r) => sum + r.time_ms, 0) : null, `${name} ${result.id}: time_ms es la suma de las rondas completadas`);
-      assert.equal(result.penalty_ms, result.rounds.reduce((sum, r) => sum + r.penalty_ms, 0), `${name} ${result.id}: penalty_ms es la suma de los castigos`);
+      assert.equal(result.nt_count, counted.filter((r) => r.status === "no_time").length, `${name} ${result.id}: nt_count`);
+      assert.equal(result.dq_count, counted.filter((r) => r.status === "disqualified").length, `${name} ${result.id}: dq_count`);
+      assert.equal(result.time_ms, done.length ? done.reduce((sum, r) => sum + r.time_ms, 0) : null, `${name} ${result.id}: time_ms es la suma de las rondas regulares completadas`);
+      assert.equal(result.penalty_ms, counted.reduce((sum, r) => sum + r.penalty_ms, 0), `${name} ${result.id}: penalty_ms es la suma de los castigos de esas rondas`);
       for (const r of result.rounds) assert.equal(r.status === "completed", r.time_ms !== null, "solo las completadas llevan tiempo");
     }
   }

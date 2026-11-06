@@ -527,6 +527,58 @@ console.log("- Resultados que sube la app (0021)");
   const completed = await upload(A, [{ ...one({ id: rid(40), roper_global_id: R2 }), completed_runs: 3, nt_count: 0, dq_count: 0, revision: 2,
     rounds: [round(1, "completed", 8000), round(2, "completed", 8000), round(3, "completed", 8000)] }]);
   await check("llegan las rondas con revisión mayor: se completa el mismo resultado", completed[0].r_status === "updated" && (await stored(40)).rounds.length === 3);
+
+  // 10) Desempate, extras, ayudas y sustituciones (0023): se muestran, pero solo las rondas regulares entran al resumen.
+  console.log("- Desempate, extras, ayudas y sustituciones (0023)");
+  const flat2 = (rounds) => rounds.map((x) => [x.round, x.stage, x.kind, x.status]);
+  const mixedRounds = await upload(A, [withRounds(50, [
+    round(1, "completed", 8000), round(2, "completed", 8100),
+    { ...round(1, "completed", 7900), stage: "tiebreak" },
+    { ...round(2, "completed", 8500), kind: "help" },
+    { ...round(1, "no_time"), kind: "extra" },
+  ])]);
+  const mixed50 = await stored(50);
+  await check("desempate, ayuda y extra se aceptan", mixedRounds[0].r_status === "accepted" && mixed50.rounds.length === 5);
+  await check("al resumen entran SOLO las rondas regulares preliminares o final (el no time de una extra no cuenta)", mixed50.completed_runs === 2 && mixed50.nt_count === 0 && mixed50.dq_count === 0);
+  await check("orden estable: regulares (preliminares y desempate), luego extras y luego ayudas", JSON.stringify(flat2(mixed50.rounds))
+    === JSON.stringify([[1, "preliminary", "regular", "completed"], [2, "preliminary", "regular", "completed"], [1, "tiebreak", "regular", "completed"], [1, "preliminary", "extra", "no_time"], [2, "preliminary", "help", "completed"]]));
+  const manyExtras = await upload(A, [withRounds(51, [round(1, "completed", 8000), { ...round(1, "completed", 8100), kind: "extra" }, { ...round(1, "no_time"), kind: "extra" }])]);
+  await check("las extras pueden repetir número de ronda; las regulares no", manyExtras[0].r_status === "accepted" && (await stored(51)).rounds.length === 3);
+  const withCounters = await upload(A, [withRounds(53, [round(1, "completed", 8000), round(2, "completed", 8100), { ...round(2, "completed", 8500), kind: "help" }], { completed_runs: 3 })]);
+  await check("si la app cuenta una ayuda en el resumen, no coincide y se rechaza", withCounters[0].r_code === "invalid_field");
+  const badKinds = await upload(A, [
+    withRounds(54, [{ ...round(1, "completed", 8000), kind: "bonus" }]), withRounds(55, [{ ...round(1, "completed", 8000), stage: "semifinal" }]),
+    withRounds(56, [round(1, "completed", 8000), { ...round(1, "completed", 8100), stage: "preliminary" }]),
+  ]);
+  await check("tipo o etapa desconocidos y una regular repetida: invalid_field", badKinds.every((r) => r.r_code === "invalid_field"));
+
+  const sub = (extra = {}) => ({ role: "heeler", substitute_name: "Beto Sustituto", substitute_global_id: null, counts_for_substitute: false, ...extra });
+  const withSub = (n, substitution, extra = {}) => withRounds(n, [round(1, "completed", 8000), { ...round(2, "completed", 8100), substitution }], extra);
+  const subbed = await upload(A, [withSub(60, sub({ role: "header", substitute_name: "  Beto Sustituto  ", counts_for_substitute: true }))]);
+  const row60 = await stored(60);
+  await check("quién corrió en sustitución y si cuenta se guarda dentro de esa ronda (nombre recortado)", subbed[0].r_status === "accepted"
+    && JSON.stringify(row60.rounds[1].substitution) === JSON.stringify({ role: "header", substitute_name: "Beto Sustituto", substitute_global_id: null, counts_for_substitute: true }));
+  await check("la corrida se queda con el lazador original: los contadores no cambian por la sustitución", row60.completed_runs === 2);
+  await check("reenviar la misma sustitución: unchanged", (await upload(A, [withSub(60, sub({ role: "header", substitute_name: "Beto Sustituto", counts_for_substitute: true }))]))[0].r_status === "unchanged");
+  const flipped = await upload(A, [withSub(60, sub({ role: "header", substitute_name: "Beto Sustituto", counts_for_substitute: false }), { revision: 2 })]);
+  await check("cambiar si cuenta o no para el sustituto es una corrección (updated)", flipped[0].r_status === "updated" && (await stored(60)).rounds[1].substitution.counts_for_substitute === false);
+  const subDefaults = await upload(A, [withSub(61, { role: "heeler", substitute_name: "Chuy", substitute_global_id: R2 })]);
+  await check("si no se dice si cuenta, es que no; el id del sustituto se guarda", subDefaults[0].r_status === "accepted"
+    && (await stored(61)).rounds[1].substitution.counts_for_substitute === false && (await stored(61)).rounds[1].substitution.substitute_global_id === R2);
+  const nullSub = await upload(A, [withSub(62, null)]);
+  await check("sustitución en null equivale a no haberla", nullSub[0].r_status === "accepted" && (await stored(62)).rounds[1].substitution === undefined);
+  const badSubs = await upload(A, [
+    withSub(63, sub({ role: "roper" })), withSub(64, sub({ substitute_name: "" })), withSub(65, sub({ substitute_name: undefined })),
+    withSub(66, sub({ substitute_name: "x".repeat(121) })), withSub(67, sub({ substitute_global_id: "no-uuid" })),
+    withSub(68, sub({ counts_for_substitute: "si" })), withSub(69, "no es un objeto"), withSub(70, [1]),
+  ]);
+  await check("sustituciones inválidas (rol, nombre, id, bandera o forma): cada una se rechaza como invalid_field", badSubs.length === 8 && badSubs.every((r) => r.r_code === "invalid_field" && r.r_retry === false));
+
+  // Lo guardado con el formato de la 0022 (sin `kind`) pasa al formato nuevo con el mismo comando de la migración.
+  await db.exec(`insert into event_results (id, event_id, roper_id, discipline, disqualified, rounds) values ('${rid(80)}', '${EV}', '${R1}', 'lazo', false,
+    '[{"round":1,"stage":"preliminary","status":"completed","time_ms":8000,"penalty_ms":0}]'::jsonb)`);
+  await db.exec("update event_results set rounds = public.app_normalize_rounds(rounds) where rounds is not null");
+  await check("el formato viejo se normaliza: aparece kind regular", (await stored(80)).rounds[0].kind === "regular");
 }
 
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");

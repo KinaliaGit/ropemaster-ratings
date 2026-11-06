@@ -581,5 +581,92 @@ console.log("- Resultados que sube la app (0021)");
   await check("el formato viejo se normaliza: aparece kind regular", (await stored(80)).rounds[0].kind === "regular");
 }
 
+console.log("- Un token por equipo y vencimiento por inactividad (0025)");
+{
+  const T1 = "f3000000-0000-0000-0000-0000000000a1", T2 = "f3000000-0000-0000-0000-0000000000b1", T3 = "f3000000-0000-0000-0000-0000000000c1";
+  await db.exec(`
+    insert into auth.users (id, email, email_confirmed_at) values ('${T1}','t1@x.com',now()), ('${T2}','t2@x.com',now()), ('${T3}','t3@x.com',now());
+    insert into profiles (user_id, role, display_name, organizer_verified) values ('${T1}','organizador','Org T1',true), ('${T2}','organizador','Org T2',true), ('${T3}','organizador','Org T3',true);
+  `);
+  const svc = async (sql, params = []) => { await db.exec("reset role; set role service_role"); const r = await db.query(sql, params); await db.exec("reset role"); return r.rows; };
+  const device = async (org, hash, name = "Equipo") => (await svc("select public.create_device_token($1, $2, $3, 3) as id", [org, hash, name]))[0].id;
+  const verify = async (hash) => (await svc("select public.verify_api_token($1) as org", [hash]))[0].org;
+  const count = async (org, kind) => (await db.query(`select count(*)::int as n from api_tokens where organizer_id = $1 and kind = $2 and revoked_at is null`, [org, kind])).rows[0].n;
+  const age = (hash, days, column = "last_used_at") => db.exec(`update api_tokens set ${column} = now() - interval '${days} days' where token_hash = '${hash}'`);
+
+  await check("el vencimiento por inactividad es de 30 días", (await svc("select public.api_token_idle_days() as d"))[0].d === 30);
+
+  // --- límite de equipos
+  const d1 = await device(T1, "t1-d1", "MacBook de la oficina"), d2 = await device(T1, "t1-d2"), d3 = await device(T1, "t1-d3");
+  await check("un organizador conecta hasta 3 equipos", !!d1 && !!d2 && !!d3 && (await count(T1, "login")) === 3);
+  await check("el cuarto equipo NO se crea y no cierra a ninguno (devuelve null)", (await device(T1, "t1-d4")) === null && (await count(T1, "login")) === 3);
+  await check("los 3 equipos siguen sirviendo tras el intento del cuarto", (await verify("t1-d1")) === T1 && (await verify("t1-d3")) === T1);
+  await check("revocar un equipo libera su lugar: el cuarto ya se crea", (await svc("select public.revoke_api_token($1, $2) as ok", [T1, d2]))[0].ok === true && !!(await device(T1, "t1-d4")));
+  await check("un equipo revocado deja de servir al instante", (await verify("t1-d2")) === null);
+  await check("otro organizador NO puede revocar un equipo ajeno", (await svc("select public.revoke_api_token($1, $2) as ok", [T2, d1]))[0].ok === false && (await verify("t1-d1")) === T1);
+  await check("revocar dos veces el mismo equipo no falla: la segunda devuelve false", (await svc("select public.revoke_api_token($1, $2) as ok", [T1, d2]))[0].ok === false);
+
+  // --- el código manual y los equipos no se pisan
+  await svc("select public.rotate_api_token($1, 'm1')", [T1]);
+  await svc("select public.rotate_api_token($1, 'm2')", [T1]);
+  await check("generar un código manual nuevo revoca solo el manual anterior, no los equipos", (await count(T1, "manual")) === 1 && (await count(T1, "login")) === 3
+    && (await verify("m1")) === null && (await verify("m2")) === T1);
+  await check("el código manual NO cuenta dentro de los 3 equipos", (await device(T1, "t1-d5")) === null);
+  await check("crear equipos no revoca el código manual", (await verify("m2")) === T1);
+  await check("tener varios equipos activos NO rompe la tarjeta del código manual (a lo más un manual activo)", (await count(T1, "manual")) === 1);
+  let dupManual = false;
+  try { await db.query(`insert into api_tokens (organizer_id, token_hash, kind) values ('${T1}', 'manual-dos', 'manual')`); } catch { dupManual = true; }
+  await check("seguir permitido: un solo código manual activo por organizador", dupManual);
+
+  // --- nombre del equipo
+  await device(T2, "t2-vacio", "   ");
+  await device(T2, "t2-largo", "x".repeat(100));
+  await device(T2, "t2-espacios", "  Laptop de Ana  ");
+  const names = (await db.query(`select token_hash, name from api_tokens where organizer_id = '${T2}'`)).rows.reduce((m, r) => ({ ...m, [r.token_hash]: r.name }), {});
+  await check("el nombre vacío queda como Equipo, el largo se corta a 60 y se recortan espacios",
+    names["t2-vacio"] === "Equipo" && names["t2-largo"].length === 60 && names["t2-espacios"] === "Laptop de Ana");
+
+  // --- vencimiento por inactividad, con renovación deslizante
+  await check("un token desconocido no sirve", (await verify("no-existe")) === null);
+  await age("t1-d1", 31);
+  await check("a los 31 días sin uso el token vence (401)", (await verify("t1-d1")) === null);
+  await age("t1-d3", 29);
+  await check("a los 29 días sigue sirviendo", (await verify("t1-d3")) === T1);
+  await check("y ese uso reinicia el plazo (last_used_at se renueva)", (await db.query(`select last_used_at > now() - interval '1 minute' as fresh from api_tokens where token_hash = 't1-d3'`)).rows[0].fresh === true);
+  const before = (await db.query(`select last_used_at::text as t from api_tokens where token_hash = 't1-d3'`)).rows[0].t;
+  await verify("t1-d3");
+  await check("last_used_at se escribe como máximo una vez por minuto", (await db.query(`select last_used_at::text as t from api_tokens where token_hash = 't1-d3'`)).rows[0].t === before);
+  await db.exec(`insert into api_tokens (organizer_id, token_hash, kind, last_used_at, created_at) values ('${T2}', 'nunca-usado-viejo', 'login', null, now() - interval '31 days'), ('${T2}', 'nunca-usado-nuevo', 'login', null, now() - interval '29 days')`);
+  await check("un token nunca usado cuenta desde su creación: a los 31 días vence, a los 29 no", (await verify("nunca-usado-viejo")) === null && (await verify("nunca-usado-nuevo")) === T2);
+  await age("m2", 31);
+  await check("el código manual también vence a los 30 días sin uso", (await verify("m2")) === null);
+
+  // --- un equipo vencido no ocupa lugar del límite
+  await device(T3, "t3-a"); await device(T3, "t3-b"); await device(T3, "t3-c");
+  await check("con 3 equipos activos no cabe otro", (await device(T3, "t3-x")) === null);
+  await age("t3-a", 31);
+  await check("si uno venció por inactividad, su lugar queda libre", !!(await device(T3, "t3-y")));
+
+  // --- cierre de sesión de la app: revoca solo ese token
+  await check("cerrar sesión revoca solo el token que se usó", (await svc("select public.revoke_api_token_by_hash($1) as ok", ["t3-b"]))[0].ok === true
+    && (await verify("t3-b")) === null && (await verify("t3-c")) === T3);
+  await check("cerrar sesión con un token que ya no existe devuelve false, sin error", (await svc("select public.revoke_api_token_by_hash($1) as ok", ["t3-b"]))[0].ok === false);
+
+  // --- permisos: solo el servidor
+  for (const [fn, args] of [
+    ["create_device_token", `'${T1}', 'x', 'x', 3`], ["verify_api_token", `'x'`], ["revoke_api_token", `'${T1}', '${d1}'`],
+    ["revoke_api_token_by_hash", `'x'`], ["api_token_idle_days", ``],
+  ]) {
+    await as("anon", null, `select public.${fn}(${args})`, `anónimo NO ejecuta ${fn}`, "deny");
+    await as("authenticated", T1, `select public.${fn}(${args})`, `un organizador NO ejecuta ${fn}`, "deny");
+    await as("service_role", null, `select public.${fn}(${args})`, `el servidor SÍ ejecuta ${fn}`, "some");
+  }
+  await as("authenticated", T1, "select id, name, kind, created_at, last_used_at, revoked_at from api_tokens", "el organizador ve sus equipos (nombre, tipo y fechas)", "some");
+  await as("authenticated", T1, "select token_hash from api_tokens", "NO ve el hash de sus equipos", "deny");
+  await as("authenticated", T1, `update api_tokens set revoked_at = null, kind = 'manual' where organizer_id = '${T1}'`, "NO reactiva ni cambia el tipo de un equipo directo", "deny");
+  await as("authenticated", T1, `insert into api_tokens (organizer_id, token_hash, kind) values ('${T1}', 'directo', 'login')`, "NO crea equipos directo (se saltaría el límite)", "deny");
+  await as("authenticated", T2, `select id from api_tokens where organizer_id = '${T1}'`, "NO ve los equipos de otro organizador", "deny");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

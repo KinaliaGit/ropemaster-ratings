@@ -25,7 +25,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
       {all.length === 0 && <p className="mt-12 rounded-2xl bg-sand p-6 text-center text-muted">{t.home.empty}</p>}
       {open.length > 0 && (<>
         <h2 className="mt-12 text-xl font-semibold">{t.home.upcoming}</h2>
-        <div className="mt-5 grid grid-cols-1 gap-x-4 gap-y-8 min-[480px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">{open.map((e) => <EventCard key={e.id} e={e} lang={lang} t={t} />)}</div>
+        <div className="mt-5 grid grid-cols-1 gap-x-4 gap-y-8 min-[480px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">{open.map((e, i) => <EventCard key={e.id} e={e} lang={lang} t={t} eager={i < 4} />)}</div>
       </>)}
       {past.length > 0 && (<>
         <h2 className="mt-14 text-xl font-semibold">{t.home.finished}</h2>

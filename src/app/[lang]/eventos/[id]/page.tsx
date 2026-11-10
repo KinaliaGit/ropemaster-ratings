@@ -8,6 +8,7 @@ import { getPublicEvent } from "@/lib/data/events";
 import { getRegistrantIds } from "@/lib/data/registrations";
 import { fmtDate, mxn } from "@/lib/format";
 import { RoperCard } from "@/components/RoperCard";
+import Image from "next/image";
 import { EventCover } from "@/components/EventCover";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
@@ -38,7 +39,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
         {/* Cartel: el flyer vertical completo (2:3), sin recortes ni texto encima. */}
         <div className="mx-auto w-full max-w-sm lg:max-w-none">
           <div className="relative aspect-[2/3] overflow-hidden rounded-[28px] bg-sand shadow-[0_18px_48px_-24px_rgba(20,19,17,0.55)] lg:sticky lg:top-24">
-            <EventCover e={e} />
+            <EventCover e={e} sizes="(min-width: 1024px) 380px, (min-width: 384px) 384px, 100vw" eager />
             {!e.cover && <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-6 pt-24"><h2 className="text-3xl font-semibold text-white">{e.name}</h2></div>}
           </div>
         </div>
@@ -72,8 +73,8 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
               {/* Fotos con su proporción real (sin recortar): columnas tipo galería. */}
               <div className="mt-4 columns-2 gap-3 sm:columns-3">
                 {gallery.map(({ id: photoId, url: src }) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={photoId} src={src} alt="" loading="lazy" className="mb-3 w-full break-inside-avoid rounded-2xl" />
+                  // Se desconoce la proporción real de cada foto: se reserva 4:3 y se ajusta al cargar. Llegan reducidas (1600 px), así que se piden al tamaño que se ven.
+                  <Image key={photoId} src={src} alt="" width={800} height={600} sizes="(min-width: 1024px) 240px, (min-width: 640px) 33vw, 50vw" className="mb-3 h-auto w-full break-inside-avoid rounded-2xl" />
                 ))}
               </div>
             </>

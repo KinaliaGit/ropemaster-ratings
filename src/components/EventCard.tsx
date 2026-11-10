@@ -6,13 +6,15 @@ import type { Dict } from "@/dictionaries/es";
 
 // Tarjeta tipo cartel: el flyer vertical (2:3) se ve completo y el texto va DEBAJO (el flyer ya trae el suyo).
 // Sin flyer, el cartel genérico lleva el nombre encima para que la tarjeta no quede vacía.
-export function EventCard({ e, lang, t }: { e: EventItem; lang: Lang; t: Dict }) {
+// `eager`: las primeras tarjetas (las que se ven al abrir la página) cargan de inmediato; el resto, al acercarse.
+const CARD_SIZES = "(min-width: 1152px) 276px, (min-width: 768px) 33vw, (min-width: 480px) 50vw, 100vw";
+export function EventCard({ e, lang, t, eager = false }: { e: EventItem; lang: Lang; t: Dict; eager?: boolean }) {
   const full = e.enrolled >= e.capacity;
   const tag = e.status === "finalizado" ? t.status.finished : full ? t.status.full : t.status.open;
   return (
     <Link href={`/${lang}/eventos/${e.id}`} className="group block">
       <div className="relative aspect-[2/3] overflow-hidden rounded-[24px] bg-sand shadow-[0_10px_30px_-18px_rgba(20,19,17,0.5)]">
-        <div className="absolute inset-0 transition duration-500 group-hover:scale-[1.03]"><EventCover e={e} /></div>
+        <div className="absolute inset-0 transition duration-500 group-hover:scale-[1.03]"><EventCover e={e} sizes={CARD_SIZES} eager={eager} /></div>
         {!e.cover && (
           <>
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-transparent" />

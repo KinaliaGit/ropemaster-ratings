@@ -7,25 +7,74 @@ Autenticación: `Authorization: Bearer <código>`. El organizador genera el cód
 
 Cada equipo tiene su propio token (hasta 3 por organizador; el código manual es aparte, uno solo, y no cuenta dentro de los 3). Generar el código manual nuevo revoca solo el manual anterior, no a los equipos. **Todo token vence a los 30 días sin usarse**; cada uso exitoso reinicia el plazo, y sin internet no vence por reloj de la app: lo decide la web cuando la app vuelve a conectarse. Un token vencido responde `401` igual que uno revocado, y la app pide reconectar sin tocar sus datos locales.
 
-- `401`: código inválido, revocado o vencido por 30 días sin uso (no reintentar; la app pide reconectar).
-- `429`: demasiados intentos con un código inválido desde la misma IP (20 en 5 minutos). Trae `Retry-After`.
-- `503`: falla temporal al verificar el código. Sí reintentar.
+- `401` (`code: "invalid_token"`): código inválido, revocado o vencido por 30 días sin uso (no reintentar; la app pide reconectar).
+- `429` (`code: "rate_limited"`): demasiados intentos con un código inválido desde la misma IP (20 en 5 minutos). Trae `Retry-After`.
+- `503` (`code: "service_unavailable"`): falla temporal al verificar el código. Sí reintentar.
 
 Configuración del servidor: `SUPABASE_SERVICE_ROLE_KEY` (secreta, solo servidor) es obligatoria en producción. Sin ella, fuera de producción los códigos viven en memoria y se pierden al reiniciar; en producción la API responde `503`. El valor fijo `APP_SYNC_TOKEN` solo funciona fuera de producción, para pruebas locales.
 
-## `GET /api/app/eventos?since=<ISO-8601>`
-Eventos del organizador con estado `publicado` o `finalizado` (los borradores no se envían), con sus inscritos.
-`since` es opcional: devuelve solo lo modificado después de esa fecha. Guarda el `generated_at`/máximo
-`updated_at` recibido para la siguiente llamada.
+## `GET /api/app/eventos?since=<ISO-8601>&cursor=<texto>`
+
+Estado: implementada (KIN-585). Ejemplo completo y versionado: [`docs/sync-examples/eventos.response.json`](sync-examples/eventos.response.json); la web lo comprueba en sus pruebas y la app puede usarlo tal cual como dato de prueba.
+
+Eventos del organizador del código con estado `publicado` o `finalizado` (los borradores nunca se envían), cada uno con sus categorías y sus
+inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
+
+- **Versión del contrato.** La respuesta trae `contract_version` (hoy `1`). La app puede declarar la que entiende con el encabezado opcional
+  `X-Contract-Version: 1`; si no lo manda se asume la actual. Una versión que la web no habla es `426` con `code: "version_unsupported"` (la app deja de
+  sincronizar y pide actualizar). Agregar campos opcionales NO sube la versión: quien lee ignora lo que no conoce.
+- **Cada evento que cambió llega COMPLETO**, con la lista vigente de inscritos. La app reemplaza lo que tenía de las inscripciones de ese evento: así
+  una cancelación se entiende sola (la inscripción ya no viene).
+- **`since` (opcional, ISO-8601 con hora).** Devuelve solo los eventos que cambiaron desde esa fecha (inclusive). Cuenta como cambio del evento:
+  editarlo, **inscribirse, pagar, cancelar** (también un reembolso), cambiar el costo o el nombre de una categoría y cambiar el nombre de un inscrito.
+  Las inscripciones anteriores a la migración 0024 se marcaron como cambiadas **una sola vez** al aplicarla: un `since` anterior a esa fecha las recibe completas.
+  Guarda el `generated_at` de la respuesta (la última página) para el siguiente `since`. Un evento que cambió justo en ese instante puede repetirse
+  una vez: es seguro, la app lo reemplaza.
+- **Paginación.** Hasta 50 eventos por página, en orden estable. Si `next_cursor` no es `null`, repite la misma petición con `?cursor=<next_cursor>` (y el
+  mismo `since`). Todas las páginas de una descarga comparten el mismo `generated_at`. El cursor es opaco: no lo armes ni lo interpretes.
+- Respuesta con `Cache-Control: no-store`.
 
 ```json
-{ "organizer": "Rodeo Norte", "events": [{
-  "id": "…", "name": "…", "date": "2026-12-06", "city": "…", "venue": "…", "status": "publicado",
-  "disciplines": ["Lazo"], "capacity": 100, "description": "…", "updated_at": "2026-11-01T18:30:00Z",
-  "categories": [{ "name": "Libre", "fee_cents": 80000 }],
-  "registrations": [{ "roper_global_id": "…", "name": "…", "payment_status": "pagado" }]
-}] }
+{ "contract_version": 1, "organizer": "<id del organizador>", "events": [{
+  "id": "…", "slug": "rodeo-norte-2026", "name": "…", "date": "2026-12-06", "city": "…", "venue": "…", "status": "publicado",
+  "disciplines": ["lazo"], "capacity": 100, "description": "…", "updated_at": "2026-11-05T18:30:00.000Z",
+  "categories": [{ "id": "…", "name": "Libre", "fee_cents": 80000 }],
+  "registrations": [{ "id": "…", "roper_global_id": "…", "name": "…", "category_id": "…", "category": "Libre",
+                      "payment_status": "pagado", "amount_cents": 80000, "payment_method": "efectivo" }]
+}], "next_cursor": null, "generated_at": "2026-11-06T09:00:00.000Z" }
 ```
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | UUID | Id del evento en la web (el mismo `event_id` que se usa al subir resultados). |
+| `slug` | texto | Parte de la dirección pública del evento. |
+| `date` | `AAAA-MM-DD` o `""` | Sin hora. |
+| `status` | `publicado` \| `finalizado` | |
+| `disciplines` | lista de ids de modalidad | `lazo`, `barriles` (ver *Modalidades*). |
+| `capacity` | entero o `null` | `null` = sin límite. |
+| `updated_at` | fecha ISO-8601 UTC | Último cambio del evento, sus inscripciones o sus categorías. |
+| `categories[].fee_cents` | entero >= 0 | Montos SIEMPRE en centavos. |
+| `registrations[].id` | UUID | Id de la inscripción. Una persona puede tener una por categoría. |
+| `registrations[].roper_global_id` | UUID | `global_id` del participante (el mismo de `GET /api/app/participantes`). Si su perfil se fusionó con otro, es el del perfil vigente. |
+| `registrations[].category_id` / `category` | UUID / texto, o `null` | Categoría elegida. |
+| `registrations[].payment_status` | `pendiente` \| `pagado` \| `reembolsado` | Una inscripción `pendiente` también ocupa lugar. |
+| `registrations[].amount_cents` | entero >= 0 | Lo que se cobró por esa inscripción, en centavos. |
+| `registrations[].payment_method` | `efectivo` \| `transferencia` \| `stripe` o `null` | `null` mientras esté pendiente. |
+
+Las inscripciones NO llevan correo ni celular: para eso está `GET /api/app/participantes` (que sí exige organizador activo y evento propio).
+
+Errores (todos con `{ "code": "…", "error": "texto para personas" }`; la app decide con `code` y el HTTP, no con el texto):
+
+| HTTP | `code` | Cuándo | ¿Reintentar? |
+|---|---|---|---|
+| `400` | `invalid_field` | `since`, `cursor` o `X-Contract-Version` mal formados | no, es un error de la app |
+| `401` | `invalid_token` | código inválido o revocado | no. La app pide reconectar en Ajustes → Cuenta web |
+| `403` | `organizer_not_active` | el organizador no tiene licencia vigente ni aprobación manual | no, hasta que lo activen |
+| `426` | `version_unsupported` | la web ya no acepta esa versión del contrato | no, hay que actualizar la app |
+| `429` | `rate_limited` | demasiados intentos con un código inválido. Trae `Retry-After` (segundos) | sí, esperando `Retry-After` |
+| `503` | `service_unavailable` | falla temporal de la web o de la base | sí, con espera creciente |
+
+Orden de las comprobaciones: código de conexión (`401`/`429`/`503`), versión y parámetros (`400`/`426`), organizador activo (`403`).
 
 ## `GET /api/app/participantes?event_id=<uuid>&since=<ISO-8601>&cursor=<texto>`
 

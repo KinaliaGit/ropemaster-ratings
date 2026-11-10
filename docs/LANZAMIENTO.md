@@ -25,7 +25,7 @@ Estado al 2026-11-05, rama `feat/organizadores-reales` (PR #1). ✅ hecho y prob
 ## Sincronización con la app (Edgar)
 - ⬜ Evento de ensayo completo: web → app → resultados sin internet → subida → rating.
 - ⬜ Probado con una versión anterior de la app (la base local no va a cuarentena).
-- ⬜ Los endpoints `/api/app/*` aún no mandan inscritos ni participantes reales.
+- 🟡 `GET /api/app/eventos` ya manda inscritos con su pago (KIN-585, migración 0024) y `participantes` y `resultados` ya usan datos reales; falta probarlos con un evento de ensayo y la app (ver arriba).
 
 ## Rating
 - ⛔ La fórmula del rating la define la FMR (KIN-571); el cálculo y la publicación (KIN-583) esperan eso.

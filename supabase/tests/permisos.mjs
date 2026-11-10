@@ -668,5 +668,154 @@ console.log("- Un token por equipo y vencimiento por inactividad (0025)");
   await as("authenticated", T2, `select id from api_tokens where organizer_id = '${T1}'`, "NO ve los equipos de otro organizador", "deny");
 }
 
+console.log("- Eventos con inscritos y pagos para la app (0024)");
+{
+  const E1 = "e2000000-0000-0000-0000-000000000001", E2 = "e2000000-0000-0000-0000-000000000002", E3 = "e2000000-0000-0000-0000-000000000003", E4 = "e2000000-0000-0000-0000-000000000004";
+  const K1 = "c2000000-0000-0000-0000-000000000001", K2 = "c2000000-0000-0000-0000-000000000002", K4 = "c2000000-0000-0000-0000-000000000004";
+  const R1 = "52000000-0000-0000-0000-000000000001", R2 = "52000000-0000-0000-0000-000000000002", R3 = "52000000-0000-0000-0000-000000000003", R4 = "52000000-0000-0000-0000-000000000004", R5 = "52000000-0000-0000-0000-000000000005";
+  const U = "f2000000-0000-0000-0000-00000000000f";
+  // Organizadores propios de esta sección: A y B ya tienen otros eventos de las pruebas anteriores.
+  const OA = "f2000000-0000-0000-0000-0000000000a1", OB = "f2000000-0000-0000-0000-0000000000b1";
+  const tick = () => db.exec("select pg_sleep(0.02)");
+  await db.exec(`
+    insert into auth.users (id, email, email_confirmed_at) values ('${U}','u24@x.com',now()), ('${OA}','oa24@x.com',now()), ('${OB}','ob24@x.com',now());
+    insert into profiles (user_id, role, display_name, organizer_verified) values ('${U}','participante','Participante 24',false), ('${OA}','organizador','Org 24 A',true), ('${OB}','organizador','Org 24 B',true);
+    insert into events (id, name, organizer_id, status, slug, event_date, city, venue, capacity) values
+      ('${E1}','Evento Uno','${OA}','publicado','e24-1','2026-12-06','Monterrey','Lienzo',100),
+      ('${E2}','Borrador Dos','${OA}','borrador','e24-2',null,null,null,null),
+      ('${E3}','Finalizado Tres','${OA}','finalizado','e24-3','2026-10-01','Saltillo','Arena',null),
+      ('${E4}','Evento Ajeno','${OB}','publicado','e24-4','2026-12-07','Torreón','Plaza',50);
+    insert into event_categories (id, event_id, name, fee_cents) values ('${K1}','${E1}','Libre',80000), ('${K2}','${E1}','Segunda fuerza',60000), ('${K4}','${E4}','Abierta',50000);
+    insert into ropers (id, full_name) values ('${R1}','Ana Uno'), ('${R2}','Beto Dos'), ('${R4}','Eva Ajena');
+    insert into ropers (id, full_name, merged_into) values ('${R3}','Ana Duplicada','${R1}');
+    insert into ropers (id, full_name, user_id) values ('${R5}','Uri Participante','${U}');
+    insert into registrations (id, event_id, roper_id, category_id, amount_cents, payment_status, payment_method, created_at) values
+      ('f1000000-0000-0000-0000-000000000001','${E1}','${R1}','${K1}',80000,'pagado','efectivo','2026-11-01 10:00+00'),
+      ('f1000000-0000-0000-0000-000000000002','${E1}','${R2}','${K2}',60000,'pendiente',null,'2026-11-01 11:00+00'),
+      ('f1000000-0000-0000-0000-000000000003','${E1}','${R3}','${K1}',80000,'reembolsado','stripe','2026-11-01 12:00+00'),
+      ('f1000000-0000-0000-0000-000000000004','${E4}','${R4}','${K4}',50000,'pendiente',null,'2026-11-01 13:00+00');
+  `);
+  const evts = async (org, { since = null, snapshot = "2099-01-01 00:00+00", after = null, afterId = null, limit = 50 } = {}) => {
+    await db.exec("reset role; set role service_role");
+    const r = await db.query(`select id, name, status, changed_at::text as changed_text, categories, registrations from public.app_organizer_events($1, $2, $3, $4, $5, $6)`,
+      [org, since, snapshot, after, afterId, limit]);
+    await db.exec("reset role");
+    return r.rows;
+  };
+  const names = (rows) => rows.map((r) => r.name);
+
+  const mine = await evts(OA);
+  await check("el organizador recibe sus eventos publicado y finalizado, no el borrador", JSON.stringify(names(mine).sort()) === JSON.stringify(["Evento Uno", "Finalizado Tres"]));
+  await check("nunca recibe eventos de otro organizador", !names(mine).includes("Evento Ajeno") && JSON.stringify(names(await evts(OB))) === JSON.stringify(["Evento Ajeno"]));
+  await check("un organizador sin eventos (o inexistente) recibe una lista vacía", (await evts(C)).length === 0);
+
+  const uno = mine.find((e) => e.id === E1);
+  await check("el evento trae sus categorías con id, nombre y costo en centavos", JSON.stringify(uno.categories.map((c) => [c.name, c.fee_cents])) === JSON.stringify([["Libre", 80000], ["Segunda fuerza", 60000]]));
+  const regs = uno.registrations;
+  await check("trae todas sus inscripciones con categoría, estado de pago, monto y método", regs.length === 3
+    && regs[0].payment_status === "pagado" && regs[0].payment_method === "efectivo" && regs[0].amount_cents === 80000 && regs[0].category === "Libre"
+    && regs[1].payment_status === "pendiente" && regs[1].payment_method === null && regs[1].category === "Segunda fuerza"
+    && regs[2].payment_status === "reembolsado" && regs[2].payment_method === "stripe");
+  await check("un inscrito con perfil fusionado apunta al perfil vigente (id y nombre)", regs[2].roper_global_id === R1 && regs[2].name === "Ana Uno");
+  await check("solo salen las inscripciones de ESE evento", !JSON.stringify(mine).includes("Eva Ajena"));
+  await check("cada inscripción solo lleva los campos del contrato (ni correo ni celular ni cuenta)",
+    JSON.stringify(Object.keys(regs[0]).sort()) === JSON.stringify(["amount_cents", "category", "category_id", "id", "name", "payment_method", "payment_status", "roper_global_id"]));
+  await check("un evento sin inscritos ni categorías devuelve listas vacías, no null", (() => { const e3 = mine.find((e) => e.id === E3); return Array.isArray(e3.registrations) && e3.registrations.length === 0 && Array.isArray(e3.categories); })());
+
+  // --- since: pagos, inscripciones, cancelaciones y categorías cuentan como cambio del evento
+  await tick();
+  const t0 = (await db.query("select clock_timestamp()::text as t")).rows[0].t;
+  await tick();
+  await check("desde ahora no hay cambios", (await evts(OA, { since: t0 })).length === 0);
+
+  await as("authenticated", OA, "select public.set_registration_payment('f1000000-0000-0000-0000-000000000002','transferencia')", "el organizador marca un pago", "some");
+  let changed = await evts(OA, { since: t0 });
+  await check("marcar un pago hace que SOLO ese evento vuelva a salir, con el pago nuevo",
+    JSON.stringify(names(changed)) === JSON.stringify(["Evento Uno"]) && changed[0].registrations[1].payment_status === "pagado" && changed[0].registrations[1].payment_method === "transferencia");
+
+  await tick();
+  const t1 = (await db.query("select clock_timestamp()::text as t")).rows[0].t;
+  await tick();
+  await as("authenticated", U, `select public.register_for_event('${E1}','${K2}')`, "un participante se inscribe (el trigger no estorba a la función de la base)", "some");
+  changed = await evts(OA, { since: t1 });
+  await check("una inscripción nueva hace que el evento vuelva a salir con ella", changed.length === 1 && changed[0].registrations.length === 4 && changed[0].registrations.some((r) => r.name === "Uri Participante"));
+
+  await tick();
+  const t2 = (await db.query("select clock_timestamp()::text as t")).rows[0].t;
+  await tick();
+  const mineReg = changed[0].registrations.find((r) => r.name === "Uri Participante").id;
+  await as("authenticated", U, `select public.cancel_registration('${mineReg}')`, "el participante cancela su inscripción pendiente", "some");
+  changed = await evts(OA, { since: t2 });
+  await check("una cancelación (borrado) también cuenta: el evento sale sin esa inscripción", changed.length === 1 && changed[0].registrations.length === 3 && !JSON.stringify(changed[0]).includes("Uri Participante"));
+
+  await tick();
+  const t3 = (await db.query("select clock_timestamp()::text as t")).rows[0].t;
+  await tick();
+  await db.exec(`update event_categories set fee_cents = 90000 where id = '${K1}'`);
+  changed = await evts(OA, { since: t3 });
+  await check("cambiar el costo de una categoría cuenta como cambio del evento", changed.length === 1 && changed[0].categories.find((c) => c.name === "Libre").fee_cents === 90000);
+
+  await tick();
+  const t4 = (await db.query("select clock_timestamp()::text as t")).rows[0].t;
+  await tick();
+  await db.exec(`update ropers set full_name = 'Ana Renombrada' where id = '${R1}'`);
+  changed = await evts(OA, { since: t4 });
+  await check("cambiar el nombre de un inscrito cuenta como cambio de sus eventos", changed.length === 1 && changed[0].registrations[0].name === "Ana Renombrada");
+
+  await check("el cambio en el evento de otro organizador no mueve los eventos de este", (await evts(OB, { since: t0 })).length === 0);
+
+  // --- paginación por cursor: cada evento una sola vez, en orden estable, sin perder microsegundos
+  for (const n of [5, 6, 7]) {
+    await db.exec(`insert into events (id, name, organizer_id, status, slug) values ('e2000000-0000-0000-0000-00000000010${n}','Extra ${n}','${OA}','publicado','e24-x${n}')`);
+  }
+  const everything = await evts(OA);
+  const walked = [];
+  let after = null, afterId = null, guard = 0;
+  while (guard++ < 20) {
+    const page = await evts(OA, { after, afterId, limit: 2 });
+    walked.push(...page);
+    if (page.length < 2) break;
+    after = page[page.length - 1].changed_text; afterId = page[page.length - 1].id;
+  }
+  await check("paginar de 2 en 2 recorre todos los eventos, sin repetir ni saltar", everything.length === 5
+    && JSON.stringify(walked.map((r) => r.id)) === JSON.stringify(everything.map((r) => r.id)) && new Set(walked.map((r) => r.id)).size === 5);
+  await check("el corte (snapshot) deja fuera lo que cambió después", (await evts(OA, { snapshot: "2000-01-01 00:00+00" })).length === 0);
+
+  // --- borrar un evento (cascada sobre inscripciones y categorías) no debe fallar por el trigger
+  let deleted = true;
+  try { await db.exec(`delete from events where id = '${E1}'`); } catch { deleted = false; }
+  await check("borrar un evento con inscripciones y categorías funciona (cascada con el trigger)", deleted && (await evts(OA)).every((e) => e.id !== E1));
+
+  // --- backfill de la 0024: las inscripciones que ya existían antes del trigger se reenvían UNA vez
+  {
+    const E5 = "e2000000-0000-0000-0000-000000000005", E6 = "e2000000-0000-0000-0000-000000000006", R6 = "52000000-0000-0000-0000-000000000006";
+    await db.exec(`
+      insert into ropers (id, full_name) values ('${R6}','Rita Previa');
+      insert into events (id, name, organizer_id, status, slug) values ('${E5}','Publicado Previo','${OA}','publicado','e24-5'), ('${E6}','Borrador Previo','${OA}','borrador','e24-6');
+      insert into registrations (event_id, roper_id, amount_cents) values ('${E5}','${R6}',1000), ('${E6}','${R6}',1000);
+      alter table events disable trigger events_touch;
+      alter table ropers disable trigger ropers_touch;
+      update events set updated_at = '2026-01-01 00:00+00' where id in ('${E5}','${E6}');
+      update ropers set updated_at = '2026-01-01 00:00+00' where id = '${R6}';
+      alter table events enable trigger events_touch;
+      alter table ropers enable trigger ropers_touch;
+    `);
+    await check("antes del backfill, un evento con inscritos viejos no sale con un since reciente", !names(await evts(OA, { since: "2026-06-01 00:00+00" })).includes("Publicado Previo"));
+    const backfill = readFileSync(`${dir}/0024_eventos_para_la_app.sql`, "utf8").match(/update public\.events e set updated_at = now\(\)[\s\S]*?;/)?.[0];
+    await check("la 0024 trae el backfill de las inscripciones existentes", !!backfill);
+    await db.exec(backfill);
+    await check("después del backfill, el evento publicado con inscritos se reenvía con un since anterior", names(await evts(OA, { since: "2026-06-01 00:00+00" })).includes("Publicado Previo"));
+    await check("el borrador con inscritos no se marca ni sale", (await db.query(`select updated_at < '2026-02-01' as old from events where id = '${E6}'`)).rows[0].old === true
+      && !names(await evts(OA, { since: "2026-06-01 00:00+00" })).includes("Borrador Previo"));
+  }
+
+  const call = `select * from public.app_organizer_events('${A}', null, now(), null, null, 10)`;
+  await as("anon", null, call, "anónimo NO la ejecuta", "deny");
+  await as("authenticated", A, call, "un organizador NO la ejecuta desde la API pública", "deny");
+  await as("authenticated", C, call, "un participante NO la ejecuta", "deny");
+  await as("service_role", null, call, "el servidor SÍ la ejecuta", "some");
+  await as("authenticated", A, "select public.touch_event_of_child()", "nadie llama al trigger a mano", "deny");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

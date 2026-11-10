@@ -48,20 +48,20 @@ function fixedTokenMatches(given: string) {
 
 export async function organizerFromRequest(request: Request): Promise<{ organizer: string } | Response> {
   const given = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
-  if (!given) return Response.json({ error: "Token inválido" }, { status: 401 });
+  if (!given) return Response.json({ code: "invalid_token", error: "Token inválido" }, { status: 401 });
 
   const h = ipHash(clientIp(request));
   try {
     if (await isBlocked(h)) {
-      return Response.json({ error: "Demasiados intentos" }, { status: 429, headers: { "Retry-After": String(WINDOW_SECONDS) } });
+      return Response.json({ code: "rate_limited", error: "Demasiados intentos" }, { status: 429, headers: { "Retry-After": String(WINDOW_SECONDS) } });
     }
     const organizer = await verifySyncToken(given);
     if (organizer) return { organizer };
     if (fixedTokenMatches(given)) return { organizer: process.env.APP_SYNC_ORGANIZER ?? "Rodeo Norte" };
     await recordFailure(h);
-    return Response.json({ error: "Token inválido" }, { status: 401 });
+    return Response.json({ code: "invalid_token", error: "Token inválido" }, { status: 401 });
   } catch {
     // Falla de la base: la app debe reintentar luego (5xx), no tratarlo como código inválido. No se registra el código.
-    return Response.json({ error: "Servicio no disponible" }, { status: 503 });
+    return Response.json({ code: "service_unavailable", error: "Servicio no disponible" }, { status: 503 });
   }
 }

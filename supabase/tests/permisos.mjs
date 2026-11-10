@@ -817,5 +817,57 @@ console.log("- Eventos con inscritos y pagos para la app (0024)");
   await as("authenticated", A, "select public.touch_event_of_child()", "nadie llama al trigger a mano", "deny");
 }
 
+console.log("- Ranking público paginado (0026)");
+{
+  await db.exec(`
+    insert into ropers (id, full_name) values
+      ('61000000-0000-0000-0000-000000000001','Zrk Beta'), ('61000000-0000-0000-0000-000000000002','Zrk Alfa'),
+      ('61000000-0000-0000-0000-000000000003','Zrk Álvaro Gómez'), ('61000000-0000-0000-0000-000000000004','Zrk Cero');
+    insert into ropers (id, full_name, merged_into) values ('61000000-0000-0000-0000-000000000005','Zrk Fusionado','61000000-0000-0000-0000-000000000002');
+    insert into roper_ratings (roper_id, discipline, rating, events_count, wins) values
+      ('61000000-0000-0000-0000-000000000001','lazo',9.0,5,2), ('61000000-0000-0000-0000-000000000002','lazo',9.0,4,1),
+      ('61000000-0000-0000-0000-000000000001','barriles',2.0,1,0);
+  `);
+  // Como anónimo: es la misma vista que tiene la web pública.
+  const rank = async (discipline, tokens = null, after = null, limit = 50) => {
+    await db.exec("reset role; set role anon");
+    try {
+      const t = tokens ? `array[${tokens.map((x) => `'${x}'`).join(",")}]::text[]` : "null";
+      return (await db.query(`select * from public.public_ranking('${discipline}', 1, ${t}, ${after ?? "null"}, ${limit})`)).rows;
+    } finally { await db.exec("reset role"); }
+  };
+  const names = (rows) => rows.map((r) => r.full_name);
+
+  const all = await rank("lazo", ["zrk"]);
+  await check("devuelve a los visibles y deja fuera al perfil fusionado", all.length === 4 && !names(all).includes("Zrk Fusionado"));
+  await check("ordena por rating (mayor primero) y, a igual rating, por nombre", JSON.stringify(names(all).slice(0, 2)) === JSON.stringify(["Zrk Alfa", "Zrk Beta"]));
+  await check("el lugar crece sin repetirse", all.every((r, i) => i === 0 || Number(r.rank) > Number(all[i - 1].rank)));
+  const alfa = all[0], cero = all.find((r) => r.full_name === "Zrk Cero");
+  await check("rating, eventos y victorias de quien tiene rating", Number(alfa.rating) === 9 && alfa.events_count === 4 && alfa.wins === 1 && alfa.is_initial === false);
+  await check("quien no tiene rating parte del inicial y va después de quien sí lo tiene", Number(cero.rating) === 1 && cero.is_initial === true && cero.events_count === 0 && Number(cero.rank) > Number(all[1].rank));
+  const ahead = (await db.query(`
+    select count(*)::int as n from ropers p left join roper_ratings rr on rr.roper_id = p.id and rr.discipline = 'lazo'
+    where p.merged_into is null and (coalesce(rr.rating, 1) > 9 or (coalesce(rr.rating, 1) = 9 and p.full_name < 'Zrk Beta'))`)).rows[0].n;
+  await check("el lugar es sobre TODO el ranking (no solo sobre lo que se ve)", Number(all[1].rank) === ahead + 1);
+
+  await check("la búsqueda ignora acentos y mayúsculas", JSON.stringify(names(await rank("lazo", ["alvaro"]))) === JSON.stringify(["Zrk Álvaro Gómez"]));
+  await check("varias palabras: cada una debe empezar alguna palabra del nombre", JSON.stringify(names(await rank("lazo", ["zrk", "alv", "gom"]))) === JSON.stringify(["Zrk Álvaro Gómez"]));
+  await check("busca por INICIO de palabra, no por cualquier parte", (await rank("lazo", ["rk"])).length === 0 && (await rank("lazo", ["lvaro"])).length === 0);
+  await check("al buscar, cada quien conserva su lugar real", Number((await rank("lazo", ["beta"]))[0].rank) === Number(all[1].rank));
+  await check("sin palabras (vacío) no filtra", (await rank("lazo", [])).length === (await rank("lazo", null)).length);
+
+  const p1 = await rank("lazo", ["zrk"], null, 2), p2 = await rank("lazo", ["zrk"], Number(p1[1].rank), 2), p3 = await rank("lazo", ["zrk"], Number(p2[1].rank), 2);
+  await check("el cursor continúa sin repetir ni saltarse a nadie", JSON.stringify(names(p1.concat(p2))) === JSON.stringify(names(all)) && p3.length === 0);
+  await check("el límite se acota: nunca menos de 1 ni más de 101", (await rank("lazo", ["zrk"], null, 0)).length === 1 && (await rank("lazo", null, null, 100000)).length <= 101);
+
+  const barriles = await rank("barriles", ["zrk"]);
+  await check("cada modalidad tiene su propio ranking", Number(barriles[0].rating) === 2 && barriles[0].full_name === "Zrk Beta" && barriles.filter((r) => r.is_initial).length === 3);
+  await check("no devuelve celular, correo ni ids de cuenta", !Object.keys(all[0]).some((k) => /phone|email|user_id/.test(k)));
+
+  const call = "select * from public.public_ranking('lazo', 1, null, null, 5)";
+  await as("anon", null, call, "anónimo SÍ la ejecuta (el ranking es público)", "some");
+  await as("authenticated", C, call, "un participante SÍ la ejecuta", "some");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

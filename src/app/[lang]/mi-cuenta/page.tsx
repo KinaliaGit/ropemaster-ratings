@@ -7,7 +7,8 @@ import { AvatarUploader } from "@/components/AvatarUploader";
 import { EventCard } from "@/components/EventCard";
 import { RoperCard } from "@/components/RoperCard";
 import { initials, publicAvatarUrl } from "@/lib/people";
-import { listRanking } from "@/lib/data/ropers";
+import { listRankingPage } from "@/lib/data/ropers";
+import { rankedToRoper } from "@/lib/ranking";
 import { listMyRegistrations } from "@/lib/data/registrations";
 import { cancelRegistration } from "@/lib/registration-actions";
 import { createMyRoperProfile } from "@/lib/profile-actions";
@@ -23,7 +24,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
   const stripeOn = !!process.env.STRIPE_SECRET_KEY && !!process.env.STRIPE_TEST_CONNECTED_ACCOUNT; // el pago en línea solo se ofrece si Stripe está configurado
   const sp = await props.searchParams;
   const t = getDictionary(lang);
-  const [events, top] = await Promise.all([listPublicEvents(), listRanking("lazo").then((r) => r.slice(0, 4))]);
+  const [events, top] = await Promise.all([listPublicEvents(), listRankingPage("lazo").then((p) => p.rows.slice(0, 4).map((r) => rankedToRoper(r, "lazo")))]);
   const notice = sp.pago === "ok" ? t.pay.returned : sp.perfil === "ok" ? t.account.profileCreated : sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
   return (
     <Gate lang={lang} role="any" next={`/${lang}/mi-cuenta`}>

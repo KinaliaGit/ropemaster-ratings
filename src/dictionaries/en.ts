@@ -56,6 +56,7 @@ export const en: Dict = {
     history: "Event history", noHistory: "No results recorded yet.", event: "Event", date: "Date", discipline: "Discipline", time: "Time", place: "Place",
     contactNote: "Contact details are not public. Not you, or something's wrong?", report: "Report", verifiedEvent: "Verified event",
     ratingsByMode: "Rating by discipline",
+    loadMore: "Load more", loadError: "Couldn't load. Please try again.", retry: "Try again",
   },
   auth: {
     errorUnconfirmed: "Confirm your email first: we sent you a link when you signed up.", errorConfirm: "The confirmation link is invalid or has expired. Sign in with your email and password or request another.", resend: "Resend confirmation email", resent: "We sent it again.",

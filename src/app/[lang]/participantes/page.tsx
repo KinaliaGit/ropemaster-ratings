@@ -1,8 +1,8 @@
 import { connection } from "next/server";
 import { ParticipantList } from "@/components/ParticipantList";
-import { listRanking } from "@/lib/data/ropers";
+import { listRankingPage } from "@/lib/data/ropers";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
-import { fmtRating, initials, publicAvatarUrl, statOf } from "@/lib/people";
+import { toParticipantRow } from "@/lib/ranking-view";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
 export default async function Participantes({ params }: PageProps<"/[lang]/participantes">) {
@@ -10,24 +10,20 @@ export default async function Participantes({ params }: PageProps<"/[lang]/parti
   await connection();
   const lang = await resolveLang(params);
   const t = getDictionary(lang);
-  // Una lista por modalidad activa; el cambio de pestaña y la búsqueda ocurren en el navegador.
-  // El ranking llega completo y el buscador solo filtra lo visible (cada quien conserva su lugar).
-  const sets = await Promise.all(ACTIVE_DISCIPLINES.map(async (d) => ({
-    id: d.id,
-    label: t.disc[d.id].persons,
-    rows: (await listRanking(d.id)).map((r, i) => {
-      const st = statOf(r, d.id)!;
-      return {
-        id: r.id, href: `/${lang}/participantes/${r.id}`, name: r.name, initials: initials(r.name), photo: publicAvatarUrl(r.avatarPath), rank: i + 1,
-        sub: st.initial ? t.people.initialRating : `${st.events} ${t.plural.event(st.events)} · ${st.wins} ${t.plural.win(st.wins)}`, rating: fmtRating(st.rating),
-      };
-    }),
-  })));
+  // Una lista por modalidad activa, solo con su primera página (KIN-613). "Ver más" y la búsqueda piden el resto al servidor (/api/ranking),
+  // que ordena y numera todo el ranking: cada quien conserva su lugar real.
+  const sets = await Promise.all(ACTIVE_DISCIPLINES.map(async (d) => {
+    const page = await listRankingPage(d.id);
+    return { id: d.id, label: t.disc[d.id].persons, rows: page.rows.map((r) => toParticipantRow(r, lang, t)), next: page.next };
+  }));
   return (
     <div className="mx-auto max-w-6xl px-5 pb-10 pt-12">
       <h1 className="text-4xl font-semibold sm:text-5xl">{t.people.title}</h1>
       <p className="mt-3 text-lg text-muted">{t.people.subtitle}</p>
-      <ParticipantList sets={sets} labels={{ search: t.people.search, noResults: t.people.noResults, empty: t.people.empty }} />
+      <ParticipantList
+        sets={sets} lang={lang}
+        labels={{ search: t.people.search, noResults: t.people.noResults, empty: t.people.empty, loadMore: t.people.loadMore, loadError: t.people.loadError, retry: t.people.retry }}
+      />
     </div>
   );
 }

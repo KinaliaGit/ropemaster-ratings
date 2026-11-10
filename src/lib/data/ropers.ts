@@ -3,35 +3,38 @@ import { createPublicClient } from "@/lib/supabase/public";
 import { ACTIVE_DISCIPLINES, type DisciplineId } from "@/lib/disciplines";
 import type { Result, Roper, Stat } from "@/lib/types";
 import { INITIAL_RATING } from "@/lib/rating";
+import { RANKING_PAGE_SIZE, toRankingPage, type RankingPage } from "@/lib/ranking";
 
 // Lecturas PÚBLICAS de participantes. Las columnas siempre se piden por nombre: user_id y el celular están
 // ocultos a propósito (el celular vive en roper_contacts, solo para organizadores verificados).
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const MAX_RANKING = 500; // TODO: paginar cuando haya más participantes (el buscador filtra sobre lo cargado)
 
 type RatingRow = { discipline: string; rating: number | string; events_count: number; wins: number; updated_at: string };
 
 const initialStat = (): Stat => ({ rating: INITIAL_RATING, events: 0, wins: 0, initial: true });
 const toStat = (r: RatingRow): Stat => ({ rating: Number(r.rating), events: r.events_count, wins: r.wins, updatedAt: r.updated_at });
 
-// Ranking de una modalidad, de mayor a menor rating (y por nombre a igual rating). Entran TODOS los perfiles visibles: quien aún no
-// tiene rating en esa modalidad aparece con el inicial (INITIAL_RATING).
-export async function listRanking(discipline: DisciplineId): Promise<Roper[]> {
+// Ranking de una modalidad, de mayor a menor rating (y por nombre a igual rating), UNA PÁGINA a la vez (KIN-613). Lo ordena y numera la base
+// (función public_ranking): el lugar de cada quien es sobre TODO el ranking, también al buscar. Entran TODOS los perfiles visibles: quien
+// aún no tiene rating en esa modalidad aparece con el inicial (INITIAL_RATING). `after` es el último lugar de la página anterior.
+async function fetchRankingPage(discipline: DisciplineId, tokens: string[], after: number | null): Promise<RankingPage> {
+  const { data, error } = await createPublicClient().rpc("public_ranking", {
+    p_discipline: discipline, p_initial: INITIAL_RATING, p_tokens: tokens, p_after_rank: after, p_limit: RANKING_PAGE_SIZE + 1,
+  });
+  if (error) throw new Error(`No se pudo leer el ranking: ${error.message}`);
+  return toRankingPage((data ?? []) as Parameters<typeof toRankingPage>[0], RANKING_PAGE_SIZE);
+}
+
+// Páginas SIN búsqueda: son pocas y las ve todo el mundo, así que van en caché.
+export async function listRankingPage(discipline: DisciplineId, after: number | null = null): Promise<RankingPage> {
   "use cache";
   cacheTag("ropers");
   cacheLife("minutes");
-  const sb = createPublicClient();
-  const [people, ratings] = await Promise.all([
-    sb.from("ropers").select("id, full_name, avatar_path").order("full_name", { ascending: true }).limit(MAX_RANKING),
-    sb.from("roper_ratings").select("roper_id, discipline, rating, events_count, wins, updated_at").eq("discipline", discipline).limit(MAX_RANKING),
-  ]);
-  if (people.error) throw new Error(`No se pudo leer el ranking: ${people.error.message}`);
-  if (ratings.error) throw new Error(`No se pudo leer el ranking: ${ratings.error.message}`);
-  const byRoper = new Map((ratings.data ?? []).map((r) => [r.roper_id as string, r as RatingRow]));
-  return (people.data ?? [])
-    .map((p) => ({ id: p.id as string, name: p.full_name as string, avatarPath: p.avatar_path as string | null, stats: { [discipline]: byRoper.has(p.id) ? toStat(byRoper.get(p.id)!) : initialStat() } }))
-    .sort((a, b) => b.stats[discipline]!.rating - a.stats[discipline]!.rating || a.name.localeCompare(b.name, "es"));
+  return fetchRankingPage(discipline, [], after);
 }
+
+// Con búsqueda no se guarda en caché: cada texto distinto sería una entrada nueva.
+export const searchRankingPage = fetchRankingPage;
 
 // Un participante con todos sus ratings. null si no existe o el id no es válido.
 export async function getPublicRoper(id: string): Promise<Roper | null> {

@@ -117,13 +117,18 @@ export const es = {
     },
     app: {
       title: "Conecta tu app Rope Master", blurb: "Lo que publiques aquí llega solo a tu app: eventos y participantes se descargan cuando tienes internet y después los usas sin conexión.",
-      steps: ["Genera tu código de conexión aquí abajo.", "En la app, pega el código en Ajustes → Cuenta web.", "Pulsa Sincronizar: tus eventos y participantes se descargan a la app."],
+      steps: ["En la app, ve a Ajustes → Cuenta web.", "Entra con tu correo y contraseña de esta web.", "Pulsa Sincronizar: tus eventos y participantes se descargan a la app."],
       code: {
-        title: "Código de conexión", connected: "Conectada", notConnected: "Sin conectar", since: "Código creado el", none: "Aún no has generado un código.",
+        title: "Código de conexión (respaldo)", backup: "Solo si no puedes entrar con tu correo y contraseña en la app. Funciona igual, pero se pega a mano.", connected: "Conectada", notConnected: "Sin conectar", since: "Código creado el", none: "Aún no has generado un código.",
         generate: "Generar código", regenerate: "Generar uno nuevo", copy: "Copiar", copied: "Copiado", shownOnce: "Cópialo ahora: por seguridad no se vuelve a mostrar.",
         replaceNote: "Si generas uno nuevo, el anterior deja de funcionar y tendrás que pegar el nuevo en la app.", error: "No se pudo generar el código. Intenta de nuevo.",
         lastUsed: "Último uso", neverUsed: "Aún no se ha usado", revoke: "Revocar código",
         revokeConfirm: "Si lo revocas, la app conectada deja de funcionar al instante. ¿Revocar el código?", revokeError: "No se pudo revocar el código. Intenta de nuevo.",
+      },
+      devices: {
+        title: "Equipos conectados", blurb: "Cada computadora donde entras a la app con tu correo y contraseña. Puedes tener hasta 3. Un equipo que no se conecta en 30 días deja de funcionar y vuelve a pedir tu contraseña.",
+        none: "Aún no has conectado ningún equipo.", since: "Conectado el", lastUsed: "Último uso", neverUsed: "Aún no se ha usado", expires: "Vence el", expired: "Vencido: vuelve a entrar desde la app",
+        revoke: "Revocar", revokeConfirm: "Si lo revocas, ese equipo deja de sincronizar al instante y tendrá que volver a entrar con tu contraseña. ¿Revocar el equipo?", revokeError: "No se pudo revocar el equipo. Intenta de nuevo.",
       },
     },
   },

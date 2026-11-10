@@ -1,0 +1,8 @@
+{
+  "contract_version": 1,
+  "token": "rm_9fQ2xv1kLw0b8TnZpR3uYcA7dHjE5sGm",
+  "organizer": { "id": "0c2d0f40-bc37-4edd-9b17-28e91efca6ef", "name": "Emiliano Neaves" },
+  "device_name": "MacBook de la oficina",
+  "max_devices": 3,
+  "idle_days": 30
+}

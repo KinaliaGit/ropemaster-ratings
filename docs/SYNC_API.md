@@ -13,6 +13,33 @@ Cada equipo tiene su propio token (hasta 3 por organizador; el código manual es
 
 Configuración del servidor: `SUPABASE_SERVICE_ROLE_KEY` (secreta, solo servidor) es obligatoria en producción. Sin ella, fuera de producción los códigos viven en memoria y se pierden al reiniciar; en producción la API responde `503`. El valor fijo `APP_SYNC_TOKEN` solo funciona fuera de producción, para pruebas locales.
 
+## `POST /api/app/login`
+La app entra con el correo y la contraseña de la cuenta de organizador de la web (los mismos del sitio). La web comprueba la contraseña con
+Supabase Auth, **no abre una sesión de navegador** y entrega un token propio para ese equipo. Ese token se usa como `Authorization: Bearer <token>`
+en todos los demás endpoints, igual que el código manual. La app lo guarda en el llavero del sistema (nunca la contraseña) y sin internet sigue
+funcionando con lo que ya tiene: el login solo se necesita para conectar y para reconectar.
+
+Cuerpo (ver `sync-examples/login.request.json`): `contract_version`, `email`, `password` y `device_name` (opcional, hasta 60 caracteres; si falta queda "Equipo").
+La contraseña se recorta y se corta a 100 caracteres, igual que en el formulario de la web. Respuesta 200: `sync-examples/login.response.json`.
+**El token se muestra una sola vez**; en la base solo queda su hash. `idle_days` son los días sin uso tras los que vence.
+
+| Estado | `code` | Cuándo | ¿La app reintenta? |
+|---|---|---|---|
+| `400` | `invalid_json`, `invalid_body`, `invalid_field` | Cuerpo mal formado | no, es un error de la app |
+| `401` | `invalid_credentials` | Correo o contraseña incorrectos (mismo mensaje si el correo no existe) | no, pide corregir |
+| `403` | `email_not_confirmed` | La contraseña es correcta pero falta confirmar el correo | no, pide confirmar |
+| `403` | `organizer_not_active` | La cuenta no es de organizador activo (licencia vigente o aprobación de un administrador) | no |
+| `409` | `device_limit` | Ya hay 3 equipos conectados. **No cierra ninguno**: el organizador revoca uno en su panel (*App local*) | no, pide revocar uno |
+| `413` | `payload_too_large` | Cuerpo de más de 4 KB | no |
+| `426` | `version_unsupported` | La web ya no habla esa versión del contrato | no, pide actualizar |
+| `429` | `rate_limited` | Demasiados intentos fallidos (20 por IP o 10 por correo en 5 minutos; solo cuentan los fallos). Trae `Retry-After` | sí, tras la espera |
+| `503` | `service_unavailable` | Falla temporal de la web o de Supabase | sí |
+
+## `POST /api/app/logout`
+`Authorization: Bearer <token>`. Revoca **solo** el token con el que se llama (ese equipo). Siempre responde `200 { "ok": true, "revoked": <boolean> }`:
+un token que ya estaba revocado, vencido o que no existe da `revoked: false`, así la app puede olvidar su token local sin distinguir. Sin internet la app
+solo lo olvida; la web lo deja vencer a los 30 días sin uso o el organizador lo revoca en su panel. Sin encabezado `Authorization`: `401 invalid_token`.
+
 ## `GET /api/app/eventos?since=<ISO-8601>&cursor=<texto>`
 
 Estado: implementada (KIN-585). Ejemplo completo y versionado: [`docs/sync-examples/eventos.response.json`](sync-examples/eventos.response.json); la web lo comprueba en sus pruebas y la app puede usarlo tal cual como dato de prueba.

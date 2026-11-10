@@ -117,13 +117,18 @@ export const en: Dict = {
     },
     app: {
       title: "Connect your Rope Master app", blurb: "What you publish here reaches your app by itself: events and participants download when you're online, then you use them offline.",
-      steps: ["Generate your connection code below.", "In the app, paste the code in Settings → Web account.", "Press Sync: your events and participants download to the app."],
+      steps: ["In the app, go to Settings → Web account.", "Sign in with your email and password from this site.", "Press Sync: your events and participants download to the app."],
       code: {
-        title: "Connection code", connected: "Connected", notConnected: "Not connected", since: "Code created on", none: "You haven't generated a code yet.",
+        title: "Connection code (backup)", backup: "Only if you can't sign in to the app with your email and password. It works the same, but you paste it by hand.", connected: "Connected", notConnected: "Not connected", since: "Code created on", none: "You haven't generated a code yet.",
         generate: "Generate code", regenerate: "Generate a new one", copy: "Copy", copied: "Copied", shownOnce: "Copy it now: for security it won't be shown again.",
         replaceNote: "If you generate a new one, the old one stops working and you'll need to paste the new one in the app.", error: "Couldn't generate the code. Try again.",
         lastUsed: "Last used", neverUsed: "Not used yet", revoke: "Revoke code",
         revokeConfirm: "If you revoke it, the connected app stops working immediately. Revoke the code?", revokeError: "Couldn't revoke the code. Try again.",
+      },
+      devices: {
+        title: "Connected computers", blurb: "Each computer where you sign in to the app with your email and password. You can have up to 3. A computer that doesn't connect for 30 days stops working and asks for your password again.",
+        none: "You haven't connected any computer yet.", since: "Connected on", lastUsed: "Last used", neverUsed: "Not used yet", expires: "Expires on", expired: "Expired: sign in again from the app",
+        revoke: "Revoke", revokeConfirm: "If you revoke it, that computer stops syncing immediately and will have to sign in with your password again. Revoke the computer?", revokeError: "Couldn't revoke the computer. Try again.",
       },
     },
   },

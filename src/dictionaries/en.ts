@@ -79,6 +79,7 @@ export const en: Dict = {
   },
   org: {
     license: {
+      recheck: "I have a license: check", results: { valid: "We found your license! You can now create events.", none: "We couldn't find an active license for your account email. If you bought it with another email, ask an administrator for approval.", conflict: "That license is already linked to another account. Ask an administrator for approval.", unavailable: "We couldn't check your license right now. Please try again in a few minutes." },
       noneTitle: "Your account is under review.", noneText: "To create events and see participants you need an active Rope Master license or an administrator's approval. Until then you can't publish anything.",
       expiredTitle: "Your license has expired.", expiredText: "Renew it to create and publish events again. It expired on", validUntil: "License valid until",
     },

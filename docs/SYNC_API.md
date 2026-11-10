@@ -5,7 +5,9 @@ SQLite local. Sin internet la app sigue funcionando con lo ya descargado.
 
 Autenticación: `Authorization: Bearer <código>`. El organizador genera el código en su panel (pestaña *App local*); se muestra una sola vez y la base (`api_tokens`) guarda solo su hash sha256. Generar uno nuevo revoca el anterior, y también se puede revocar sin generar otro. Un código revocado deja de funcionar al instante, y reiniciar el servidor no desconecta a la app. El panel muestra cuándo se creó y cuándo se usó por última vez.
 
-- `401` (`code: "invalid_token"`): código inválido o revocado (no reintentar; la app pide reconectar).
+Cada equipo tiene su propio token (hasta 3 por organizador; el código manual es aparte, uno solo, y no cuenta dentro de los 3). Generar el código manual nuevo revoca solo el manual anterior, no a los equipos. **Todo token vence a los 30 días sin usarse**; cada uso exitoso reinicia el plazo, y sin internet no vence por reloj de la app: lo decide la web cuando la app vuelve a conectarse. Un token vencido responde `401` igual que uno revocado, y la app pide reconectar sin tocar sus datos locales.
+
+- `401` (`code: "invalid_token"`): código inválido, revocado o vencido por 30 días sin uso (no reintentar; la app pide reconectar).
 - `429` (`code: "rate_limited"`): demasiados intentos con un código inválido desde la misma IP (20 en 5 minutos). Trae `Retry-After`.
 - `503` (`code: "service_unavailable"`): falla temporal al verificar el código. Sí reintentar.
 

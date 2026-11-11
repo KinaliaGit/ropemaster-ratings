@@ -1,27 +1,45 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { INITIAL_RATING } from "@/lib/rating";
+import { ENROLLED_PAGE_SIZE, decodeEnrolledCursor, toEnrolledPage, type EnrolledPage } from "@/lib/enrolled";
 
 // ---- Públicas (en caché; se invalidan con updateTag("registrations") al inscribirse o cancelar) ----
 // Salen de funciones de la base que solo responden por eventos publicados y no exponen pagos ni la tabla.
 
+// Los conteos solo cambian al inscribirse, cancelar o editar un evento, y esas acciones invalidan la etiqueta: pueden guardarse varios minutos.
 export async function getEnrollmentCounts(): Promise<Record<string, number>> {
   "use cache";
   cacheTag("registrations");
-  cacheLife("seconds");
+  cacheLife("minutes");
   const { data, error } = await createPublicClient().rpc("event_registration_counts");
   if (error) throw new Error(`No se pudieron leer los inscritos: ${error.message}`);
   return Object.fromEntries((data ?? []).map((r: { event_id: string; n: number }) => [r.event_id, r.n]));
 }
 
-// Ids de los participantes inscritos (sin repetir a quien está en dos categorías).
-export async function getRegistrantIds(eventUuid: string): Promise<string[]> {
+// Inscritos de UN evento (el del slug), sin calcular los de los demás (KIN-612).
+export async function getEventEnrolled(slug: string): Promise<number> {
   "use cache";
   cacheTag("registrations");
-  cacheLife("seconds");
-  const { data, error } = await createPublicClient().rpc("event_registrants", { p_event: eventUuid });
+  cacheLife("minutes");
+  const { data, error } = await createPublicClient().rpc("event_enrolled", { p_slug: slug });
+  if (error) throw new Error(`No se pudieron leer los inscritos: ${error.message}`);
+  return typeof data === "number" ? data : 0;
+}
+
+// Inscritos de un evento, UNA PÁGINA a la vez y ya con nombre, foto y rating de su modalidad (sin repetir a quien está en dos categorías).
+// `cursor` es el que entregó la página anterior (ya validado por quien llama). Se invalida con los inscritos y con los perfiles.
+export async function getEventRegistrants(eventUuid: string, discipline: string, cursor: string | null = null): Promise<EnrolledPage> {
+  "use cache";
+  cacheTag("registrations", "ropers");
+  cacheLife("minutes");
+  const decoded = decodeEnrolledCursor(cursor);
+  const at = decoded.ok ? decoded.cursor : null;
+  const { data, error } = await createPublicClient().rpc("event_registrants_page", {
+    p_event: eventUuid, p_discipline: discipline, p_initial: INITIAL_RATING, p_after_at: at?.at ?? null, p_after_id: at?.id ?? null, p_limit: ENROLLED_PAGE_SIZE + 1,
+  });
   if (error) throw new Error(`No se pudo leer la lista de inscritos: ${error.message}`);
-  return [...new Set<string>((data ?? []).map((r: { roper_id: string }) => r.roper_id))];
+  return toEnrolledPage((data ?? []) as Parameters<typeof toEnrolledPage>[0], ENROLLED_PAGE_SIZE);
 }
 
 // ---- Con sesión (las reglas de la base deciden qué ve cada quien) ----

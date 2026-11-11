@@ -96,14 +96,3 @@ export async function getRoperRounds(roperId: string, resultId: string): Promise
   return data ? toRounds(data.rounds) : null;
 }
 
-// Varios participantes por id (por ejemplo, los inscritos de un evento).
-export async function getRopersByIds(ids: string[]): Promise<Roper[]> {
-  "use cache";
-  cacheTag("ropers");
-  cacheLife("minutes");
-  const valid = ids.filter((i) => UUID.test(i));
-  if (valid.length === 0) return [];
-  const { data, error } = await createPublicClient().from("ropers").select("id, full_name, avatar_path").in("id", valid);
-  if (error) throw new Error(`No se pudieron leer los participantes: ${error.message}`);
-  return (data ?? []).map((p) => ({ id: p.id, name: p.full_name, avatarPath: p.avatar_path, stats: {} }));
-}

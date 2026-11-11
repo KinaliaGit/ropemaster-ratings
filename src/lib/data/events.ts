@@ -3,7 +3,7 @@ import { createPublicClient } from "@/lib/supabase/public";
 import { createServerSupabase } from "@/lib/supabase/server";
 import type { EventItem } from "@/lib/types";
 import { EVENT_PHOTOS_BUCKET, publicStorageUrl } from "@/lib/storage";
-import { getEnrollmentCounts } from "@/lib/data/registrations";
+import { getEnrollmentCounts, getEventEnrolled } from "@/lib/data/registrations";
 
 // Columnas que se piden (siempre por nombre) y su forma. El evento se identifica en las URLs por su `slug`.
 const COLUMNS = "id, slug, name, event_date, city, venue, description, disciplines, capacity, status, organizer_id, organizer_name, cover_url, updated_at, event_categories(id, name, fee_cents), event_photos(id, storage_path, position)";
@@ -48,12 +48,13 @@ export async function getPublicEvent(slug: string): Promise<EventItem | null> {
   "use cache";
   cacheTag("events", "registrations");
   cacheLife("minutes");
-  const [{ data, error }, counts] = await Promise.all([
+  // Solo se cuentan los inscritos de ESTE evento (antes se calculaban los de todos), en paralelo con la lectura del evento.
+  const [{ data, error }, enrolled] = await Promise.all([
     createPublicClient().from("events").select(COLUMNS).eq("slug", slug).in("status", ["publicado", "finalizado"]).maybeSingle(),
-    getEnrollmentCounts(),
+    getEventEnrolled(slug),
   ]);
   if (error) throw new Error(`No se pudo leer el evento: ${error.message}`);
-  return data ? toItem(data as unknown as Row, counts[(data as unknown as Row).id] ?? 0) : null;
+  return data ? toItem(data as unknown as Row, enrolled) : null;
 }
 
 // ---- Del organizador (con su sesión; sin caché: ve también sus borradores) ----

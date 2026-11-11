@@ -931,5 +931,53 @@ console.log("- Historial y resumen del lazador (0027)");
   await as("anon", null, `select er.rounds from event_results er join events e on e.id = er.event_id where er.id = '${RS(3)}'`, "las rondas de un evento en borrador NO se ven (como las pide la web)", "deny");
 }
 
+console.log("- Inscritos de un evento (0028)");
+{
+  const EV = (n) => `e8000000-0000-0000-0000-00000000000${n}`, RP = (n) => `68000000-0000-0000-0000-00000000000${n}`;
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug) values
+      ('${EV(1)}','Ins Evento','${A}','publicado','ins-1'), ('${EV(2)}','Ins Borrador','${A}','borrador','ins-2'), ('${EV(3)}','Ins Otro','${A}','publicado','ins-3');
+    insert into ropers (id, full_name, avatar_path) values
+      ('${RP(1)}','Ins Uno','a/uno.jpg'), ('${RP(2)}','Ins Dos',null), ('${RP(3)}','Ins Tres',null), ('${RP(4)}','Ins Cuatro',null);
+    insert into ropers (id, full_name, merged_into) values ('${RP(5)}','Ins Fusionado','${RP(1)}');
+    insert into roper_ratings (roper_id, discipline, rating, events_count, wins) values ('${RP(1)}','lazo',8.5,6,2), ('${RP(2)}','barriles',3.0,1,0);
+    insert into registrations (event_id, roper_id, created_at) values
+      ('${EV(1)}','${RP(1)}','2026-11-01 10:00:00.123456+00'), ('${EV(1)}','${RP(1)}','2026-11-01 13:00:00+00'),
+      ('${EV(1)}','${RP(2)}','2026-11-01 11:00:00+00'), ('${EV(1)}','${RP(3)}','2026-11-01 12:00:00+00'), ('${EV(1)}','${RP(5)}','2026-11-01 09:00:00+00'),
+      ('${EV(2)}','${RP(4)}','2026-11-01 10:00:00+00'), ('${EV(3)}','${RP(4)}','2026-11-01 10:00:00+00');
+  `);
+  const asAnon = async (sql) => {
+    await db.exec("reset role; set role anon");
+    try { return (await db.query(sql)).rows; } finally { await db.exec("reset role"); }
+  };
+  const page = (event, discipline = "lazo", at = null, id = null, limit = 30) =>
+    asAnon(`select * from public.event_registrants_page('${event}', '${discipline}', 1, ${at ? `'${at}'` : "null"}, ${id ? `'${id}'` : "null"}, ${limit})`);
+  const names = (rows) => rows.map((r) => r.full_name);
+
+  const enrolled = async (slug) => (await asAnon(`select public.event_enrolled('${slug}') as n`))[0].n;
+  await check("el conteo es solo de ESE evento (cuenta cada inscripción)", (await enrolled("ins-1")) === 5 && (await enrolled("ins-3")) === 1);
+  await check("un borrador o un evento que no existe cuentan cero", (await enrolled("ins-2")) === 0 && (await enrolled("no-existe")) === 0);
+
+  const all = await page(EV(1));
+  await check("la lista va de los primeros a los últimos en inscribirse, sin repetir a nadie", JSON.stringify(names(all)) === JSON.stringify(["Ins Uno", "Ins Dos", "Ins Tres"]));
+  await check("no sale el perfil fusionado", !names(all).includes("Ins Fusionado"));
+  await check("trae nombre, foto y rating de la modalidad del evento", all[0].avatar_path === "a/uno.jpg" && Number(all[0].rating) === 8.5 && all[0].events_count === 6 && all[0].wins === 2 && all[0].is_initial === false);
+  await check("quien no tiene rating en esa modalidad parte del inicial", Number(all[1].rating) === 1 && all[1].is_initial === true && all[1].events_count === 0);
+  await check("cada modalidad tiene su propio rating", Number((await page(EV(1), "barriles"))[1].rating) === 3);
+  await check("la lista de un borrador NO es pública", (await page(EV(2))).length === 0);
+  await check("no devuelve celular, correo, pagos ni ids de cuenta", !Object.keys(all[0]).some((k) => /phone|email|user_id|payment|amount/.test(k)));
+
+  const iso = (d) => (d instanceof Date ? d.toISOString() : String(d));
+  const p1 = await page(EV(1), "lazo", null, null, 2), last = p1[1];
+  const p2 = await page(EV(1), "lazo", iso(last.enrolled_at), last.roper_id, 2);
+  const p3 = await page(EV(1), "lazo", iso(p2[p2.length - 1].enrolled_at), p2[p2.length - 1].roper_id, 2);
+  await check("el cursor continúa sin repetir ni saltarse a nadie", JSON.stringify(names(p1.concat(p2))) === JSON.stringify(names(all)) && p3.length === 0);
+  await check("el límite se acota: nunca menos de 1", (await page(EV(1), "lazo", null, null, 0)).length === 1);
+
+  await as("anon", null, `select * from public.event_registrants_page('${EV(1)}', 'lazo', 1)`, "anónimo SÍ ve la lista de un evento público", "some");
+  await as("authenticated", C, "select public.event_enrolled('ins-1')", "un participante SÍ ve el conteo", "some");
+  await as("anon", null, "select * from registrations", "la tabla de inscripciones sigue sin ser pública", "deny");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

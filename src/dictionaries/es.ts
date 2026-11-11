@@ -57,6 +57,8 @@ export const es = {
     contactNote: "Los datos de contacto no son públicos. ¿No eres tú o es un error?", report: "Reportar", verifiedEvent: "Evento verificado",
     ratingsByMode: "Rating por modalidad",
     loadMore: "Ver más", loadError: "No se pudo cargar. Intenta de nuevo.", retry: "Reintentar",
+    round: "Ronda", roundFinal: "Final", roundTiebreak: "Desempate", extra: "Extra", help: "Ayuda", noTime: "No time", substitute: "Sustituto", header: "cabecero", heeler: "pialador", countsForSubstitute: "también cuenta para el sustituto",
+    viewRounds: "Ver rondas", hideRounds: "Ocultar rondas", noRounds: "Sin detalle de rondas.", bestPlace: "Mejor lugar", bestRun: "Mejor corrida", runsCount: "rondas",
   },
   auth: {
     errorUnconfirmed: "Primero confirma tu correo: te enviamos un enlace al registrarte.", errorConfirm: "El enlace de confirmación no es válido o ya venció. Entra con tu correo y contraseña o pide otro.", resend: "Reenviar correo de confirmación", resent: "Te lo enviamos de nuevo.",

@@ -869,5 +869,67 @@ console.log("- Ranking público paginado (0026)");
   await as("authenticated", C, call, "un participante SÍ la ejecuta", "some");
 }
 
+console.log("- Historial y resumen del lazador (0027)");
+{
+  const EV = (n) => `e7000000-0000-0000-0000-00000000000${n}`, RP = (n) => `67000000-0000-0000-0000-00000000000${n}`, RS = (n) => `a7000000-0000-0000-0000-00000000000${n}`;
+  const rounds1 = JSON.stringify([
+    { round: 1, stage: "preliminary", kind: "regular", status: "completed", time_ms: 6000, penalty_ms: 0 },
+    { round: 2, stage: "preliminary", kind: "regular", status: "completed", time_ms: 9000, penalty_ms: 3000 },
+  ]);
+  const rounds2 = JSON.stringify([
+    { round: 1, stage: "preliminary", kind: "regular", status: "completed", time_ms: 5400, penalty_ms: 0 },
+    { round: 1, stage: "preliminary", kind: "extra", status: "completed", time_ms: 4000, penalty_ms: 0 },
+    { round: 2, stage: "final", kind: "regular", status: "no_time", time_ms: null, penalty_ms: 0 },
+  ]);
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug, event_date) values
+      ('${EV(1)}','Hist Evento Uno','${A}','publicado','hist-1','2026-10-01'), ('${EV(2)}','Hist Evento Dos','${A}','finalizado','hist-2','2026-10-10'),
+      ('${EV(3)}','Hist Borrador','${A}','borrador','hist-3','2026-10-20'), ('${EV(5)}','Hist Evento Cinco','${A}','finalizado','hist-5','2026-09-15');
+    insert into ropers (id, full_name) values ('${RP(1)}','Hist Uno'), ('${RP(2)}','Hist Dos');
+    insert into event_results (id, event_id, roper_id, discipline, time_ms, penalty_ms, disqualified, place, rounds) values
+      ('${RS(1)}','${EV(1)}','${RP(1)}','lazo',18000,3000,false,3,'${rounds1}'::jsonb),
+      ('${RS(2)}','${EV(2)}','${RP(1)}','lazo',17000,0,false,1,'${rounds2}'::jsonb),
+      ('${RS(3)}','${EV(3)}','${RP(1)}','lazo',16000,0,false,1,null),
+      ('${RS(4)}','${EV(1)}','${RP(2)}','lazo',20000,0,false,5,null),
+      ('${RS(6)}','${EV(5)}','${RP(1)}','lazo',null,0,true,null,null);
+    insert into event_results (id, event_id, roper_id, participant_name, discipline, time_ms, penalty_ms, disqualified, place) values
+      ('${RS(5)}','${EV(2)}',null,'Invitado Hist','lazo',15000,0,false,2);
+  `);
+  const asAnon = async (sql) => {
+    await db.exec("reset role; set role anon");
+    try { return (await db.query(sql)).rows; } finally { await db.exec("reset role"); }
+  };
+  const hist = (roper, date = null, id = null, limit = 20) =>
+    asAnon(`select * from public.public_roper_results('${roper}', ${date ? `'${date}'` : "null"}, ${id ? `'${id}'` : "null"}, ${limit})`);
+  const day = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10));
+  const nameOf = (rows) => rows.map((r) => r.event_name);
+
+  const all = await hist(RP(1));
+  await check("el historial va del evento más reciente al más antiguo", JSON.stringify(nameOf(all)) === JSON.stringify(["Hist Evento Dos", "Hist Evento Uno", "Hist Evento Cinco"]));
+  await check("no salen resultados de un borrador, de otro lazador ni de gente sin lazador", all.length === 3);
+  await check("cada fila trae evento, fecha, tiempo, castigo y lugar", all[1].event_slug === "hist-1" && day(all[1].event_date) === "2026-10-01" && all[1].time_ms === 18000 && all[1].penalty_ms === 3000 && all[1].place === 3);
+  await check("un descalificado sale marcado y sin lugar", all[2].disqualified === true && all[2].place === null && all[2].time_ms === null);
+  await check("avisa si el resultado trae rondas, sin enviarlas", all[0].has_rounds === true && all[2].has_rounds === false && !("rounds" in all[0]));
+
+  const p1 = await hist(RP(1), null, null, 2), last = p1[1];
+  const p2 = await hist(RP(1), day(last.event_date), last.id, 2), p3 = await hist(RP(1), day(p2[p2.length - 1].event_date), p2[p2.length - 1].id, 2);
+  await check("el cursor continúa sin repetir ni saltarse a nadie", JSON.stringify(nameOf(p1.concat(p2))) === JSON.stringify(nameOf(all)) && p3.length === 0);
+  await check("el límite se acota: nunca menos de 1", (await hist(RP(1), null, null, 0)).length === 1);
+  await check("un lazador sin resultados devuelve vacío", (await hist("67000000-0000-0000-0000-0000000000ff")).length === 0);
+
+  const sum = async (roper) => (await asAnon(`select * from public.public_roper_summary('${roper}')`))[0];
+  const s1 = await sum(RP(1));
+  await check("resumen: resultados, eventos, victorias y mejor lugar (sin contar descalificados ni borradores)", s1.results_count === 3 && s1.events_count === 3 && s1.wins === 1 && s1.best_place === 1);
+  await check("resumen: mejor corrida regular por modalidad (ignora extras y no time; suma castigos)", JSON.stringify(s1.best_runs) === JSON.stringify({ lazo: 5400 }));
+  const s2 = await sum(RP(2)), s0 = await sum("67000000-0000-0000-0000-0000000000ff");
+  await check("resumen de otro lazador: solo lo suyo", s2.results_count === 1 && s2.wins === 0 && s2.best_place === 5 && JSON.stringify(s2.best_runs) === "{}");
+  await check("resumen sin resultados: ceros", s0.results_count === 0 && s0.events_count === 0 && s0.wins === 0 && s0.best_place === null && JSON.stringify(s0.best_runs) === "{}");
+
+  await as("anon", null, `select * from public.public_roper_results('${RP(1)}')`, "anónimo SÍ ve el historial (es público)", "some");
+  await as("authenticated", C, `select * from public.public_roper_summary('${RP(1)}')`, "un participante SÍ ve el resumen", "some");
+  await as("anon", null, `select rounds from event_results where id = '${RS(2)}'`, "las rondas de un resultado se piden aparte, por su id", "some");
+  await as("anon", null, `select er.rounds from event_results er join events e on e.id = er.event_id where er.id = '${RS(3)}'`, "las rondas de un evento en borrador NO se ven (como las pide la web)", "deny");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

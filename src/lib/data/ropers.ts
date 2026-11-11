@@ -1,9 +1,10 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import { ACTIVE_DISCIPLINES, type DisciplineId } from "@/lib/disciplines";
-import type { Result, Roper, Stat } from "@/lib/types";
+import type { Roper, Stat } from "@/lib/types";
 import { INITIAL_RATING } from "@/lib/rating";
 import { RANKING_PAGE_SIZE, toRankingPage, type RankingPage } from "@/lib/ranking";
+import { HISTORY_PAGE_SIZE, decodeHistoryCursor, toHistoryPage, toRounds, toSummary, type HistoryPage, type Round, type Summary } from "@/lib/results-history";
 
 // Lecturas PÚBLICAS de participantes. Las columnas siempre se piden por nombre: user_id y el celular están
 // ocultos a propósito (el celular vive en roper_contacts, solo para organizadores verificados).
@@ -57,28 +58,42 @@ export async function getPublicRoper(id: string): Promise<Roper | null> {
   return { id: person.data.id, name: person.data.full_name, avatarPath: person.data.avatar_path, stats };
 }
 
-type ResultRow = {
-  id: string; discipline: string; time_ms: number | null; penalty_ms: number | null; disqualified: boolean; created_at: string;
-  place?: number | null; events: { name: string; slug: string | null; event_date: string | null; verified: boolean } | null;
-};
-
-// Historial: solo de eventos públicos (publicados o finalizados). `place` llega cuando la base lo guarde (KIN-587).
-export async function getRoperResults(id: string): Promise<Result[]> {
+// Historial del lazador, UNA PÁGINA a la vez (KIN-609): de lo más reciente a lo más antiguo, solo de eventos publicados o finalizados.
+// `cursor` es el que entregó la página anterior (ya validado por quien llama). Las rondas no viajan aquí: se piden aparte con getRoperRounds.
+export async function getRoperHistory(id: string, cursor: string | null = null): Promise<HistoryPage> {
   "use cache";
   cacheTag("ropers");
   cacheLife("minutes");
-  if (!UUID.test(id)) return [];
-  const { data, error } = await createPublicClient()
-    .from("event_results")
-    .select("id, discipline, time_ms, penalty_ms, disqualified, created_at, events!inner(name, slug, event_date, verified)")
-    .eq("roper_id", id)
-    .order("created_at", { ascending: false })
-    .limit(100);
+  if (!UUID.test(id)) return { rows: [], next: null };
+  const decoded = decodeHistoryCursor(cursor);
+  const at = decoded.ok ? decoded.cursor : null;
+  const { data, error } = await createPublicClient().rpc("public_roper_results", {
+    p_roper: id, p_before_date: at?.date ?? null, p_before_id: at?.id ?? null, p_limit: HISTORY_PAGE_SIZE + 1,
+  });
   if (error) throw new Error(`No se pudo leer el historial: ${error.message}`);
-  return (data as unknown as ResultRow[]).filter((r) => r.events).map((r) => ({
-    id: r.id, event: r.events!.name, eventSlug: r.events!.slug, date: r.events!.event_date ?? r.created_at.slice(0, 10), discipline: r.discipline,
-    timeMs: r.time_ms, penaltyMs: r.penalty_ms ?? 0, disqualified: r.disqualified, place: r.place ?? null, eventVerified: r.events!.verified,
-  }));
+  return toHistoryPage((data ?? []) as Parameters<typeof toHistoryPage>[0], HISTORY_PAGE_SIZE);
+}
+
+// Totales del lazador calculados en la base (resultados, eventos, victorias, mejor lugar y mejor corrida por modalidad).
+export async function getRoperSummary(id: string): Promise<Summary> {
+  "use cache";
+  cacheTag("ropers");
+  cacheLife("minutes");
+  if (!UUID.test(id)) return toSummary(null);
+  const { data, error } = await createPublicClient().rpc("public_roper_summary", { p_roper: id });
+  if (error) throw new Error(`No se pudo leer el resumen: ${error.message}`);
+  return toSummary((data as Parameters<typeof toSummary>[0][] | null)?.[0]);
+}
+
+// Rondas de UN resultado de ese lazador (null si no existe, no es suyo o su evento no es público).
+export async function getRoperRounds(roperId: string, resultId: string): Promise<Round[] | null> {
+  "use cache";
+  cacheTag("ropers");
+  cacheLife("minutes");
+  if (!UUID.test(roperId) || !UUID.test(resultId)) return null;
+  const { data, error } = await createPublicClient().from("event_results").select("rounds, events!inner(id)").eq("id", resultId).eq("roper_id", roperId).maybeSingle();
+  if (error) throw new Error(`No se pudieron leer las rondas: ${error.message}`);
+  return data ? toRounds(data.rounds) : null;
 }
 
 // Varios participantes por id (por ejemplo, los inscritos de un evento).

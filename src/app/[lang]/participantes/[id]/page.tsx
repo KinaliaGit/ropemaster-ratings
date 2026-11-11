@@ -1,14 +1,48 @@
 import { connection } from "next/server";
 import Link from "next/link";
 import { Suspense } from "react";
-import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
-import { getPublicRoper, getRoperResults } from "@/lib/data/ropers";
+import { ProfileHistory } from "@/components/ProfileHistory";
+import { HistorySkeleton, ProfileSkeleton } from "@/components/ProfileSkeleton";
+import { getPublicRoper, getRoperHistory, getRoperSummary } from "@/lib/data/ropers";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
-import { fmtDate } from "@/lib/format";
+import type { Lang } from "@/lib/format";
 import { fmtRating, fmtTime, initials, publicAvatarUrl } from "@/lib/people";
+import { toHistoryItem } from "@/lib/results-view";
 import { getDictionary, resolveLang } from "@/lib/i18n";
+import type { Dict } from "@/dictionaries/es";
+
+// Totales y historial: van aparte para que el nombre y el rating salgan sin esperar a los resultados (KIN-609 y KIN-611).
+async function History({ id, lang, t }: { id: string; lang: Lang; t: Dict }) {
+  const [summary, page] = await Promise.all([getRoperSummary(id), getRoperHistory(id)]);
+  const p = t.people;
+  const runs = ACTIVE_DISCIPLINES.filter((d) => summary.bestRuns[d.id] != null);
+  const stats: [string, string][] = [
+    [String(summary.events), p.eventsWord],
+    [String(summary.wins), p.winsWord],
+    [summary.bestPlace != null ? `#${summary.bestPlace}` : "–", p.bestPlace],
+    ...runs.map((d): [string, string] => [fmtTime(summary.bestRuns[d.id]), ACTIVE_DISCIPLINES.length > 1 ? `${p.bestRun} · ${t.disc[d.id].label}` : p.bestRun]),
+  ];
+  return (
+    <>
+      <dl className="mt-8 grid grid-cols-2 gap-y-4 border-y border-line py-5 text-center sm:grid-cols-[repeat(auto-fit,minmax(8rem,1fr))]">
+        {stats.map(([n, l]) => <div key={l}><dd className="text-2xl font-semibold tabular-nums">{n}</dd><dt className="text-sm text-muted">{l}</dt></div>)}
+      </dl>
+
+      <h2 className="mt-10 text-xl font-semibold">{p.history}</h2>
+      {page.rows.length === 0 ? <p className="mt-3 text-muted">{p.noHistory}</p> : (
+        <ProfileHistory
+          roperId={id} lang={lang} initial={page.rows.map((r) => toHistoryItem(r, lang, t))} next={page.next}
+          labels={{
+            event: p.event, date: p.date, discipline: p.discipline, time: p.time, place: p.place, verifiedEvent: p.verifiedEvent,
+            loadMore: p.loadMore, loadError: p.loadError, retry: p.retry, viewRounds: p.viewRounds, hideRounds: p.hideRounds, noRounds: p.noRounds,
+          }}
+        />
+      )}
+    </>
+  );
+}
 
 async function PerfilInner({ params }: { params: PageProps<"/[lang]/participantes/[id]">["params"] }) {
   // Los datos públicos se leen al atender la visita, no al compilar (así el build no necesita conectarse a la base).
@@ -16,11 +50,9 @@ async function PerfilInner({ params }: { params: PageProps<"/[lang]/participante
   const lang = await resolveLang(params);
   const { id } = await params;
   const t = getDictionary(lang);
-  const [r, results] = await Promise.all([getPublicRoper(id), getRoperResults(id)]);
+  const r = await getPublicRoper(id);
   if (!r) notFound();
   const modes = ACTIVE_DISCIPLINES.filter((d) => r.stats[d.id]);
-  const totalEvents = modes.reduce((n, d) => n + r.stats[d.id]!.events, 0);
-  const totalWins = modes.reduce((n, d) => n + r.stats[d.id]!.wins, 0);
   return (
     <div className="mx-auto max-w-4xl px-5 pb-10 pt-12">
       <div className="flex flex-wrap items-center gap-5">
@@ -37,32 +69,11 @@ async function PerfilInner({ params }: { params: PageProps<"/[lang]/participante
           ))}
         </div>
       </div>
-      <dl className="mt-8 grid grid-cols-3 border-y border-line py-5 text-center">
-        {[[totalEvents, t.people.eventsWord], [totalWins, t.people.winsWord], [results.length, t.people.resultsWord]].map(([n, l]) => <div key={l}><dd className="text-2xl font-semibold tabular-nums">{n}</dd><dt className="text-sm text-muted">{l}</dt></div>)}
-      </dl>
 
-      <h2 className="mt-10 text-xl font-semibold">{t.people.history}</h2>
-      {results.length === 0 ? <p className="mt-3 text-muted">{t.people.noHistory}</p> : (
-        <div className="card mt-4 overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-sand label"><tr><th className="p-3">{t.people.event}</th><th>{t.people.date}</th><th>{t.people.discipline}</th><th>{t.people.time}</th><th>{t.people.place}</th></tr></thead>
-            <tbody>
-              {results.map((x) => (
-                <tr key={x.id} className="border-t border-line">
-                  <td className="p-3 font-medium">
-                    {x.eventSlug ? <Link href={`/${lang}/eventos/${x.eventSlug}`} className="hover:text-brand-hot">{x.event}</Link> : x.event}
-                    {x.eventVerified && <span className="ml-1 text-brand" title={t.people.verifiedEvent}>✓</span>}
-                  </td>
-                  <td className="tabular-nums">{x.date ? fmtDate(x.date, lang) : "–"}</td>
-                  <td>{t.disc[x.discipline as "lazo"]?.label ?? x.discipline}</td>
-                  <td className="tabular-nums">{x.disqualified ? t.people.dq : fmtTime(x.timeMs)}{!x.disqualified && x.penaltyMs > 0 && <span className="text-muted"> (+{fmtTime(x.penaltyMs)})</span>}</td>
-                  <td className="tabular-nums">{x.place != null ? `#${x.place}` : "–"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <Suspense fallback={<HistorySkeleton />}>
+        <History id={r.id} lang={lang} t={t} />
+      </Suspense>
+
       <p className="mt-6 text-xs text-muted">{t.people.contactNote} <Link href={`/${lang}/registro`} className="underline">{t.people.report}</Link>.</p>
     </div>
   );
@@ -70,7 +81,7 @@ async function PerfilInner({ params }: { params: PageProps<"/[lang]/participante
 
 export default function Perfil(props: PageProps<"/[lang]/participantes/[id]">) {
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <Suspense fallback={<ProfileSkeleton />}>
       <PerfilInner params={props.params} />
     </Suspense>
   );

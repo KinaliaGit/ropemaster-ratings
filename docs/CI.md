@@ -5,7 +5,7 @@ Workflow: `.github/workflows/ci.yml`. Dos checks, los dos deben pasar:
 
 | Check | Qué hace |
 |---|---|
-| `Lint, tipos y build` | `npm ci`, `npm run lint`, `npm run typecheck`, `npm run build` (con variables falsas de Supabase) |
+| `Lint, tipos y build` | `npm ci`, `npm run lint`, `npm run typecheck`, `npm run test:unit` (pruebas de `tests/`), `npm run build` (con variables falsas de Supabase) |
 | `Permisos de la base` | `npm run test:db`: aplica todas las migraciones en PGlite y comprueba quién ve/escribe qué |
 
 `npm run typecheck` hace `next typegen && tsc --noEmit`. El `typegen` es necesario: Next genera tipos globales como `PageProps` y sin él `tsc` falla en un checkout limpio.
@@ -15,6 +15,7 @@ Workflow: `.github/workflows/ci.yml`. Dos checks, los dos deben pasar:
 npm ci
 npm run lint
 npm run typecheck
+npm run test:unit
 NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=falsa npm run build
 npm run test:db
 ```

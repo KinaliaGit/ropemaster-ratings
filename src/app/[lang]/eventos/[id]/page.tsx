@@ -1,15 +1,48 @@
 import { connection } from "next/server";
 import Link from "next/link";
 import { Suspense } from "react";
-import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
-import { getRopersByIds } from "@/lib/data/ropers";
 import { getPublicEvent } from "@/lib/data/events";
-import { getRegistrantIds } from "@/lib/data/registrations";
-import { fmtDate, mxn } from "@/lib/format";
-import { RoperCard } from "@/components/RoperCard";
+import { getEventRegistrants } from "@/lib/data/registrations";
+import { getEventResults } from "@/lib/data/event-results";
+import { ACTIVE_DISCIPLINES, DEFAULT_DISCIPLINE, type DisciplineId } from "@/lib/disciplines";
+import { toResultItem } from "@/lib/event-results-view";
+import { toEnrolledItem } from "@/lib/enrolled-view";
+import { fmtDate, mxn, type Lang } from "@/lib/format";
+import Image from "next/image";
+import { EnrolledList } from "@/components/EnrolledList";
+import { EventResults } from "@/components/EventResults";
+import { EnrolledSkeleton, EventSkeleton } from "@/components/EventSkeleton";
 import { EventCover } from "@/components/EventCover";
 import { getDictionary, resolveLang } from "@/lib/i18n";
+import type { Dict } from "@/dictionaries/es";
+
+// Lista de inscritos: va aparte para que el cartel, las categorías y el botón de inscribirse salgan sin esperarla (KIN-612 y KIN-611).
+async function Enrolled({ slug, uuid, discipline, lang, t }: { slug: string; uuid: string; discipline: string; lang: Lang; t: Dict }) {
+  const page = await getEventRegistrants(uuid, discipline);
+  if (page.rows.length === 0) return <p className="mt-3 text-muted">{t.event.noEnrolled}</p>;
+  return (
+    <EnrolledList
+      slug={slug} lang={lang} initial={page.rows.map((r) => toEnrolledItem(r, lang, t))} next={page.next}
+      labels={{ loadMore: t.people.loadMore, loadError: t.people.loadError }}
+    />
+  );
+}
+
+// Resultados del evento (solo de eventos finalizados): primera página de cada modalidad; el resto se pide con "Ver más" (KIN-608).
+async function Results({ slug, uuid, disciplines, lang, t }: { slug: string; uuid: string; disciplines: DisciplineId[]; lang: Lang; t: Dict }) {
+  const sets = (await Promise.all(disciplines.map(async (d) => {
+    const page = await getEventResults(uuid, d);
+    return { id: d, label: t.disc[d].label, rows: page.rows.map((r) => toResultItem(r, lang, t)), next: page.next, total: page.total };
+  }))).filter((s) => s.rows.length > 0);
+  if (sets.length === 0) return <p className="mt-3 text-muted">{t.event.noResults}</p>;
+  return (
+    <EventResults
+      slug={slug} lang={lang} sets={sets}
+      labels={{ loadMore: t.people.loadMore, loadError: t.people.loadError, retry: t.people.retry, viewRounds: t.people.viewRounds, hideRounds: t.people.hideRounds, noRounds: t.people.noRounds, results: t.event.results }}
+    />
+  );
+}
 
 async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]">["params"] }) {
   // Los datos públicos se leen al atender la visita, no al compilar (así el build no necesita conectarse a la base).
@@ -19,8 +52,9 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   const t = getDictionary(lang);
   const e = await getPublicEvent(id);
   if (!e) notFound();
-  const inscritos = await getRopersByIds(e.uuid ? await getRegistrantIds(e.uuid) : []);
   const open = e.status === "publicado" && e.enrolled < e.capacity;
+  const resultDisciplines: DisciplineId[] = ACTIVE_DISCIPLINES.filter((d) => e.disciplines.includes(d.id)).map((d) => d.id);
+  if (resultDisciplines.length === 0) resultDisciplines.push(DEFAULT_DISCIPLINE);
   const gallery = e.photos.filter((p) => p.url !== e.cover); // el flyer de portada ya se ve arriba
   const fromFee = e.categories.length ? Math.min(...e.categories.map((c) => c.fee)) : 0;
   const meta = [e.date ? fmtDate(e.date, lang) : "", [e.venue, e.city].filter(Boolean).join(", ")].filter(Boolean);
@@ -38,7 +72,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
         {/* Cartel: el flyer vertical completo (2:3), sin recortes ni texto encima. */}
         <div className="mx-auto w-full max-w-sm lg:max-w-none">
           <div className="relative aspect-[2/3] overflow-hidden rounded-[28px] bg-sand shadow-[0_18px_48px_-24px_rgba(20,19,17,0.55)] lg:sticky lg:top-24">
-            <EventCover e={e} />
+            <EventCover e={e} sizes="(min-width: 1024px) 380px, (min-width: 384px) 384px, 100vw" eager />
             {!e.cover && <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-6 pt-24"><h2 className="text-3xl font-semibold text-white">{e.name}</h2></div>}
           </div>
         </div>
@@ -61,9 +95,25 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
 
           {e.description && <p className="mt-8 max-w-2xl whitespace-pre-line text-lg">{e.description}</p>}
 
+          {e.status === "finalizado" && e.uuid && (
+            <>
+              <div className="mt-12 flex flex-wrap items-center gap-3">
+                <h2 className="text-xl font-semibold">{t.event.results}</h2>
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${e.resultsClosed ? "bg-ink text-white" : "bg-brand-soft text-brand-hot"}`}>{e.resultsClosed ? t.event.resultsClosed : t.event.resultsInReview}</span>
+              </div>
+              <div className="mt-2">
+                <Suspense fallback={<EnrolledSkeleton />}>
+                  <Results slug={e.id} uuid={e.uuid} disciplines={resultDisciplines} lang={lang} t={t} />
+                </Suspense>
+              </div>
+            </>
+          )}
+
           <h2 className="mt-12 text-xl font-semibold">{t.event.enrolled} <span className="font-normal text-muted">{e.enrolled}/{e.capacity}</span></h2>
           <div className="mt-2">
-            {inscritos.length ? inscritos.map((r) => <RoperCard key={r.id} r={r} lang={lang} t={t} discipline={e.disciplines[0] as "lazo"} />) : <p className="mt-3 text-muted">{t.event.noEnrolled}</p>}
+            {e.uuid
+              ? <Suspense fallback={<EnrolledSkeleton />}><Enrolled slug={e.id} uuid={e.uuid} discipline={e.disciplines[0] ?? DEFAULT_DISCIPLINE} lang={lang} t={t} /></Suspense>
+              : <p className="mt-3 text-muted">{t.event.noEnrolled}</p>}
           </div>
 
           {gallery.length > 0 && (
@@ -72,8 +122,8 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
               {/* Fotos con su proporción real (sin recortar): columnas tipo galería. */}
               <div className="mt-4 columns-2 gap-3 sm:columns-3">
                 {gallery.map(({ id: photoId, url: src }) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={photoId} src={src} alt="" loading="lazy" className="mb-3 w-full break-inside-avoid rounded-2xl" />
+                  // Se desconoce la proporción real de cada foto: se reserva 4:3 y se ajusta al cargar. Llegan reducidas (1600 px), así que se piden al tamaño que se ven.
+                  <Image key={photoId} src={src} alt="" width={800} height={600} sizes="(min-width: 1024px) 240px, (min-width: 640px) 33vw, 50vw" className="mb-3 h-auto w-full break-inside-avoid rounded-2xl" />
                 ))}
               </div>
             </>
@@ -86,7 +136,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
 
 export default function Evento(props: PageProps<"/[lang]/eventos/[id]">) {
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <Suspense fallback={<EventSkeleton />}>
       <EventoInner params={props.params} />
     </Suspense>
   );

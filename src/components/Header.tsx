@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { getSession } from "@/lib/session";
@@ -29,8 +30,7 @@ export function Header({ lang, t }: { lang: Lang; t: Dict }) {
     <header className="fixed inset-x-0 top-0 z-50 bg-cream/85 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-5 md:grid md:grid-cols-[1fr_auto_1fr]">
         <Link href={`/${lang}`} className="flex items-center gap-2.5 text-[17px] font-semibold tracking-tight">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="" width={32} height={32} className="size-8" />
+          <Image src="/logo.png" alt="" width={32} height={32} loading="eager" className="size-8" />
           <span className="hidden sm:inline">{t.common.brand}</span>
         </Link>
         <div className="md:justify-self-center"><NavLinks items={items} /></div>

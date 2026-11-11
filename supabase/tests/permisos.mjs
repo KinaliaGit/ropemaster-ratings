@@ -817,5 +817,255 @@ console.log("- Eventos con inscritos y pagos para la app (0024)");
   await as("authenticated", A, "select public.touch_event_of_child()", "nadie llama al trigger a mano", "deny");
 }
 
+console.log("- Ranking público paginado (0026)");
+{
+  await db.exec(`
+    insert into ropers (id, full_name) values
+      ('61000000-0000-0000-0000-000000000001','Zrk Beta'), ('61000000-0000-0000-0000-000000000002','Zrk Alfa'),
+      ('61000000-0000-0000-0000-000000000003','Zrk Álvaro Gómez'), ('61000000-0000-0000-0000-000000000004','Zrk Cero');
+    insert into ropers (id, full_name, merged_into) values ('61000000-0000-0000-0000-000000000005','Zrk Fusionado','61000000-0000-0000-0000-000000000002');
+    insert into roper_ratings (roper_id, discipline, rating, events_count, wins) values
+      ('61000000-0000-0000-0000-000000000001','lazo',9.0,5,2), ('61000000-0000-0000-0000-000000000002','lazo',9.0,4,1),
+      ('61000000-0000-0000-0000-000000000001','barriles',2.0,1,0);
+  `);
+  // Como anónimo: es la misma vista que tiene la web pública.
+  const rank = async (discipline, tokens = null, after = null, limit = 50) => {
+    await db.exec("reset role; set role anon");
+    try {
+      const t = tokens ? `array[${tokens.map((x) => `'${x}'`).join(",")}]::text[]` : "null";
+      return (await db.query(`select * from public.public_ranking('${discipline}', 1, ${t}, ${after ?? "null"}, ${limit})`)).rows;
+    } finally { await db.exec("reset role"); }
+  };
+  const names = (rows) => rows.map((r) => r.full_name);
+
+  const all = await rank("lazo", ["zrk"]);
+  await check("devuelve a los visibles y deja fuera al perfil fusionado", all.length === 4 && !names(all).includes("Zrk Fusionado"));
+  await check("ordena por rating (mayor primero) y, a igual rating, por nombre", JSON.stringify(names(all).slice(0, 2)) === JSON.stringify(["Zrk Alfa", "Zrk Beta"]));
+  await check("el lugar crece sin repetirse", all.every((r, i) => i === 0 || Number(r.rank) > Number(all[i - 1].rank)));
+  const alfa = all[0], cero = all.find((r) => r.full_name === "Zrk Cero");
+  await check("rating, eventos y victorias de quien tiene rating", Number(alfa.rating) === 9 && alfa.events_count === 4 && alfa.wins === 1 && alfa.is_initial === false);
+  await check("quien no tiene rating parte del inicial y va después de quien sí lo tiene", Number(cero.rating) === 1 && cero.is_initial === true && cero.events_count === 0 && Number(cero.rank) > Number(all[1].rank));
+  const ahead = (await db.query(`
+    select count(*)::int as n from ropers p left join roper_ratings rr on rr.roper_id = p.id and rr.discipline = 'lazo'
+    where p.merged_into is null and (coalesce(rr.rating, 1) > 9 or (coalesce(rr.rating, 1) = 9 and p.full_name < 'Zrk Beta'))`)).rows[0].n;
+  await check("el lugar es sobre TODO el ranking (no solo sobre lo que se ve)", Number(all[1].rank) === ahead + 1);
+
+  await check("la búsqueda ignora acentos y mayúsculas", JSON.stringify(names(await rank("lazo", ["alvaro"]))) === JSON.stringify(["Zrk Álvaro Gómez"]));
+  await check("varias palabras: cada una debe empezar alguna palabra del nombre", JSON.stringify(names(await rank("lazo", ["zrk", "alv", "gom"]))) === JSON.stringify(["Zrk Álvaro Gómez"]));
+  await check("busca por INICIO de palabra, no por cualquier parte", (await rank("lazo", ["rk"])).length === 0 && (await rank("lazo", ["lvaro"])).length === 0);
+  await check("al buscar, cada quien conserva su lugar real", Number((await rank("lazo", ["beta"]))[0].rank) === Number(all[1].rank));
+  await check("sin palabras (vacío) no filtra", (await rank("lazo", [])).length === (await rank("lazo", null)).length);
+
+  const p1 = await rank("lazo", ["zrk"], null, 2), p2 = await rank("lazo", ["zrk"], Number(p1[1].rank), 2), p3 = await rank("lazo", ["zrk"], Number(p2[1].rank), 2);
+  await check("el cursor continúa sin repetir ni saltarse a nadie", JSON.stringify(names(p1.concat(p2))) === JSON.stringify(names(all)) && p3.length === 0);
+  await check("el límite se acota: nunca menos de 1 ni más de 101", (await rank("lazo", ["zrk"], null, 0)).length === 1 && (await rank("lazo", null, null, 100000)).length <= 101);
+
+  const barriles = await rank("barriles", ["zrk"]);
+  await check("cada modalidad tiene su propio ranking", Number(barriles[0].rating) === 2 && barriles[0].full_name === "Zrk Beta" && barriles.filter((r) => r.is_initial).length === 3);
+  await check("no devuelve celular, correo ni ids de cuenta", !Object.keys(all[0]).some((k) => /phone|email|user_id/.test(k)));
+
+  const call = "select * from public.public_ranking('lazo', 1, null, null, 5)";
+  await as("anon", null, call, "anónimo SÍ la ejecuta (el ranking es público)", "some");
+  await as("authenticated", C, call, "un participante SÍ la ejecuta", "some");
+}
+
+console.log("- Historial y resumen del lazador (0027)");
+{
+  const EV = (n) => `e7000000-0000-0000-0000-00000000000${n}`, RP = (n) => `67000000-0000-0000-0000-00000000000${n}`, RS = (n) => `a7000000-0000-0000-0000-00000000000${n}`;
+  const rounds1 = JSON.stringify([
+    { round: 1, stage: "preliminary", kind: "regular", status: "completed", time_ms: 6000, penalty_ms: 0 },
+    { round: 2, stage: "preliminary", kind: "regular", status: "completed", time_ms: 9000, penalty_ms: 3000 },
+  ]);
+  const rounds2 = JSON.stringify([
+    { round: 1, stage: "preliminary", kind: "regular", status: "completed", time_ms: 5400, penalty_ms: 0 },
+    { round: 1, stage: "preliminary", kind: "extra", status: "completed", time_ms: 4000, penalty_ms: 0 },
+    { round: 2, stage: "final", kind: "regular", status: "no_time", time_ms: null, penalty_ms: 0 },
+  ]);
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug, event_date) values
+      ('${EV(1)}','Hist Evento Uno','${A}','publicado','hist-1','2026-10-01'), ('${EV(2)}','Hist Evento Dos','${A}','finalizado','hist-2','2026-10-10'),
+      ('${EV(3)}','Hist Borrador','${A}','borrador','hist-3','2026-10-20'), ('${EV(5)}','Hist Evento Cinco','${A}','finalizado','hist-5','2026-09-15');
+    insert into ropers (id, full_name) values ('${RP(1)}','Hist Uno'), ('${RP(2)}','Hist Dos');
+    insert into event_results (id, event_id, roper_id, discipline, time_ms, penalty_ms, disqualified, place, rounds) values
+      ('${RS(1)}','${EV(1)}','${RP(1)}','lazo',18000,3000,false,3,'${rounds1}'::jsonb),
+      ('${RS(2)}','${EV(2)}','${RP(1)}','lazo',17000,0,false,1,'${rounds2}'::jsonb),
+      ('${RS(3)}','${EV(3)}','${RP(1)}','lazo',16000,0,false,1,null),
+      ('${RS(4)}','${EV(1)}','${RP(2)}','lazo',20000,0,false,5,null),
+      ('${RS(6)}','${EV(5)}','${RP(1)}','lazo',null,0,true,null,null);
+    insert into event_results (id, event_id, roper_id, participant_name, discipline, time_ms, penalty_ms, disqualified, place) values
+      ('${RS(5)}','${EV(2)}',null,'Invitado Hist','lazo',15000,0,false,2);
+  `);
+  const asAnon = async (sql) => {
+    await db.exec("reset role; set role anon");
+    try { return (await db.query(sql)).rows; } finally { await db.exec("reset role"); }
+  };
+  const hist = (roper, date = null, id = null, limit = 20) =>
+    asAnon(`select * from public.public_roper_results('${roper}', ${date ? `'${date}'` : "null"}, ${id ? `'${id}'` : "null"}, ${limit})`);
+  const day = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10));
+  const nameOf = (rows) => rows.map((r) => r.event_name);
+
+  const all = await hist(RP(1));
+  await check("el historial va del evento más reciente al más antiguo", JSON.stringify(nameOf(all)) === JSON.stringify(["Hist Evento Dos", "Hist Evento Uno", "Hist Evento Cinco"]));
+  await check("no salen resultados de un borrador, de otro lazador ni de gente sin lazador", all.length === 3);
+  await check("cada fila trae evento, fecha, tiempo, castigo y lugar", all[1].event_slug === "hist-1" && day(all[1].event_date) === "2026-10-01" && all[1].time_ms === 18000 && all[1].penalty_ms === 3000 && all[1].place === 3);
+  await check("un descalificado sale marcado y sin lugar", all[2].disqualified === true && all[2].place === null && all[2].time_ms === null);
+  await check("avisa si el resultado trae rondas, sin enviarlas", all[0].has_rounds === true && all[2].has_rounds === false && !("rounds" in all[0]));
+
+  const p1 = await hist(RP(1), null, null, 2), last = p1[1];
+  const p2 = await hist(RP(1), day(last.event_date), last.id, 2), p3 = await hist(RP(1), day(p2[p2.length - 1].event_date), p2[p2.length - 1].id, 2);
+  await check("el cursor continúa sin repetir ni saltarse a nadie", JSON.stringify(nameOf(p1.concat(p2))) === JSON.stringify(nameOf(all)) && p3.length === 0);
+  await check("el límite se acota: nunca menos de 1", (await hist(RP(1), null, null, 0)).length === 1);
+  await check("un lazador sin resultados devuelve vacío", (await hist("67000000-0000-0000-0000-0000000000ff")).length === 0);
+
+  const sum = async (roper) => (await asAnon(`select * from public.public_roper_summary('${roper}')`))[0];
+  const s1 = await sum(RP(1));
+  await check("resumen: resultados, eventos, victorias y mejor lugar (sin contar descalificados ni borradores)", s1.results_count === 3 && s1.events_count === 3 && s1.wins === 1 && s1.best_place === 1);
+  await check("resumen: mejor corrida regular por modalidad (ignora extras y no time; suma castigos)", JSON.stringify(s1.best_runs) === JSON.stringify({ lazo: 5400 }));
+  const s2 = await sum(RP(2)), s0 = await sum("67000000-0000-0000-0000-0000000000ff");
+  await check("resumen de otro lazador: solo lo suyo", s2.results_count === 1 && s2.wins === 0 && s2.best_place === 5 && JSON.stringify(s2.best_runs) === "{}");
+  await check("resumen sin resultados: ceros", s0.results_count === 0 && s0.events_count === 0 && s0.wins === 0 && s0.best_place === null && JSON.stringify(s0.best_runs) === "{}");
+
+  await as("anon", null, `select * from public.public_roper_results('${RP(1)}')`, "anónimo SÍ ve el historial (es público)", "some");
+  await as("authenticated", C, `select * from public.public_roper_summary('${RP(1)}')`, "un participante SÍ ve el resumen", "some");
+  await as("anon", null, `select rounds from event_results where id = '${RS(2)}'`, "las rondas de un resultado se piden aparte, por su id", "some");
+  await as("anon", null, `select er.rounds from event_results er join events e on e.id = er.event_id where er.id = '${RS(3)}'`, "las rondas de un evento en borrador NO se ven (como las pide la web)", "deny");
+}
+
+console.log("- Inscritos de un evento (0028)");
+{
+  const EV = (n) => `e8000000-0000-0000-0000-00000000000${n}`, RP = (n) => `68000000-0000-0000-0000-00000000000${n}`;
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug) values
+      ('${EV(1)}','Ins Evento','${A}','publicado','ins-1'), ('${EV(2)}','Ins Borrador','${A}','borrador','ins-2'), ('${EV(3)}','Ins Otro','${A}','publicado','ins-3');
+    insert into ropers (id, full_name, avatar_path) values
+      ('${RP(1)}','Ins Uno','a/uno.jpg'), ('${RP(2)}','Ins Dos',null), ('${RP(3)}','Ins Tres',null), ('${RP(4)}','Ins Cuatro',null);
+    insert into ropers (id, full_name, merged_into) values ('${RP(5)}','Ins Fusionado','${RP(1)}');
+    insert into roper_ratings (roper_id, discipline, rating, events_count, wins) values ('${RP(1)}','lazo',8.5,6,2), ('${RP(2)}','barriles',3.0,1,0);
+    insert into registrations (event_id, roper_id, created_at) values
+      ('${EV(1)}','${RP(1)}','2026-11-01 10:00:00.123456+00'), ('${EV(1)}','${RP(1)}','2026-11-01 13:00:00+00'),
+      ('${EV(1)}','${RP(2)}','2026-11-01 11:00:00+00'), ('${EV(1)}','${RP(3)}','2026-11-01 12:00:00+00'), ('${EV(1)}','${RP(5)}','2026-11-01 09:00:00+00'),
+      ('${EV(2)}','${RP(4)}','2026-11-01 10:00:00+00'), ('${EV(3)}','${RP(4)}','2026-11-01 10:00:00+00');
+  `);
+  const asAnon = async (sql) => {
+    await db.exec("reset role; set role anon");
+    try { return (await db.query(sql)).rows; } finally { await db.exec("reset role"); }
+  };
+  const page = (event, discipline = "lazo", at = null, id = null, limit = 30) =>
+    asAnon(`select * from public.event_registrants_page('${event}', '${discipline}', 1, ${at ? `'${at}'` : "null"}, ${id ? `'${id}'` : "null"}, ${limit})`);
+  const names = (rows) => rows.map((r) => r.full_name);
+
+  const enrolled = async (slug) => (await asAnon(`select public.event_enrolled('${slug}') as n`))[0].n;
+  await check("el conteo es solo de ESE evento (cuenta cada inscripción)", (await enrolled("ins-1")) === 5 && (await enrolled("ins-3")) === 1);
+  await check("un borrador o un evento que no existe cuentan cero", (await enrolled("ins-2")) === 0 && (await enrolled("no-existe")) === 0);
+
+  const all = await page(EV(1));
+  await check("la lista va de los primeros a los últimos en inscribirse, sin repetir a nadie", JSON.stringify(names(all)) === JSON.stringify(["Ins Uno", "Ins Dos", "Ins Tres"]));
+  await check("no sale el perfil fusionado", !names(all).includes("Ins Fusionado"));
+  await check("trae nombre, foto y rating de la modalidad del evento", all[0].avatar_path === "a/uno.jpg" && Number(all[0].rating) === 8.5 && all[0].events_count === 6 && all[0].wins === 2 && all[0].is_initial === false);
+  await check("quien no tiene rating en esa modalidad parte del inicial", Number(all[1].rating) === 1 && all[1].is_initial === true && all[1].events_count === 0);
+  await check("cada modalidad tiene su propio rating", Number((await page(EV(1), "barriles"))[1].rating) === 3);
+  await check("la lista de un borrador NO es pública", (await page(EV(2))).length === 0);
+  await check("no devuelve celular, correo, pagos ni ids de cuenta", !Object.keys(all[0]).some((k) => /phone|email|user_id|payment|amount/.test(k)));
+
+  const iso = (d) => (d instanceof Date ? d.toISOString() : String(d));
+  const p1 = await page(EV(1), "lazo", null, null, 2), last = p1[1];
+  const p2 = await page(EV(1), "lazo", iso(last.enrolled_at), last.roper_id, 2);
+  const p3 = await page(EV(1), "lazo", iso(p2[p2.length - 1].enrolled_at), p2[p2.length - 1].roper_id, 2);
+  await check("el cursor continúa sin repetir ni saltarse a nadie", JSON.stringify(names(p1.concat(p2))) === JSON.stringify(names(all)) && p3.length === 0);
+  await check("el límite se acota: nunca menos de 1", (await page(EV(1), "lazo", null, null, 0)).length === 1);
+
+  await as("anon", null, `select * from public.event_registrants_page('${EV(1)}', 'lazo', 1)`, "anónimo SÍ ve la lista de un evento público", "some");
+  await as("authenticated", C, "select public.event_enrolled('ins-1')", "un participante SÍ ve el conteo", "some");
+  await as("anon", null, "select * from registrations", "la tabla de inscripciones sigue sin ser pública", "deny");
+}
+
+console.log("- Resultados: solo de eventos visibles (0029)");
+{
+  const EV = (n) => `e9000000-0000-0000-0000-00000000000${n}`, RP = `69000000-0000-0000-0000-000000000001`, RS = (n) => `a9000000-0000-0000-0000-00000000000${n}`;
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug) values
+      ('${EV(1)}','Vis Publicado','${A}','publicado','vis-1'), ('${EV(2)}','Vis Borrador de A','${A}','borrador','vis-2'),
+      ('${EV(3)}','Vis Borrador de B','${B}','borrador','vis-3'), ('${EV(4)}','Vis Finalizado','${A}','finalizado','vis-4');
+    insert into ropers (id, full_name) values ('${RP}','Vis Lazador');
+    insert into event_results (id, event_id, roper_id, discipline, time_ms, disqualified, place) values
+      ('${RS(1)}','${EV(1)}','${RP}','lazo',10000,false,1), ('${RS(2)}','${EV(2)}','${RP}','lazo',11000,false,2),
+      ('${RS(3)}','${EV(3)}','${RP}','lazo',12000,false,3), ('${RS(4)}','${EV(4)}','${RP}','lazo',13000,false,4);
+    insert into event_results (id, event_id, roper_id, participant_name, discipline, time_ms, disqualified, place) values
+      ('${RS(5)}','${EV(2)}',null,'Invitado Vis','lazo',9000,false,1);
+  `);
+  const ids = "'" + [1, 2, 3, 4, 5].map(RS).join("','") + "'";
+  const seen = async (role, uid) => {
+    await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${uid ?? ""}', false); set role ${role}`);
+    try { return (await db.query(`select id from event_results where id in (${ids}) order by id`)).rows.map((r) => r.id); } finally { await db.exec("reset role"); }
+  };
+  const same = (got, want) => JSON.stringify(got) === JSON.stringify(want.map(RS));
+
+  await check("anónimo: solo los resultados de eventos publicados o finalizados", same(await seen("anon", null), [1, 4]));
+  await check("un participante: lo mismo que un anónimo", same(await seen("authenticated", C), [1, 4]));
+  await check("el organizador dueño ve también los de sus borradores (con y sin lazador)", same(await seen("authenticated", A), [1, 2, 4, 5]));
+  await check("otro organizador NO ve los borradores de A, pero sí los suyos", same(await seen("authenticated", B), [1, 3, 4]));
+
+  await as("anon", null, `select rounds from event_results where id = '${RS(2)}'`, "anónimo NO lee directo el resultado de un borrador", "deny");
+  await as("anon", null, `select id from event_results where event_id = '${EV(3)}'`, "anónimo NO lista los resultados de un borrador por evento", "deny");
+  await as("anon", null, `select id from event_results where event_id = '${EV(1)}'`, "anónimo SÍ lista los de un evento publicado", "some");
+  await as("anon", null, `select * from public.public_roper_results('${RP}')`, "el historial público sigue funcionando", "some");
+
+  await db.exec(`update events set status = 'publicado' where id = '${EV(2)}'`);
+  await check("al publicar el evento sus resultados se ven", same(await seen("anon", null), [1, 2, 4, 5]));
+  await db.exec(`update events set status = 'borrador' where id = '${EV(2)}'`);
+  await check("al volver a borrador dejan de verse", same(await seen("anon", null), [1, 4]));
+}
+
+console.log("- Resultados de un evento (0030)");
+{
+  const EV = (n) => `ea000000-0000-0000-0000-00000000000${n}`, RP = (n) => `6a000000-0000-0000-0000-00000000000${n}`, RS = (n) => `aa000000-0000-0000-0000-00000000000${n}`;
+  const rounds = JSON.stringify([{ round: 1, stage: "preliminary", kind: "regular", status: "completed", time_ms: 12000, penalty_ms: 0 }]);
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug) values
+      ('${EV(1)}','Res Evento','${A}','finalizado','res-ev-1'), ('${EV(2)}','Res Borrador','${A}','borrador','res-ev-2');
+    insert into ropers (id, full_name, avatar_path) values ('${RP(1)}','Res Ana','a/ana.jpg'), ('${RP(2)}','Res Beto',null), ('${RP(3)}','Res Cata',null), ('${RP(4)}','Res Dani',null);
+    insert into ropers (id, full_name, merged_into) values ('${RP(5)}','Res Fusionado','${RP(1)}');
+    insert into event_results (id, event_id, roper_id, discipline, time_ms, penalty_ms, disqualified, place, completed_runs, nt_count, dq_count, rounds) values
+      ('${RS(1)}','${EV(1)}','${RP(1)}','lazo',12000,0,false,1,1,0,0,'${rounds}'::jsonb),
+      ('${RS(2)}','${EV(1)}','${RP(2)}','lazo',13000,1000,false,2,1,0,0,null),
+      ('${RS(4)}','${EV(1)}','${RP(3)}','lazo',null,0,true,null,0,0,1,null),
+      ('${RS(5)}','${EV(1)}','${RP(4)}','lazo',20000,0,false,null,1,0,0,null),
+      ('${RS(6)}','${EV(1)}','${RP(5)}','lazo',25000,0,false,null,1,0,0,null),
+      ('${RS(7)}','${EV(1)}','${RP(1)}','barriles',17000,0,false,1,1,0,0,null),
+      ('${RS(8)}','${EV(2)}','${RP(1)}','lazo',11000,0,false,1,1,0,0,null);
+    insert into event_results (id, event_id, roper_id, participant_name, discipline, time_ms, penalty_ms, disqualified, place) values
+      ('${RS(3)}','${EV(1)}',null,'Res Chuy Invitado','lazo',14000,0,false,3);
+  `);
+  const asAnon = async (sql) => {
+    await db.exec("reset role; set role anon");
+    try { return (await db.query(sql)).rows; } finally { await db.exec("reset role"); }
+  };
+  const page = (event, discipline = "lazo", after = null, limit = 30) =>
+    asAnon(`select * from public.public_event_results('${event}', '${discipline}', ${after ?? "null"}, ${limit})`);
+  const names = (rows) => rows.map((r) => r.name);
+
+  const all = await page(EV(1));
+  await check("ordena por lugar; luego sin lugar (por tiempo) y al final los descalificados", JSON.stringify(names(all)) === JSON.stringify(["Res Ana", "Res Beto", "Res Chuy Invitado", "Res Dani", "", "Res Cata"]));
+  await check("cada fila trae el total de resultados de esa modalidad", all.every((r) => Number(r.total) === 6) && all.map((r) => Number(r.pos)).join() === "1,2,3,4,5,6");
+  await check("quien corrió sin lazador en la web sale con su nombre y sin enlace", all[2].roper_id === null && all[2].name === "Res Chuy Invitado" && all[2].place === 3);
+  await check("un perfil fusionado no se enlaza ni se nombra", all[4].roper_id === null && all[4].name === "");
+  await check("trae lugar, tiempos, castigo, foto y contadores", all[0].place === 1 && all[0].time_ms === 12000 && all[0].avatar_path === "a/ana.jpg" && all[0].completed_runs === 1 && all[1].penalty_ms === 1000);
+  await check("un descalificado sale marcado, sin lugar ni tiempo", all[5].disqualified === true && all[5].place === null && all[5].time_ms === null && all[5].dq_count === 1);
+  await check("avisa si el resultado trae rondas, sin enviarlas", all[0].has_rounds === true && all[1].has_rounds === false && !("rounds" in all[0]));
+  await check("cada modalidad va por separado", (await page(EV(1), "barriles")).length === 1 && (await page(EV(1), "otra")).length === 0);
+  await check("no devuelve celular, correo ni ids de cuenta", !Object.keys(all[0]).some((k) => /phone|email|user_id/.test(k)));
+
+  const p1 = await page(EV(1), "lazo", null, 2), p2 = await page(EV(1), "lazo", Number(p1[1].pos), 2), p3 = await page(EV(1), "lazo", Number(p2[1].pos), 2), p4 = await page(EV(1), "lazo", Number(p3[1].pos), 2);
+  await check("el cursor continúa sin repetir ni saltarse a nadie", JSON.stringify(names(p1.concat(p2, p3))) === JSON.stringify(names(all)) && p4.length === 0);
+  await check("el límite se acota: nunca menos de 1", (await page(EV(1), "lazo", null, 0)).length === 1);
+
+  await check("los resultados de un borrador NO salen (anónimo)", (await page(EV(2))).length === 0);
+  await as("authenticated", A, `select * from public.public_event_results('${EV(2)}', 'lazo')`, "el organizador dueño SÍ ve los de su borrador", "some");
+  await as("authenticated", B, `select * from public.public_event_results('${EV(2)}', 'lazo')`, "otro organizador NO ve los del borrador de A", "deny");
+  await as("anon", null, `select * from public.public_event_results('${EV(1)}', 'lazo')`, "anónimo SÍ ve los de un evento finalizado", "some");
+  await as("authenticated", C, `select * from public.public_event_results('${EV(1)}', 'lazo')`, "un participante SÍ los ve", "some");
+  await as("anon", null, `select rounds from event_results where id = '${RS(1)}' and event_id = '${EV(1)}'`, "las rondas se piden aparte, por evento y resultado", "some");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

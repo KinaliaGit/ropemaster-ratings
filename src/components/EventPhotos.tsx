@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { addEventPhoto, deleteEventPhoto, setEventCover } from "@/lib/photo-actions";
 import { EVENT_PHOTO_SIDE, MAX_EVENT_PHOTO_BYTES, MAX_EVENT_PHOTOS, MAX_UPLOAD_BYTES } from "@/lib/limits";
@@ -62,8 +63,7 @@ export function EventPhotos({ eventSlug, photos, coverUrl, l }: { eventSlug: str
           const working = busy === p.id;
           return (
             <li key={p.id} className={`relative aspect-square overflow-hidden rounded-2xl bg-sand ${working ? "opacity-60" : ""}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.url} alt="" className="size-full object-cover" />
+              <Image src={p.url} alt="" fill sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw" className="object-cover" />
               {isCover && <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2.5 py-0.5 text-[11px] font-medium text-white">{l.cover}</span>}
               <div className="absolute inset-x-0 bottom-0 flex justify-between gap-1 bg-gradient-to-t from-black/70 to-transparent p-2 pt-6 text-[11px] font-medium text-white">
                 {!isCover ? <button type="button" disabled={!!busy} onClick={() => run(p.id, () => setEventCover(eventSlug, p.id))} className="rounded-full bg-white/20 px-2.5 py-1 backdrop-blur hover:bg-white/35 disabled:opacity-50">{l.makeCover}</button> : <span />}

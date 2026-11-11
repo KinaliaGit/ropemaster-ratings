@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { Dict } from "@/dictionaries/es";
 import type { Lang } from "@/lib/format";
 import { productUrl, licensesUrl } from "@/lib/links";
@@ -7,12 +8,10 @@ export function RopeMasterPromo({ lang, t }: { lang: Lang; t: Dict }) {
   const p = t.promo;
   return (
     <section aria-labelledby="promo-title" className="relative mt-20 overflow-hidden rounded-[28px] bg-ink px-6 py-10 text-white sm:px-12 sm:py-14">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/hero-roping.png" alt="" className="pointer-events-none absolute -right-10 -top-6 hidden h-[130%] opacity-[0.07] brightness-0 invert lg:block" />
+      <Image src="/hero-roping.png" alt="" width={560} height={916} sizes="300px" className="pointer-events-none absolute -right-10 -top-6 hidden h-[130%] w-auto opacity-[0.07] brightness-0 invert lg:block" />
       <div className="relative max-w-2xl">
         <p className="flex items-center gap-2 text-sm font-medium text-white/70">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="" width={24} height={24} className="size-6" />{p.label}
+          <Image src="/logo.png" alt="" width={24} height={24} className="size-6" />{p.label}
         </p>
         <h2 id="promo-title" className="mt-4 text-3xl font-semibold leading-tight sm:text-4xl">{p.title}</h2>
         <p className="mt-4 text-lg text-white/75">{p.text}</p>

@@ -32,6 +32,7 @@ export const es = {
   event: {
     from: "Desde", 
     organizedBy: "Organiza", photos: "Fotos", noPhotos: "El organizador aún no ha subido fotos.", enrolled: "Inscritos", noEnrolled: "Aún no hay inscritos.",
+    results: "Resultados", resultsClosed: "Resultados cerrados", resultsInReview: "Resultados en corrección", noResults: "Aún no hay resultados.",
     enrollment: "Inscripción", enroll: "Inscribirme", needAccount: "Necesitas una cuenta de participante.", eventFinished: "Evento finalizado", full: "Cupo lleno",
   },
   pay: {
@@ -58,7 +59,7 @@ export const es = {
     ratingsByMode: "Rating por modalidad",
     loadMore: "Ver más", loadError: "No se pudo cargar. Intenta de nuevo.", retry: "Reintentar",
     round: "Ronda", roundFinal: "Final", roundTiebreak: "Desempate", extra: "Extra", help: "Ayuda", noTime: "No time", substitute: "Sustituto", header: "cabecero", heeler: "pialador", countsForSubstitute: "también cuenta para el sustituto",
-    viewRounds: "Ver rondas", hideRounds: "Ocultar rondas", noRounds: "Sin detalle de rondas.", bestPlace: "Mejor lugar", bestRun: "Mejor corrida", runsCount: "rondas",
+    unknownName: "Participante", viewRounds: "Ver rondas", hideRounds: "Ocultar rondas", noRounds: "Sin detalle de rondas.", bestPlace: "Mejor lugar", bestRun: "Mejor corrida", runsCount: "rondas",
   },
   auth: {
     errorUnconfirmed: "Primero confirma tu correo: te enviamos un enlace al registrarte.", errorConfirm: "El enlace de confirmación no es válido o ya venció. Entra con tu correo y contraseña o pide otro.", resend: "Reenviar correo de confirmación", resent: "Te lo enviamos de nuevo.",

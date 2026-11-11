@@ -4,11 +4,14 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getPublicEvent } from "@/lib/data/events";
 import { getEventRegistrants } from "@/lib/data/registrations";
-import { DEFAULT_DISCIPLINE } from "@/lib/disciplines";
+import { getEventResults } from "@/lib/data/event-results";
+import { ACTIVE_DISCIPLINES, DEFAULT_DISCIPLINE, type DisciplineId } from "@/lib/disciplines";
+import { toResultItem } from "@/lib/event-results-view";
 import { toEnrolledItem } from "@/lib/enrolled-view";
 import { fmtDate, mxn, type Lang } from "@/lib/format";
 import Image from "next/image";
 import { EnrolledList } from "@/components/EnrolledList";
+import { EventResults } from "@/components/EventResults";
 import { EnrolledSkeleton, EventSkeleton } from "@/components/EventSkeleton";
 import { EventCover } from "@/components/EventCover";
 import { getDictionary, resolveLang } from "@/lib/i18n";
@@ -26,6 +29,21 @@ async function Enrolled({ slug, uuid, discipline, lang, t }: { slug: string; uui
   );
 }
 
+// Resultados del evento (solo de eventos finalizados): primera página de cada modalidad; el resto se pide con "Ver más" (KIN-608).
+async function Results({ slug, uuid, disciplines, lang, t }: { slug: string; uuid: string; disciplines: DisciplineId[]; lang: Lang; t: Dict }) {
+  const sets = (await Promise.all(disciplines.map(async (d) => {
+    const page = await getEventResults(uuid, d);
+    return { id: d, label: t.disc[d].label, rows: page.rows.map((r) => toResultItem(r, lang, t)), next: page.next, total: page.total };
+  }))).filter((s) => s.rows.length > 0);
+  if (sets.length === 0) return <p className="mt-3 text-muted">{t.event.noResults}</p>;
+  return (
+    <EventResults
+      slug={slug} lang={lang} sets={sets}
+      labels={{ loadMore: t.people.loadMore, loadError: t.people.loadError, retry: t.people.retry, viewRounds: t.people.viewRounds, hideRounds: t.people.hideRounds, noRounds: t.people.noRounds, results: t.event.results }}
+    />
+  );
+}
+
 async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]">["params"] }) {
   // Los datos públicos se leen al atender la visita, no al compilar (así el build no necesita conectarse a la base).
   await connection();
@@ -35,6 +53,8 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   const e = await getPublicEvent(id);
   if (!e) notFound();
   const open = e.status === "publicado" && e.enrolled < e.capacity;
+  const resultDisciplines: DisciplineId[] = ACTIVE_DISCIPLINES.filter((d) => e.disciplines.includes(d.id)).map((d) => d.id);
+  if (resultDisciplines.length === 0) resultDisciplines.push(DEFAULT_DISCIPLINE);
   const gallery = e.photos.filter((p) => p.url !== e.cover); // el flyer de portada ya se ve arriba
   const fromFee = e.categories.length ? Math.min(...e.categories.map((c) => c.fee)) : 0;
   const meta = [e.date ? fmtDate(e.date, lang) : "", [e.venue, e.city].filter(Boolean).join(", ")].filter(Boolean);
@@ -74,6 +94,20 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
           </aside>
 
           {e.description && <p className="mt-8 max-w-2xl whitespace-pre-line text-lg">{e.description}</p>}
+
+          {e.status === "finalizado" && e.uuid && (
+            <>
+              <div className="mt-12 flex flex-wrap items-center gap-3">
+                <h2 className="text-xl font-semibold">{t.event.results}</h2>
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${e.resultsClosed ? "bg-ink text-white" : "bg-brand-soft text-brand-hot"}`}>{e.resultsClosed ? t.event.resultsClosed : t.event.resultsInReview}</span>
+              </div>
+              <div className="mt-2">
+                <Suspense fallback={<EnrolledSkeleton />}>
+                  <Results slug={e.id} uuid={e.uuid} disciplines={resultDisciplines} lang={lang} t={t} />
+                </Suspense>
+              </div>
+            </>
+          )}
 
           <h2 className="mt-12 text-xl font-semibold">{t.event.enrolled} <span className="font-normal text-muted">{e.enrolled}/{e.capacity}</span></h2>
           <div className="mt-2">

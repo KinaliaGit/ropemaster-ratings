@@ -1016,5 +1016,56 @@ console.log("- Resultados: solo de eventos visibles (0029)");
   await check("al volver a borrador dejan de verse", same(await seen("anon", null), [1, 4]));
 }
 
+console.log("- Resultados de un evento (0030)");
+{
+  const EV = (n) => `ea000000-0000-0000-0000-00000000000${n}`, RP = (n) => `6a000000-0000-0000-0000-00000000000${n}`, RS = (n) => `aa000000-0000-0000-0000-00000000000${n}`;
+  const rounds = JSON.stringify([{ round: 1, stage: "preliminary", kind: "regular", status: "completed", time_ms: 12000, penalty_ms: 0 }]);
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug) values
+      ('${EV(1)}','Res Evento','${A}','finalizado','res-ev-1'), ('${EV(2)}','Res Borrador','${A}','borrador','res-ev-2');
+    insert into ropers (id, full_name, avatar_path) values ('${RP(1)}','Res Ana','a/ana.jpg'), ('${RP(2)}','Res Beto',null), ('${RP(3)}','Res Cata',null), ('${RP(4)}','Res Dani',null);
+    insert into ropers (id, full_name, merged_into) values ('${RP(5)}','Res Fusionado','${RP(1)}');
+    insert into event_results (id, event_id, roper_id, discipline, time_ms, penalty_ms, disqualified, place, completed_runs, nt_count, dq_count, rounds) values
+      ('${RS(1)}','${EV(1)}','${RP(1)}','lazo',12000,0,false,1,1,0,0,'${rounds}'::jsonb),
+      ('${RS(2)}','${EV(1)}','${RP(2)}','lazo',13000,1000,false,2,1,0,0,null),
+      ('${RS(4)}','${EV(1)}','${RP(3)}','lazo',null,0,true,null,0,0,1,null),
+      ('${RS(5)}','${EV(1)}','${RP(4)}','lazo',20000,0,false,null,1,0,0,null),
+      ('${RS(6)}','${EV(1)}','${RP(5)}','lazo',25000,0,false,null,1,0,0,null),
+      ('${RS(7)}','${EV(1)}','${RP(1)}','barriles',17000,0,false,1,1,0,0,null),
+      ('${RS(8)}','${EV(2)}','${RP(1)}','lazo',11000,0,false,1,1,0,0,null);
+    insert into event_results (id, event_id, roper_id, participant_name, discipline, time_ms, penalty_ms, disqualified, place) values
+      ('${RS(3)}','${EV(1)}',null,'Res Chuy Invitado','lazo',14000,0,false,3);
+  `);
+  const asAnon = async (sql) => {
+    await db.exec("reset role; set role anon");
+    try { return (await db.query(sql)).rows; } finally { await db.exec("reset role"); }
+  };
+  const page = (event, discipline = "lazo", after = null, limit = 30) =>
+    asAnon(`select * from public.public_event_results('${event}', '${discipline}', ${after ?? "null"}, ${limit})`);
+  const names = (rows) => rows.map((r) => r.name);
+
+  const all = await page(EV(1));
+  await check("ordena por lugar; luego sin lugar (por tiempo) y al final los descalificados", JSON.stringify(names(all)) === JSON.stringify(["Res Ana", "Res Beto", "Res Chuy Invitado", "Res Dani", "", "Res Cata"]));
+  await check("cada fila trae el total de resultados de esa modalidad", all.every((r) => Number(r.total) === 6) && all.map((r) => Number(r.pos)).join() === "1,2,3,4,5,6");
+  await check("quien corrió sin lazador en la web sale con su nombre y sin enlace", all[2].roper_id === null && all[2].name === "Res Chuy Invitado" && all[2].place === 3);
+  await check("un perfil fusionado no se enlaza ni se nombra", all[4].roper_id === null && all[4].name === "");
+  await check("trae lugar, tiempos, castigo, foto y contadores", all[0].place === 1 && all[0].time_ms === 12000 && all[0].avatar_path === "a/ana.jpg" && all[0].completed_runs === 1 && all[1].penalty_ms === 1000);
+  await check("un descalificado sale marcado, sin lugar ni tiempo", all[5].disqualified === true && all[5].place === null && all[5].time_ms === null && all[5].dq_count === 1);
+  await check("avisa si el resultado trae rondas, sin enviarlas", all[0].has_rounds === true && all[1].has_rounds === false && !("rounds" in all[0]));
+  await check("cada modalidad va por separado", (await page(EV(1), "barriles")).length === 1 && (await page(EV(1), "otra")).length === 0);
+  await check("no devuelve celular, correo ni ids de cuenta", !Object.keys(all[0]).some((k) => /phone|email|user_id/.test(k)));
+
+  const p1 = await page(EV(1), "lazo", null, 2), p2 = await page(EV(1), "lazo", Number(p1[1].pos), 2), p3 = await page(EV(1), "lazo", Number(p2[1].pos), 2), p4 = await page(EV(1), "lazo", Number(p3[1].pos), 2);
+  await check("el cursor continúa sin repetir ni saltarse a nadie", JSON.stringify(names(p1.concat(p2, p3))) === JSON.stringify(names(all)) && p4.length === 0);
+  await check("el límite se acota: nunca menos de 1", (await page(EV(1), "lazo", null, 0)).length === 1);
+
+  await check("los resultados de un borrador NO salen (anónimo)", (await page(EV(2))).length === 0);
+  await as("authenticated", A, `select * from public.public_event_results('${EV(2)}', 'lazo')`, "el organizador dueño SÍ ve los de su borrador", "some");
+  await as("authenticated", B, `select * from public.public_event_results('${EV(2)}', 'lazo')`, "otro organizador NO ve los del borrador de A", "deny");
+  await as("anon", null, `select * from public.public_event_results('${EV(1)}', 'lazo')`, "anónimo SÍ ve los de un evento finalizado", "some");
+  await as("authenticated", C, `select * from public.public_event_results('${EV(1)}', 'lazo')`, "un participante SÍ los ve", "some");
+  await as("anon", null, `select rounds from event_results where id = '${RS(1)}' and event_id = '${EV(1)}'`, "las rondas se piden aparte, por evento y resultado", "some");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

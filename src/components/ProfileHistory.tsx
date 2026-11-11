@@ -1,13 +1,13 @@
 "use client";
 import Link from "next/link";
 import { Fragment, useState } from "react";
+import { RoundsDetail, type RoundsState } from "@/components/RoundsDetail";
 import type { HistoryItem, RoundItem } from "@/lib/results-view";
 
 type Labels = {
   event: string; date: string; discipline: string; time: string; place: string; verifiedEvent: string;
   loadMore: string; loadError: string; retry: string; viewRounds: string; hideRounds: string; noRounds: string;
 };
-type RoundsState = { status: "loading" } | { status: "error" } | { status: "ok"; items: RoundItem[] };
 
 // Historial del lazador: la página trae la primera tanda; "Ver más" pide las siguientes (de lo más reciente a lo más antiguo) y las
 // rondas de cada resultado se piden solo al abrirlo. Nada de esto se descarga completo de entrada.
@@ -87,20 +87,7 @@ export function ProfileHistory({ roperId, lang, initial, next: initialNext, labe
                   {isOpen && (
                     <tr className="bg-sand/40">
                       <td colSpan={5} className="px-3 py-3">
-                        {(!state || state.status === "loading") && <div className="h-4 w-48 animate-pulse rounded bg-sand" aria-hidden />}
-                        {state?.status === "error" && <p className="text-muted">{labels.loadError}{" "}<button type="button" onClick={() => void loadRounds(x.id)} className="underline">{labels.retry}</button></p>}
-                        {state?.status === "ok" && (state.items.length === 0 ? <p className="text-muted">{labels.noRounds}</p> : (
-                          <ul className="space-y-1.5">
-                            {state.items.map((r) => (
-                              <li key={r.key} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                                <span className="w-32 font-medium">{r.title}</span>
-                                <span className="tabular-nums">{r.value}{r.penalty && <span className="text-muted"> ({r.penalty})</span>}</span>
-                                {r.tags.map((tag) => <span key={tag} className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-muted">{tag}</span>)}
-                                {r.note && <span className="text-xs text-muted">{r.note}</span>}
-                              </li>
-                            ))}
-                          </ul>
-                        ))}
+                        <RoundsDetail state={state} labels={labels} onRetry={() => void loadRounds(x.id)} />
                       </td>
                     </tr>
                   )}

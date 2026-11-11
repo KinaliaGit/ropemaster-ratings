@@ -32,6 +32,7 @@ export const en: Dict = {
   event: {
     from: "From", 
     organizedBy: "Hosted by", photos: "Photos", noPhotos: "The organizer hasn't uploaded photos yet.", enrolled: "Registered", noEnrolled: "No one has registered yet.",
+    results: "Results", resultsClosed: "Final results", resultsInReview: "Results being corrected", noResults: "No results yet.",
     enrollment: "Registration", enroll: "Register", needAccount: "You need a participant account.", eventFinished: "Event finished", full: "Full",
   },
   pay: {
@@ -58,7 +59,7 @@ export const en: Dict = {
     ratingsByMode: "Rating by discipline",
     loadMore: "Load more", loadError: "Couldn't load. Please try again.", retry: "Try again",
     round: "Round", roundFinal: "Final", roundTiebreak: "Tiebreak", extra: "Extra", help: "Assist", noTime: "No time", substitute: "Substitute", header: "header", heeler: "heeler", countsForSubstitute: "also counts for the substitute",
-    viewRounds: "View rounds", hideRounds: "Hide rounds", noRounds: "No round detail.", bestPlace: "Best place", bestRun: "Best run", runsCount: "rounds",
+    unknownName: "Participant", viewRounds: "View rounds", hideRounds: "Hide rounds", noRounds: "No round detail.", bestPlace: "Best place", bestRun: "Best run", runsCount: "rounds",
   },
   auth: {
     errorUnconfirmed: "Confirm your email first: we sent you a link when you signed up.", errorConfirm: "The confirmation link is invalid or has expired. Sign in with your email and password or request another.", resend: "Resend confirmation email", resent: "We sent it again.",

@@ -979,5 +979,42 @@ console.log("- Inscritos de un evento (0028)");
   await as("anon", null, "select * from registrations", "la tabla de inscripciones sigue sin ser pública", "deny");
 }
 
+console.log("- Resultados: solo de eventos visibles (0029)");
+{
+  const EV = (n) => `e9000000-0000-0000-0000-00000000000${n}`, RP = `69000000-0000-0000-0000-000000000001`, RS = (n) => `a9000000-0000-0000-0000-00000000000${n}`;
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug) values
+      ('${EV(1)}','Vis Publicado','${A}','publicado','vis-1'), ('${EV(2)}','Vis Borrador de A','${A}','borrador','vis-2'),
+      ('${EV(3)}','Vis Borrador de B','${B}','borrador','vis-3'), ('${EV(4)}','Vis Finalizado','${A}','finalizado','vis-4');
+    insert into ropers (id, full_name) values ('${RP}','Vis Lazador');
+    insert into event_results (id, event_id, roper_id, discipline, time_ms, disqualified, place) values
+      ('${RS(1)}','${EV(1)}','${RP}','lazo',10000,false,1), ('${RS(2)}','${EV(2)}','${RP}','lazo',11000,false,2),
+      ('${RS(3)}','${EV(3)}','${RP}','lazo',12000,false,3), ('${RS(4)}','${EV(4)}','${RP}','lazo',13000,false,4);
+    insert into event_results (id, event_id, roper_id, participant_name, discipline, time_ms, disqualified, place) values
+      ('${RS(5)}','${EV(2)}',null,'Invitado Vis','lazo',9000,false,1);
+  `);
+  const ids = "'" + [1, 2, 3, 4, 5].map(RS).join("','") + "'";
+  const seen = async (role, uid) => {
+    await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${uid ?? ""}', false); set role ${role}`);
+    try { return (await db.query(`select id from event_results where id in (${ids}) order by id`)).rows.map((r) => r.id); } finally { await db.exec("reset role"); }
+  };
+  const same = (got, want) => JSON.stringify(got) === JSON.stringify(want.map(RS));
+
+  await check("anónimo: solo los resultados de eventos publicados o finalizados", same(await seen("anon", null), [1, 4]));
+  await check("un participante: lo mismo que un anónimo", same(await seen("authenticated", C), [1, 4]));
+  await check("el organizador dueño ve también los de sus borradores (con y sin lazador)", same(await seen("authenticated", A), [1, 2, 4, 5]));
+  await check("otro organizador NO ve los borradores de A, pero sí los suyos", same(await seen("authenticated", B), [1, 3, 4]));
+
+  await as("anon", null, `select rounds from event_results where id = '${RS(2)}'`, "anónimo NO lee directo el resultado de un borrador", "deny");
+  await as("anon", null, `select id from event_results where event_id = '${EV(3)}'`, "anónimo NO lista los resultados de un borrador por evento", "deny");
+  await as("anon", null, `select id from event_results where event_id = '${EV(1)}'`, "anónimo SÍ lista los de un evento publicado", "some");
+  await as("anon", null, `select * from public.public_roper_results('${RP}')`, "el historial público sigue funcionando", "some");
+
+  await db.exec(`update events set status = 'publicado' where id = '${EV(2)}'`);
+  await check("al publicar el evento sus resultados se ven", same(await seen("anon", null), [1, 2, 4, 5]));
+  await db.exec(`update events set status = 'borrador' where id = '${EV(2)}'`);
+  await check("al volver a borrador dejan de verse", same(await seen("anon", null), [1, 4]));
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

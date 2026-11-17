@@ -208,6 +208,15 @@ Cada elemento de `rounds`:
 | `penalty_ms` | entero | >= 0. Por defecto 0 |
 | `substitution` | objeto, opcional | Quién corrió en sustitución en esa ronda (ver abajo). `null` equivale a no ponerlo |
 
+**Varias corridas en una misma ronda (KIN-629).** Un lazador puede tener muchas corridas en la misma ronda (se le asignan tiros y tira varias
+veces). Como una ronda `regular` no se repite dentro de la misma `stage`, hoy solo la primera corrida va como `regular` y las demás de esa ronda
+llegan como `extra`, igual que una corrida extra real (el botón de la app, KIN-548): con este contrato **la web no las puede distinguir**.
+Por eso la web no trata `extra` como "corrida extra" cuando la ronda ya tiene una `regular`: las agrupa por `stage` y `round`, pone la `regular`
+primero y las numera ("Ronda 1 · Corrida 2"), sin tag. Solo etiqueta "Corrida extra" cuando esa ronda no tiene ninguna `regular`. Ninguna entra
+al resumen. **Limitación:** una corrida extra real que comparta ronda con una `regular` se ve igual que otra corrida de esa ronda.
+Pendiente con la app: si se quiere distinguirlas, el contrato necesita un campo propio (por ejemplo el número de corrida dentro de la ronda
+o una marca de "corrida extra del botón"); es un cambio de contrato (`contract_version`), no solo de la web.
+
 `substitution`: `role` (`header` o `heeler`: qué lugar del equipo ocupó el sustituto), `substitute_name` (1 a 120, obligatorio),
 `substitute_global_id` (UUID o `null` si no tiene lazador en la web) y `counts_for_substitute` (booleano, por defecto `false`: si la corrida también
 cuenta para el sustituto). La corrida se queda con el lazador original: **no se crea un resultado aparte para el sustituto**.

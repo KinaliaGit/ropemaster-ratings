@@ -42,7 +42,7 @@ export const en: Dict = {
     returned: "Thank you! We're confirming your payment; it will show as paid in a few seconds.", paidWith: "Paid with", errors: { unauthenticated: "Sign in to pay.", invalid: "We couldn't find that registration.", already: "That registration is already paid.", noPayouts: "The organizer hasn't enabled online payments yet.", generic: "Couldn't start the payment." },
   },
   enroll: {
-    title: "Registration", category: "Category", discipline: "Discipline", submit: "Register", pendingNote: "Your spot is reserved as pending payment. Afterwards you can pay online or in cash/by transfer with the organizer. You can cancel it while it isn't paid.",
+    title: "Registration", category: "Category", discipline: "Discipline", submit: "Register", pendingNote: "Your spot is reserved as pending payment. Afterwards you can pay online or in cash/by transfer with the organizer. You can cancel it while it isn't paid.", pendingNoteOffline: "Your spot is reserved as pending payment. Afterwards you'll pay in cash or by transfer with the organizer. You can cancel it while it isn't paid.",
     errors: {
       forbidden: "Only participants can register.", invalid_category: "Invalid event or category.", closed: "Registration is closed.", already: "You're already registered in this category.",
       full: "The event is full.", paid: "That registration is already paid and can't be canceled here.", not_found: "We couldn't find that registration.", failed: "Couldn't complete that. Please try again.",

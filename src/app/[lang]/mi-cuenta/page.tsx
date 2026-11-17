@@ -14,6 +14,7 @@ import { cancelRegistration } from "@/lib/registration-actions";
 import { createMyRoperProfile } from "@/lib/profile-actions";
 import { PayButton } from "@/components/PayButton";
 import { listPublicEvents } from "@/lib/data/events";
+import { STRIPE_ENABLED } from "@/lib/flags";
 import { fmtDate, mxn } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
@@ -21,7 +22,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
   // Los datos públicos se leen al atender la visita, no al compilar (así el build no necesita conectarse a la base).
   await connection();
   const lang = await resolveLang(props.params);
-  const stripeOn = !!process.env.STRIPE_SECRET_KEY && !!process.env.STRIPE_TEST_CONNECTED_ACCOUNT; // el pago en línea solo se ofrece si Stripe está configurado
+  const stripeOn = STRIPE_ENABLED && !!process.env.STRIPE_SECRET_KEY &&!!process.env.STRIPE_TEST_CONNECTED_ACCOUNT; // el pago en línea solo se ofrece si Stripe está configurado
   const sp = await props.searchParams;
   const t = getDictionary(lang);
   const [events, top] = await Promise.all([listPublicEvents(), listRankingPage("lazo").then((p) => p.rows.slice(0, 4).map((r) => rankedToRoper(r, "lazo")))]);

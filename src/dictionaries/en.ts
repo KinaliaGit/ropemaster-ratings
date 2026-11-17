@@ -58,7 +58,7 @@ export const en: Dict = {
     contactNote: "Contact details are not public. Not you, or something's wrong?", report: "Report", verifiedEvent: "Verified event",
     ratingsByMode: "Rating by discipline",
     loadMore: "Load more", loadError: "Couldn't load. Please try again.", retry: "Try again",
-    round: "Round", roundFinal: "Final", roundTiebreak: "Tiebreak", extra: "Extra run", extraHint: "An additional run outside the regular rounds. It is not a penalty and does not count toward the total time or place.", help: "Assist", helpHint: "An assist run that covers an open spot in the draw. It does not count toward the total time or place.", noTime: "No time", substitute: "Substitute", header: "header", heeler: "heeler", countsForSubstitute: "also counts for the substitute",
+    round: "Round", run: "Run", roundFinal: "Final", roundTiebreak: "Tiebreak", extra: "Extra run", extraHint: "A standalone extra run, with no regular run in that round. It is not a penalty and does not count toward the total time or place.", help: "Assist", helpHint: "An assist run that covers an open spot in the draw. It does not count toward the total time or place.", noTime: "No time", substitute: "Substitute", header: "header", heeler: "heeler", countsForSubstitute: "also counts for the substitute",
     unknownName: "Participant", viewRounds: "View rounds", hideRounds: "Hide rounds", noRounds: "No round detail.", bestPlace: "Best place", bestRun: "Best run", runsCount: "rounds",
   },
   auth: {

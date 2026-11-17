@@ -17,7 +17,7 @@ export function RoundsDetail({ state, labels, onRetry }: { state: RoundsState | 
       <ul className="space-y-1.5">
         {state.items.map((r) => (
           <li key={r.key} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-            <span className="w-32 font-medium">{r.title}</span>
+            <span className="min-w-44 font-medium">{r.title}</span>
             <span className="tabular-nums">{r.value}{r.penalty && <span className="text-muted"> ({r.penalty})</span>}</span>
             {r.tags.map((tag) => <span key={tag.label} title={tag.hint} className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-muted">{tag.label}</span>)}
             {r.note && <span className="text-xs text-muted">{r.note}</span>}

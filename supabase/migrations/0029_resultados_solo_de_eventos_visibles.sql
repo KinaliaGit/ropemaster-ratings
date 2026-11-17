@@ -12,5 +12,6 @@
 -- web (public_roper_results y public_roper_summary, que ya unían con `events`).
 
 drop policy if exists "resultados son públicos" on public.event_results;
+drop policy if exists "resultados de eventos visibles" on public.event_results; -- idempotente: en el proyecto remoto ya se había aplicado a mano
 create policy "resultados de eventos visibles" on public.event_results for select
   using (exists (select 1 from public.events e where e.id = event_results.event_id));

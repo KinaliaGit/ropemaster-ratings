@@ -20,7 +20,9 @@ export function toHistoryItem(r: HistoryRow, lang: Lang, t: Dict): HistoryItem {
   };
 }
 
-export type RoundItem = { key: string; title: string; tags: string[]; value: string; penalty: string | null; note: string | null };
+// Etiqueta de una ronda (Corrida extra, Ayuda) con su explicación: no es una penalización, es informativa y no cuenta para el resumen.
+export type RoundTag = { label: string; hint: string };
+export type RoundItem = { key: string; title: string; tags: RoundTag[]; value: string; penalty: string | null; note: string | null };
 
 export function toRoundItem(r: Round, index: number, t: Dict): RoundItem {
   const p = t.people;
@@ -29,7 +31,7 @@ export function toRoundItem(r: Round, index: number, t: Dict): RoundItem {
   const sub = r.substitution;
   return {
     key: `${index}-${r.stage}-${r.kind}-${r.round}`, title: `${p.round} ${r.round}${stage}`,
-    tags: [...(r.kind === "extra" ? [p.extra] : []), ...(r.kind === "help" ? [p.help] : [])],
+    tags: [...(r.kind === "extra" ? [{ label: p.extra, hint: p.extraHint }] : []), ...(r.kind === "help" ? [{ label: p.help, hint: p.helpHint }] : [])],
     value, penalty: r.status === "completed" && r.penaltyMs > 0 ? `+${fmtTime(r.penaltyMs)}` : null,
     note: sub ? `${p.substitute}: ${sub.name} (${sub.role === "header" ? p.header : p.heeler})${sub.countsForSubstitute ? ` · ${p.countsForSubstitute}` : ""}` : null,
   };

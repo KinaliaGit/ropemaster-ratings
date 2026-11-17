@@ -58,7 +58,7 @@ export const es = {
     contactNote: "Los datos de contacto no son públicos. ¿No eres tú o es un error?", report: "Reportar", verifiedEvent: "Evento verificado",
     ratingsByMode: "Rating por modalidad",
     loadMore: "Ver más", loadError: "No se pudo cargar. Intenta de nuevo.", retry: "Reintentar",
-    round: "Ronda", roundFinal: "Final", roundTiebreak: "Desempate", extra: "Extra", help: "Ayuda", noTime: "No time", substitute: "Sustituto", header: "cabecero", heeler: "pialador", countsForSubstitute: "también cuenta para el sustituto",
+    round: "Ronda", roundFinal: "Final", roundTiebreak: "Desempate", extra: "Corrida extra", extraHint: "Corrida adicional fuera de las rondas regulares. No es una penalización y no cuenta para el tiempo total ni el lugar.", help: "Ayuda", helpHint: "Corrida de ayuda para cubrir una vacante del sorteo. No cuenta para el tiempo total ni el lugar.", noTime: "No time", substitute: "Sustituto", header: "cabecero", heeler: "pialador", countsForSubstitute: "también cuenta para el sustituto",
     unknownName: "Participante", viewRounds: "Ver rondas", hideRounds: "Ocultar rondas", noRounds: "Sin detalle de rondas.", bestPlace: "Mejor lugar", bestRun: "Mejor corrida", runsCount: "rondas",
   },
   auth: {

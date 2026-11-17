@@ -7,7 +7,7 @@ import { CopyLink } from "@/components/CopyLink";
 import { setEventStatus, setRegistrationOpen } from "@/lib/event-actions";
 import { enrollByOrganizer, removeRegistration, setRemovalReenroll, setRemovalRefunded } from "@/lib/registration-actions";
 import { RemoveRegistrationDialog } from "@/components/RemoveRegistrationDialog";
-import { fmtDeadline, isRegistrationOpen } from "@/lib/event-time";
+import { fmtDeadline, isNotOpenYet, isRegistrationOpen } from "@/lib/event-time";
 import { Gate } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
 import { listEventRegistrations, listEventRemovals } from "@/lib/data/registrations";
@@ -63,7 +63,8 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
     <RemoveRegistrationDialog action={removeRegistration} lang={lang} slug={e.id} id={r.id} name={r.name} category={r.category} paymentLabel={payLabel(r)} paid={r.paymentStatus === "pagado"}
       l={{ button: rm.button, title: rm.title, person: rm.person, payment: rm.payment, reasonLabel: rm.reasonLabel, reasonPlaceholder: rm.reasonPlaceholder, presets: rm.presets, other: rm.other, presetList: rm.presetList, refundWarning: rm.refundWarning, cancel: rm.cancel, confirm: rm.confirm, minChars: rm.minChars }} />
   ));
-  const regOpen = isRegistrationOpen({ closesAt: e.registrationClosesAt, closed: e.registrationClosed });
+  const regOpen = isRegistrationOpen({ opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
+  const notYet = !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt }); // apertura programada: se abre sola, no hay nada que cerrar ni reabrir
   const manualMsg = manual ? (t.org.ev.manual as Record<string, string>)[manual] ?? t.org.ev.manual.failed : null;
   const field = "rounded-xl border border-line bg-white px-3 py-2 text-sm outline-none focus:border-ink";
   return (
@@ -75,6 +76,7 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                 <div>
                   <h1 className="text-3xl font-semibold">{e.name}</h1>
                   <p className="text-muted">{e.date ? fmtDate(e.date, lang) : "–"} · {e.venue}, {e.city}</p>
+                  {e.series && <p className="mt-1 text-sm"><Link href={`/${lang}/organizador/series/${e.series.slug}`} className="font-medium text-brand-hot hover:underline">{t.org.ev.partOfSeries}: {e.series.name} →</Link></p>}
                 </div>
                 <div className="flex gap-2">
                   {e.status !== "borrador" && <Link href={`/${lang}/eventos/${e.id}`} className="rounded-full bg-sand px-4 py-2 text-sm font-medium hover:bg-line">{t.org.ev.publicPage}</Link>}
@@ -107,10 +109,11 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                 <section aria-labelledby="registration" className="card mt-6 p-6">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <h2 id="registration" className="text-lg font-semibold">{t.org.ev.registration} <span className={`ml-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${regOpen ? "bg-brand-soft text-brand-hot" : "bg-sand text-muted"}`}>{regOpen ? t.org.ev.regOpen : t.org.ev.regClosed}</span></h2>
+                      <h2 id="registration" className="text-lg font-semibold">{t.org.ev.registration} <span className={`ml-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${regOpen ? "bg-brand-soft text-brand-hot" : "bg-sand text-muted"}`}>{regOpen ? t.org.ev.regOpen : notYet ? t.org.ev.regNotYet : t.org.ev.regClosed}</span></h2>
+                      {e.registrationOpensAt && <p className="mt-1 text-sm text-muted">{t.org.ev.opensAt} {fmtDeadline(e.registrationOpensAt, e.timezone, lang)}</p>}
                       <p className="mt-1 text-sm text-muted">{e.registrationClosesAt ? `${t.org.ev.closesAt} ${fmtDeadline(e.registrationClosesAt, e.timezone, lang)}` : t.org.ev.noDeadline}</p>
                     </div>
-                    {e.status === "publicado" && (
+                    {e.status === "publicado" && !notYet && (
                       <form action={setRegistrationOpen}>
                         <input type="hidden" name="id" value={e.id} /><input type="hidden" name="lang" value={lang} /><input type="hidden" name="open" value={regOpen ? "false" : "true"} />
                         <button className={`rounded-full px-4 py-2 text-sm font-medium transition ${regOpen ? "bg-sand hover:bg-line" : "bg-brand text-white hover:bg-brand-hot"}`}>{regOpen ? t.org.ev.closeNow : t.org.ev.reopen}</button>

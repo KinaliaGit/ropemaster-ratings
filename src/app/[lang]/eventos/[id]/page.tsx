@@ -9,7 +9,7 @@ import { ACTIVE_DISCIPLINES, DEFAULT_DISCIPLINE, type DisciplineId } from "@/lib
 import { toResultItem } from "@/lib/event-results-view";
 import { toEnrolledItem } from "@/lib/enrolled-view";
 import { fmtDate, mxn, type Lang } from "@/lib/format";
-import { fmtDeadline, isRegistrationOpen } from "@/lib/event-time";
+import { fmtDeadline, isNotOpenYet, isRegistrationOpen } from "@/lib/event-time";
 import Image from "next/image";
 import { EnrolledList } from "@/components/EnrolledList";
 import { EventResults } from "@/components/EventResults";
@@ -53,7 +53,8 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   const t = getDictionary(lang);
   const e = await getPublicEvent(id);
   if (!e) notFound();
-  const regOpen = isRegistrationOpen({ closesAt: e.registrationClosesAt, closed: e.registrationClosed });
+  const regOpen = isRegistrationOpen({ opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
+  const notYet = e.status === "publicado" && !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt }); // apertura programada: aún no abre
   const open = e.status === "publicado" && e.enrolled < e.capacity && regOpen;
   const closesLine = e.status === "publicado" && regOpen && e.registrationClosesAt ? `${t.event.closesOn} ${fmtDeadline(e.registrationClosesAt, e.timezone, lang)}` : null;
   const resultDisciplines: DisciplineId[] = ACTIVE_DISCIPLINES.filter((d) => e.disciplines.includes(d.id)).map((d) => d.id);
@@ -84,6 +85,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
           <h1 className="text-3xl font-semibold sm:text-4xl">{e.name}</h1>
           <p className="mt-2 text-muted">{meta.join(" · ")}</p>
           <p className="mt-1 text-sm text-muted">{t.event.organizedBy} {e.organizer}</p>
+          {e.series && <p className="mt-1 text-sm"><Link href={`/${lang}/series/${e.series.slug}`} className="font-medium text-brand-hot hover:underline">{t.series.partOf}: {e.series.name} →</Link></p>}
 
           <aside className="card mt-6 p-6">
             <h2 className="text-lg font-semibold">{t.event.enrollment}</h2>
@@ -92,7 +94,8 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
             </ul>
             {open
               ? <Link href={`/${lang}/eventos/${e.id}/inscribirse`} className="mt-4 block rounded-full bg-ink py-3 text-center text-sm font-medium text-white transition hover:bg-brand-hot">{t.event.enroll}</Link>
-              : <p className="mt-4 rounded-full bg-sand py-3 text-center text-sm text-muted">{e.status === "finalizado" ? t.event.eventFinished : !regOpen ? t.event.registrationClosed : t.event.full}</p>}
+              : <p className="mt-4 rounded-full bg-sand py-3 text-center text-sm text-muted">{e.status === "finalizado" ? t.event.eventFinished : notYet ? t.event.notYetOpen : !regOpen ? t.event.registrationClosed : t.event.full}</p>}
+            {notYet && e.registrationOpensAt && <p className="mt-2 text-center text-xs font-medium text-muted">{t.event.opensOn} {fmtDeadline(e.registrationOpensAt, e.timezone, lang)}</p>}
             {closesLine && <p className="mt-2 text-center text-xs font-medium text-muted">{closesLine}</p>}
             <p className="mt-3 text-center text-xs text-muted">{t.event.needAccount}</p>
           </aside>

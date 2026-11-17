@@ -17,7 +17,7 @@ function Current(props: { tabs: Tab[]; publicHref: string; publicLabel: string }
 function Bar({ tabs, current, publicHref, publicLabel }: { tabs: Tab[]; current: string; publicHref: string; publicLabel: string }) {
   return (
     <nav aria-label="Panel" className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 pt-6">
-      <div className="flex min-w-0 flex-1 gap-0.5 rounded-full bg-sand p-1 sm:flex-none sm:gap-1">
+      <div className="flex min-w-0 flex-1 gap-0.5 overflow-x-auto rounded-full bg-sand p-1 sm:flex-none sm:gap-1">
         {tabs.map((t) => {
           const active = current === t.href || (t.match ?? []).some((m) => current === m || current.startsWith(`${m}/`));
           return (

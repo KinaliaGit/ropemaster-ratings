@@ -129,6 +129,10 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                         <select required name="category" aria-label={t.org.ev.manualCategory} className={field}>
                           {e.categories.map((c) => <option key={c.id} value={c.id}>{c.name} · {mxn(c.fee, lang)}</option>)}
                         </select>
+                        <select name="role" aria-label={t.org.ev.manualRole} className={field}>
+                          <option value="">{t.org.ev.manualRole}: {t.org.ev.manualRoleAuto}</option>
+                          <option value="header">{t.roles.header}</option><option value="heeler">{t.roles.heeler}</option><option value="both">{t.org.ev.manualBoth}</option>
+                        </select>
                         <button className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-white hover:bg-brand-hot">{t.org.ev.manualSubmit}</button>
                       </div>
                     </form>
@@ -145,7 +149,7 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                 {rows.map((r) => (
                   <div key={r.id} className="card p-4">
                     <Link href={`/${lang}/participantes/${r.roperId}`} className="font-semibold hover:text-brand-hot">{r.name}</Link>
-                    <p className="mt-0.5 text-sm text-muted">{r.category}{r.email ? ` · ${r.email}` : ""}</p>
+                    <p className="mt-0.5 text-sm text-muted">{r.category}{r.role ? ` · ${t.roles[r.role as "header" | "heeler"]}` : ""}{r.email ? ` · ${r.email}` : ""}</p>
                     <div className="mt-3"><PaymentCell r={r} lang={lang} slug={e.id} t={t} /></div>
                     <div className="mt-3">{removeButton(r)}</div>
                   </div>
@@ -153,19 +157,19 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
               </div>
               <div className="card mt-3 hidden overflow-x-auto sm:block">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-sand label"><tr><th className="p-3">{t.org.ev.participant}</th><th>{t.org.ev.phone}</th><th>{t.org.ev.category}</th><th>{t.org.ev.payment}</th><th><span className="sr-only">{rm.button}</span></th></tr></thead>
+                  <thead className="bg-sand label"><tr><th className="p-3">{t.org.ev.participant}</th><th>{t.org.ev.phone}</th><th>{t.org.ev.category}</th><th>{t.org.ev.role}</th><th>{t.org.ev.payment}</th><th><span className="sr-only">{rm.button}</span></th></tr></thead>
                   <tbody>
                     {rows.map((r) => {
                       return (
                         <tr key={r.id} className="border-t border-line">
                           <td className="p-3 font-medium"><Link href={`/${lang}/participantes/${r.roperId}`} className="hover:text-brand-hot">{r.name}</Link></td>
-                          <td className="text-muted">{r.email ?? "–"}</td><td>{r.category}</td>
+                          <td className="text-muted">{r.email ?? "–"}</td><td>{r.category}</td><td>{r.role ? t.roles[r.role as "header" | "heeler"] : "–"}</td>
                           <td className="py-2 pr-3"><PaymentCell r={r} lang={lang} slug={e.id} t={t} /></td>
                           <td className="py-2 pr-3 text-right">{removeButton(r)}</td>
                         </tr>
                       );
                     })}
-                    {rows.length === 0 && <tr><td colSpan={5} className="p-4 text-muted">{t.org.ev.noneEnrolled}</td></tr>}
+                    {rows.length === 0 && <tr><td colSpan={6} className="p-4 text-muted">{t.org.ev.noneEnrolled}</td></tr>}
                   </tbody>
                 </table>
               </div>

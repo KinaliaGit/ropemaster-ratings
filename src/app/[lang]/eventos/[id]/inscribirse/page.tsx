@@ -22,7 +22,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
   const regOpen = isRegistrationOpen({ closesAt: e.registrationClosesAt, closed: e.registrationClosed });
   return (
     <Gate lang={lang} role="any" next={`/${lang}/eventos/${id}/inscribirse`}>
-      {() => (
+      {(s) => (
         <div className="mx-auto max-w-lg px-5 pb-10 pt-12">
           <Link href={`/${lang}/eventos/${e.id}`} className="text-sm text-muted hover:text-ink">← {e.name}</Link>
           <h1 className="mt-3 text-3xl font-semibold">{t.enroll.title}</h1>
@@ -40,6 +40,19 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
                 </label>
               ))}
             </fieldset>
+            {s.roleChoice?.role === "both" && (
+              <fieldset>
+                <legend className="text-sm font-medium">{t.enroll.roleTitle}</legend>
+                {(["header", "heeler", "both"] as const).map((r) => (
+                  <label key={r} className="mt-2 flex cursor-pointer items-center rounded-xl border border-line p-3 has-checked:border-ink has-checked:bg-sand">
+                    <input type="radio" name="role" value={r} required defaultChecked={r === (s.roleChoice?.favorite ?? "header")} className="mr-2 accent-brand" />
+                    {r === "both" ? t.enroll.both : t.roles[r]}
+                    {r === s.roleChoice?.favorite && <span className="ml-2 text-xs text-muted">({t.roles.favorite})</span>}
+                  </label>
+                ))}
+                <p className="mt-2 text-xs text-muted">{t.enroll.roleHint}</p>
+              </fieldset>
+            )}
             <button className="w-full rounded-full bg-brand py-3 font-semibold text-white hover:bg-brand-hot">{t.enroll.submit}</button>
             <p className="text-center text-xs text-muted">{t.enroll.pendingNote}</p>
           </form>}

@@ -81,14 +81,21 @@ inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
 | `capacity` | entero o `null` | `null` = sin límite. |
 | `updated_at` | fecha ISO-8601 UTC | Último cambio del evento, sus inscripciones o sus categorías. |
 | `categories[].fee_cents` | entero >= 0 | Montos SIEMPRE en centavos. |
-| `registrations[].id` | UUID | Id de la inscripción. Una persona puede tener una por categoría. |
+| `registrations[].id` | UUID | Id de la inscripción. Una persona puede tener una por categoría y rol (ver `role`). |
 | `registrations[].roper_global_id` | UUID | `global_id` del participante (el mismo de `GET /api/app/participantes`). Si su perfil se fusionó con otro, es el del perfil vigente. |
 | `registrations[].category_id` / `category` | UUID / texto, o `null` | Categoría elegida. |
 | `registrations[].payment_status` | `pendiente` \| `pagado` \| `reembolsado` | Una inscripción `pendiente` también ocupa lugar. |
 | `registrations[].amount_cents` | entero >= 0 | Lo que se cobró por esa inscripción, en centavos. |
 | `registrations[].payment_method` | `efectivo` \| `transferencia` \| `stripe` o `null` | `null` mientras esté pendiente. |
+| `registrations[].role` | `header` \| `heeler` o `null` | Rol con el que entra a ESTE evento (KIN-623). Es por inscripción y no cambia el perfil. `null` si la persona aún no definió su rol. |
 
 Las inscripciones NO llevan correo ni celular: para eso está `GET /api/app/participantes` (que sí exige organizador activo y evento propio).
+
+**Rol por inscripción (KIN-623).** Quien tiene el rol "Ambos" en su perfil elige, al inscribirse, cabecero, pialador o los dos. "Los dos" son
+**dos inscripciones** de la misma persona y categoría, una con `role: "header"` y otra con `role: "heeler"`, cada una con su `id`, su lugar en el cupo
+y su propio `amount_cents` (se cobran dos inscripciones). La app debe tratar cada inscripción como una entrada distinta: la misma `roper_global_id` puede
+aparecer dos veces en una categoría, con roles distintos. Quien tiene rol cabecero o pialador en su perfil entra con ese; quien no tiene rol viene con `null`.
+Puede cambiar el rol de una inscripción mientras las inscripciones sigan abiertas, y eso mueve `updated_at` del evento como cualquier cambio de inscripción.
 
 **Inscritos que el organizador saca del evento (KIN-621).** Sacar a alguien borra su inscripción (el motivo y el pago quedan en un registro de la web
 que la app no recibe). Para la app, esa persona simplemente **deja de venir** en `registrations`, y como la web mueve `updated_at` del evento

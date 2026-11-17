@@ -34,8 +34,9 @@ test("el ejemplo cumple el contrato: tipos, enums, centavos enteros y fechas ISO
       assert.ok(["pendiente", "pagado", "reembolsado"].includes(r.payment_status));
       assert.ok(r.payment_method === null || ["efectivo", "transferencia", "stripe"].includes(r.payment_method));
       assert.ok(Number.isInteger(r.amount_cents) && r.amount_cents >= 0);
+      assert.ok(r.role === null || ["header", "heeler"].includes(r.role), "role es header, heeler o null");
       assert.ok(event.categories.some((c) => c.id === r.category_id && c.name === r.category), "la categoría de la inscripción existe en el evento");
-      assert.deepEqual(Object.keys(r).sort(), ["amount_cents", "category", "category_id", "id", "name", "payment_method", "payment_status", "roper_global_id"],
+      assert.deepEqual(Object.keys(r).sort(), ["amount_cents", "category", "category_id", "id", "name", "payment_method", "payment_status", "role", "roper_global_id"],
         "ni correo ni celular ni ids de cuenta");
     }
   }

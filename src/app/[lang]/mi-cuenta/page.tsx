@@ -9,7 +9,7 @@ import { RoperCard } from "@/components/RoperCard";
 import { initials, publicAvatarUrl } from "@/lib/people";
 import { listRankingPage } from "@/lib/data/ropers";
 import { rankedToRoper } from "@/lib/ranking";
-import { listMyRegistrations } from "@/lib/data/registrations";
+import { listMyRegistrations, listMyRemovals } from "@/lib/data/registrations";
 import { cancelRegistration } from "@/lib/registration-actions";
 import { createMyRoperProfile, setMyRole } from "@/lib/profile-actions";
 import { RoleFields } from "@/components/RoleFields";
@@ -47,9 +47,10 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
             </div>
           );
         }
-        const mine = await listMyRegistrations();
+        const [mine, removed] = await Promise.all([listMyRegistrations(), listMyRemovals()]);
         const mineSlugs = new Set(mine.map((m) => m.event?.slug));
-        const available = events.filter((e) => e.status === "publicado" && !mineSlugs.has(e.id));
+        const blockedSlugs = new Set(removed.filter((x) => !x.canReenroll).map((x) => x.event?.slug)); // sacado y sin permiso para volver
+        const available = events.filter((e) => e.status === "publicado" && !mineSlugs.has(e.id) && !blockedSlugs.has(e.id));
         return (
           <div className="mx-auto max-w-6xl px-5 pb-10 pt-10">
             <div className="flex flex-wrap items-center gap-5">
@@ -105,6 +106,22 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                 );
               })}
             </div>
+
+            {removed.length > 0 && (
+              <section aria-labelledby="removed" className="mt-12">
+                <h2 id="removed" className="text-xl font-semibold">{t.account.removedTitle}</h2>
+                <div className="mt-3 space-y-3">
+                  {removed.map((x) => (
+                    <div key={x.id} className="card border-red-200 p-4">
+                      <p className="font-medium">{x.event?.slug ? <Link href={`/${lang}/eventos/${x.event.slug}`} className="hover:text-brand-hot">{x.event.name}</Link> : x.event?.name ?? "—"}<span className="ml-2 text-sm font-normal text-muted">{x.category} · {t.account.removedOn} {fmtDate(x.removedAt, lang)}</span></p>
+                      <p className="mt-1 text-sm"><span className="font-medium">{t.account.removedReason}</span> <span className="whitespace-pre-line">{x.reason}</span></p>
+                      {x.refundPending && <p className="mt-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{t.account.removedRefund}</p>}
+                      <p className="mt-2 text-xs text-muted">{x.canReenroll ? t.account.removedCanReturn : t.account.removedBlocked}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <h2 className="mt-12 text-xl font-semibold">{t.account.available}</h2>
             <div className="mt-4 grid grid-cols-1 gap-x-4 gap-y-8 min-[480px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">

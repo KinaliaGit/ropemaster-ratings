@@ -90,6 +90,13 @@ inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
 
 Las inscripciones NO llevan correo ni celular: para eso está `GET /api/app/participantes` (que sí exige organizador activo y evento propio).
 
+**Inscritos que el organizador saca del evento (KIN-621).** Sacar a alguien borra su inscripción (el motivo y el pago quedan en un registro de la web
+que la app no recibe). Para la app, esa persona simplemente **deja de venir** en `registrations`, y como la web mueve `updated_at` del evento
+con cualquier alta, cambio o baja de inscripciones, el evento vuelve a descargarse en la siguiente sincronización incremental. La app debe tratar
+`registrations` como la lista completa vigente del evento (reemplazarla, no solo agregar): una inscripción que ya no viene es una baja. Un inscrito
+que ya tiene resultados no se puede sacar desde la web. Si la persona vuelve a inscribirse (con permiso del organizador), llega con una
+inscripción nueva y otro `registrations[].id`. `GET /api/app/participantes` tampoco la trae mientras no tenga ninguna inscripción en ese evento.
+
 Errores (todos con `{ "code": "…", "error": "texto para personas" }`; la app decide con `code` y el HTTP, no con el texto):
 
 | HTTP | `code` | Cuándo | ¿Reintentar? |

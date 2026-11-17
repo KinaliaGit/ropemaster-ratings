@@ -1103,5 +1103,46 @@ console.log("- Resultados de un evento (0030)");
   await as("authenticated", C, `select public.register_for_event('${EVC}','${K2}')`, "reabierto SÍ se puede inscribir", "some");
 }
 
+// ---- Rol del lazador (0032, KIN-622) ----
+{
+  console.log("— Rol del lazador (0032)");
+  const ANA = "11111111-0000-0000-0000-000000000001"; // perfil de C, inscrita en EV
+  const setRole = (id, set) => `update ropers set ${set} where id = '${id}'`;
+  await as("anon", null, "select primary_role, favorite_role from ropers", "el rol es público (se ve en el perfil)", "some");
+  await as("authenticated", C, setRole(ANA, "primary_role = 'header'"), "el dueño elige su rol (cabecero)", "some");
+  await as("authenticated", C, setRole(ANA, "primary_role = 'both'"), "'ambos' SIN favorito se rechaza", "deny");
+  await as("authenticated", C, setRole(ANA, "primary_role = 'both', favorite_role = 'both'"), "el favorito solo puede ser cabecero o pialador", "deny");
+  await as("authenticated", C, setRole(ANA, "primary_role = 'header', favorite_role = 'heeler'"), "un solo rol NO lleva favorito", "deny");
+  await as("authenticated", C, setRole(ANA, "primary_role = 'astronauta'"), "un rol inventado se rechaza", "deny");
+  await as("authenticated", C, setRole(ANA, "primary_role = 'both', favorite_role = 'heeler'"), "'ambos' con favorito (pialador) se guarda", "some");
+  await as("authenticated", P2, setRole(ANA, "primary_role = 'heeler', favorite_role = null"), "otra persona NO cambia el rol de un perfil ajeno", "deny");
+  await as("anon", null, setRole(ANA, "primary_role = 'heeler', favorite_role = null"), "anónimo NO cambia roles", "deny");
+
+  // Perfil nuevo con rol al crear la cuenta
+  const N1 = "aaaa1111-0000-0000-0000-0000000000a1", N2 = "aaaa1111-0000-0000-0000-0000000000a2", N3 = "aaaa1111-0000-0000-0000-0000000000a3";
+  await db.exec(`
+    insert into auth.users (id, email, email_confirmed_at) values ('${N1}','n1@x.com',now()), ('${N2}','n2@x.com',now()), ('${N3}','roles@x.com',now());
+    insert into profiles (user_id, role, display_name) values ('${N1}','participante','N1'), ('${N2}','participante','N2'), ('${N3}','participante','N3');
+  `);
+  await as("authenticated", N1, "select public.claim_my_roper('Nuevo Con Rol', 'both', 'header')", "crear el perfil con rol (ambos, favorito cabecero)", "some");
+  await as("anon", null, "select id from ropers where full_name = 'Nuevo Con Rol' and primary_role = 'both' and favorite_role = 'header'", "quedó guardado en el perfil", "some");
+  await as("authenticated", N2, "select public.claim_my_roper('Mal Rol', 'both', null)", "'ambos' sin favorito se rechaza al crear", "deny");
+  await as("authenticated", N2, "select public.claim_my_roper('Mal Rol', 'header', 'heeler')", "un rol con favorito se rechaza al crear", "deny");
+  await as("authenticated", N2, "select public.claim_my_roper('Mal Rol', 'otro', null)", "un rol inventado se rechaza al crear", "deny");
+  await as("authenticated", N2, "select public.claim_my_roper('Sin Rol')", "sin rol sigue funcionando (perfiles anteriores)", "some");
+  await as("anon", null, "select id from ropers where full_name = 'Sin Rol' and primary_role is null and favorite_role is null", "un perfil sin rol queda 'sin definir'", "some");
+  await as("authenticated", N1, "select public.claim_my_roper('Otro Nombre', 'heeler', null)", "pedirlo otra vez NO cambia el rol ya guardado", "some");
+  await as("anon", null, "select id from ropers where full_name = 'Nuevo Con Rol' and primary_role = 'both'", "el rol sigue siendo el primero", "some");
+
+  // Un organizador ya había registrado a la persona por correo: al reclamar ese perfil se guarda el rol elegido
+  await as("authenticated", A, "select public.create_participant('Creado Por Org', 'roles@x.com')", "un organizador registra a alguien por correo", "some");
+  await as("authenticated", N3, "select public.claim_my_roper('Da igual', 'heeler', null)", "al reclamar ese perfil se guarda su rol", "some");
+  await as("anon", null, "select id from ropers where full_name = 'Creado Por Org' and primary_role = 'heeler'", "el perfil reclamado tiene el rol elegido", "some");
+
+  // API de la app: los participantes del evento traen su rol y su favorito
+  await as("service_role", null, `select role, favorite_role from public.app_event_participants('${EV}', null, now() + interval '1 minute', null, null, 50) where role = 'both' and favorite_role = 'heeler'`, "la app recibe el rol y el favorito", "some");
+  await as("authenticated", C, `select * from public.app_event_participants('${EV}', null, now(), null, null, 50)`, "un participante NO usa la función de la app", "deny");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

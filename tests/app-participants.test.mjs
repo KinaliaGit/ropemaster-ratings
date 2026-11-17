@@ -74,7 +74,7 @@ test("un rating por modalidad activa; quien no tiene empieza en el rating inicia
 
 const row = (n, changedAt = `2026-11-02T10:00:${String(n % 60).padStart(2, "0")}+00:00`) => ({
   global_id: `51000000-0000-4000-8000-${String(n).padStart(12, "0")}`, name: `Persona ${n}`, email: `p${n}@example.com`, claimed: n % 2 === 0,
-  changed_at: changedAt, ratings: null,
+  changed_at: changedAt, ratings: null, role: null, favorite_role: null,
 });
 
 test("una página pequeña no trae cursor y repite el corte de la consulta", () => {
@@ -83,7 +83,7 @@ test("una página pequeña no trae cursor y repite el corte de la consulta", () 
   assert.equal(page.next_cursor, null);
   assert.equal(page.generated_at, "2026-11-05T10:00:00.000Z");
   assert.deepEqual(page.participants[0], {
-    global_id: row(1).global_id, name: "Persona 1", email: "p1@example.com", claimed: false,
+    global_id: row(1).global_id, name: "Persona 1", email: "p1@example.com", claimed: false, role: null, favorite_role: null,
     ratings: { lazo: { rating: 1, events: 0, wins: 0, updated_at: null } },
   });
 });
@@ -103,6 +103,17 @@ test("con una fila de más hay otra página: el cursor apunta al último de ESTA
 test("la respuesta nunca trae celular, ids de cuenta ni campos internos", () => {
   const leaky = { ...row(1), phone_e164: "+528112345678", user_id: "x", merged_into: null };
   const [participant] = buildPage([leaky], "2026-11-05T10:00:00.000Z", ["lazo"], 1).participants;
-  assert.deepEqual(Object.keys(participant).sort(), ["claimed", "email", "global_id", "name", "ratings"]);
+  assert.deepEqual(Object.keys(participant).sort(), ["claimed", "email", "favorite_role", "global_id", "name", "ratings", "role"]);
   assert.doesNotMatch(JSON.stringify(participant), /phone|user_id|merged|\+52/);
+});
+
+test("cada participante lleva su rol y su favorito; un perfil sin rol los trae en null (KIN-622)", () => {
+  const rows = [
+    { ...row(1), role: "both", favorite_role: "heeler" },
+    { ...row(2), role: "header", favorite_role: null },
+    { ...row(3), role: null, favorite_role: null },
+    { ...row(4), role: undefined, favorite_role: undefined }, // una base sin migrar no rompe la respuesta
+  ];
+  const got = buildPage(rows, "2026-11-05T10:00:00.000Z", ["lazo"], 1).participants.map((p) => [p.role, p.favorite_role]);
+  assert.deepEqual(got, [["both", "heeler"], ["header", null], [null, null], [null, null]]);
 });

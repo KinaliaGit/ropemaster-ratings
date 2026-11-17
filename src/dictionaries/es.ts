@@ -4,6 +4,7 @@ import { MAX_UPLOAD_MB } from "@/lib/limits";
 export const es = {
   meta: { title: "Rope Master Ratings", description: "El registro global de lazadores: rating, historial y resultados de cada evento." },
   common: { brand: "Rope Master", ratings: "Ratings", loading: "Cargando…", back: "Volver", of: "de" },
+  roles: { legend: "¿Con qué rol sueles competir?", header: "Cabecero", heeler: "Pialador", both: "Ambos", favoriteLegend: "¿Cuál es tu rol favorito, el que usas más?", favorite: "favorito", undefined: "Sin definir" },
   nav: { myLazador: "Mi perfil de lazador", createLazador: "Crear mi perfil de lazador", events: "Eventos", participants: "Participantes", signIn: "Entrar", myPanel: "Mi panel", myAccount: "Mi cuenta", signOut: "Salir", publicSite: "Sitio público", language: "Idioma" },
   promo: {
     label: "Rope Master", title: "El software para organizar tu evento de lazo.",
@@ -44,7 +45,7 @@ export const es = {
   enroll: {
     title: "Inscripción", category: "Categoría", discipline: "Modalidad", submit: "Inscribirme", pendingNote: "Tu lugar queda apartado como pendiente de pago. Después podrás pagar en línea o en efectivo/transferencia con el organizador. Puedes cancelarlo mientras no esté pagado.",
     errors: {
-      forbidden: "Solo los participantes pueden inscribirse.", invalid_category: "Evento o categoría inválidos.", closed: "Las inscripciones están cerradas.", registration_closed: "Las inscripciones de este evento ya cerraron.", already: "Ya estás inscrito en esta categoría.",
+      forbidden: "Solo los participantes pueden inscribirse.", role: "Elige con qué rol compites (y tu favorito si son ambos).", invalid_category: "Evento o categoría inválidos.", closed: "Las inscripciones están cerradas.", registration_closed: "Las inscripciones de este evento ya cerraron.", already: "Ya estás inscrito en esta categoría.",
       full: "El cupo está lleno.", paid: "Esa inscripción ya está pagada y no se puede cancelar aquí.", not_found: "No encontramos esa inscripción.", failed: "No se pudo completar. Intenta de nuevo.",
     },
   },
@@ -65,7 +66,7 @@ export const es = {
     errorUnconfirmed: "Primero confirma tu correo: te enviamos un enlace al registrarte.", errorConfirm: "El enlace de confirmación no es válido o ya venció. Entra con tu correo y contraseña o pide otro.", resend: "Reenviar correo de confirmación", resent: "Te lo enviamos de nuevo.",
     password: "Contraseña", passwordHint: "Mínimo 8 caracteres", signInBtn: "Entrar", participantAccess: "Acceso de participantes", errorRoleOrganizer: "Esa cuenta no es de organizador. Elige «Participante» para entrar.", errorRoleParticipant: "Esa cuenta no es de participante. Elige «Organizador» para entrar.", organizerAccess: "Acceso de organizadores", or: "o",
     errorInvalid: "Correo o contraseña incorrectos.", errorExists: "Ya existe una cuenta con ese correo.", errorPassword: "La contraseña debe tener al menos 8 caracteres.",
-    errorGeneric: "No se pudo completar. Intenta de nuevo.", checkEmail: "Te enviamos un correo para confirmar tu cuenta. Ábrelo y vuelve a entrar.",
+    errorGeneric: "No se pudo completar. Intenta de nuevo.", errorRole: "Elige con qué rol compites (y tu favorito si son ambos).", checkEmail: "Te enviamos un correo para confirmar tu cuenta. Ábrelo y vuelve a entrar.",
     signInTitle: "Iniciar sesión", needAccount: "Necesitas una cuenta para continuar.",
     asParticipant: "Entrar como participante", asOrganizer: "Entrar como organizador", firstTime: "¿Primera vez?", createAccount: "Crear cuenta",
     participant: "Participante", organizer: "Organizador",
@@ -76,7 +77,7 @@ export const es = {
   account: {
     createTitle: "Crea tu perfil de lazador", createText: "Tu cuenta es de organizador. Si también compites, crea tu perfil de lazador: tendrás tu rating, tu historial y podrás inscribirte a eventos. Si otro organizador ya te registró con tu correo, reclamas ese perfil.", createBtn: "Crear mi perfil de lazador", profileCreated: "¡Listo! Tu perfil de lazador está creado.", typeOrganizer: "Organizador · perfil de lazador",
     photo: { add: "Agregar foto", change: "Cambiar foto", remove: "Quitar", saving: "Guardando…", tooBig: `La foto pesa más de ${MAX_UPLOAD_MB} MB. Elige una más ligera.`, error: "No se pudo guardar la foto. Usa una imagen JPG, PNG o WebP." },
-    type: "Cuenta de participante", myRegistrations: "Mis inscripciones",
+    type: "Cuenta de participante", roleTitle: "Mi rol", roleUndefined: "Aún no has elegido con qué rol compites. Elígelo para que los organizadores lo vean; no te bloquea nada mientras tanto.", roleSave: "Guardar rol", roleSaved: "Listo, guardamos tu rol.", myRegistrations: "Mis inscripciones",
     noRegistrations: "Aún no te has inscrito a ningún evento.", available: "Eventos disponibles", noneAvailable: "No hay eventos nuevos por ahora.",
     enrolledOk: "¡Listo! Tu lugar quedó apartado. Abajo ves cómo pagar.", canceledOk: "Inscripción cancelada.", cancel: "Cancelar",
     ranking: "Ranking", seeAll: "Ver todos", publicProfile: "Ver mi perfil público e historial", paid: "Pagado", pending: "Pago pendiente",

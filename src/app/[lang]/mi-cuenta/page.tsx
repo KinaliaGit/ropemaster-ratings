@@ -11,7 +11,9 @@ import { listRankingPage } from "@/lib/data/ropers";
 import { rankedToRoper } from "@/lib/ranking";
 import { listMyRegistrations } from "@/lib/data/registrations";
 import { cancelRegistration } from "@/lib/registration-actions";
-import { createMyRoperProfile } from "@/lib/profile-actions";
+import { createMyRoperProfile, setMyRole } from "@/lib/profile-actions";
+import { RoleFields } from "@/components/RoleFields";
+import { roleText } from "@/lib/roles";
 import { PayButton } from "@/components/PayButton";
 import { listPublicEvents } from "@/lib/data/events";
 import { fmtDeadline } from "@/lib/event-time";
@@ -26,7 +28,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
   const sp = await props.searchParams;
   const t = getDictionary(lang);
   const [events, top] = await Promise.all([listPublicEvents(), listRankingPage("lazo").then((p) => p.rows.slice(0, 4).map((r) => rankedToRoper(r, "lazo")))]);
-  const notice = sp.pago === "ok" ? t.pay.returned : sp.perfil === "ok" ? t.account.profileCreated : sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
+  const notice = sp.pago === "ok" ? t.pay.returned : sp.perfil === "ok" ? t.account.profileCreated : sp.rol === "ok" ? t.account.roleSaved : sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
   return (
     <Gate lang={lang} role="any" next={`/${lang}/mi-cuenta`}>
       {async (s) => {
@@ -38,6 +40,8 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
               <p className="mt-2 text-muted">{t.account.createText}</p>
               <form action={createMyRoperProfile} className="mt-6">
                 <input type="hidden" name="lang" value={lang} />
+                {typeof sp.error === "string" && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{(t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed}</p>}
+                <div className="mb-5 space-y-4"><RoleFields labels={t.roles} /></div>
                 <button className="w-full rounded-full bg-brand py-3 text-sm font-medium text-white hover:bg-brand-hot">{t.account.createBtn}</button>
               </form>
             </div>
@@ -57,6 +61,15 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
             </div>
 
             {notice && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{notice}</p>}
+            <section aria-labelledby="mi-rol" className={`mt-6 rounded-2xl p-5 ${s.roleChoice ? "card" : "bg-brand-soft"}`}>
+              <h2 id="mi-rol" className="text-lg font-semibold">{t.account.roleTitle}{s.roleChoice && <span className="ml-2 text-sm font-normal text-muted">{roleText(s.roleChoice, t.roles)}</span>}</h2>
+              {!s.roleChoice && <p className="mt-1 text-sm">{t.account.roleUndefined}</p>}
+              <form action={setMyRole} className="mt-4 max-w-md space-y-4">
+                <input type="hidden" name="lang" value={lang} />
+                <RoleFields labels={t.roles} initial={s.roleChoice} />
+                <button className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white hover:bg-brand-hot">{t.account.roleSave}</button>
+              </form>
+            </section>
             <h2 className="mt-12 text-xl font-semibold">{t.account.myRegistrations}</h2>
             <div className="mt-3 space-y-3">
               {mine.length === 0 && <p className="text-muted">{t.account.noRegistrations}</p>}

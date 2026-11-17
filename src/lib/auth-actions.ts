@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { LEGAL } from "@/lib/legal";
 import { ensureProfile } from "@/lib/account";
+import { parseRoleChoice } from "@/lib/roles";
 
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
 const str = (v: FormDataEntryValue | null, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -55,11 +56,14 @@ export async function registerAccount(formData: FormData) {
   const password = str(formData.get("password"), 100);
   if (name.length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail("generic");
   if (password.length < 8) return fail("password");
+  // Un participante dice con qué rol compite (cabecero, pialador o ambos y su favorito). Viaja en los metadatos del registro y se guarda al crear su perfil.
+  const roleChoice = role === "participante" ? parseRoleChoice(formData.get("roperRole"), formData.get("roperFavorite")) : null;
+  if (role === "participante" && !roleChoice) return fail("role");
 
   const supabase = await createServerSupabase();
   const { data, error } = await supabase.auth.signUp({
     email, password,
-    options: { emailRedirectTo: `${await siteOrigin()}/auth/confirm?lang=${l}`, data: { display_name: name, role, terms_version: LEGAL.version } },
+    options: { emailRedirectTo: `${await siteOrigin()}/auth/confirm?lang=${l}`, data: { display_name: name, role, terms_version: LEGAL.version, ...(roleChoice ? { roper_role: roleChoice.role, roper_favorite: roleChoice.favorite } : {}) } },
   });
   if (error) return fail(/registered|exists/i.test(error.message) ? "exists" : /password/i.test(error.message) ? "password" : "generic");
   if (!data.session || !data.user) redirect(`/${l}/registro?role=${role}&check=email&email=${encodeURIComponent(email)}`);

@@ -57,7 +57,7 @@ async function Manage({ s, id, lang, t, flags, shareUrl }: { s: Session; id: str
 
         <section aria-labelledby="share" className="card mt-6 p-5">
           <h2 id="share" className="text-base font-semibold">{t.org.share.title}</h2>
-          <p className="mt-0.5 text-sm text-muted">{anyPublic ? t.org.share.hint : m.noPublic}</p>
+          <p className="mt-0.5 text-sm text-muted">{anyPublic ? m.shareHint : m.noPublic}</p>
           <CopyLink url={shareUrl} copy={t.org.share.copy} copied={t.org.share.copied} whatsappLabel={t.org.share.whatsapp} whatsappText={t.org.share.whatsappText} />
         </section>
 

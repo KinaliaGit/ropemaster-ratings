@@ -114,7 +114,7 @@ export const en: Dict = {
     },
     series: {
       title: "Series", blurb: "Group the events of a season (for example 9 dates through the year) and create them all at once, each with its own registration opening.", newSeries: "+ New series", none: "You have no series yet. Create the first one.", manage: "Manage", eventsCount: "events", myEvents: "My events", deleted: "Series deleted. Its events still exist as standalone events.",
-      back: "My series", publicPage: "View public page", edit: "Edit series", dates: "Series dates", noPublic: "The public page appears once you publish at least one event.", created: "Series created! Now add its events.", saved: "Changes saved.",
+      back: "My series", shareHint: "Anyone with this link sees the series and its events, and can register from there.", publicPage: "View public page", edit: "Edit series", dates: "Series dates", noPublic: "The public page appears once you publish at least one event.", created: "Series created! Now add its events.", saved: "Changes saved.",
       form: {
         newTitle: "New series", newBlurb: "Set the season and the configuration copied to each event. Then you add the events with their dates.", editTitle: "Edit series", editBlurb: "Changes to the configuration only apply to events you create afterwards; existing events are edited one by one.",
         name: "Series name", description: "Description", start: "Starts", end: "Ends", timezone: "Time zone of the events", templateTitle: "Configuration of each event", templateHint: "Copied to each new event in the series; you can change each one afterwards.",

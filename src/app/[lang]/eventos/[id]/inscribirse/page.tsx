@@ -28,7 +28,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
           <Link href={`/${lang}/eventos/${e.id}`} className="text-sm text-muted hover:text-ink">← {e.name}</Link>
           <h1 className="mt-3 text-3xl font-semibold">{t.enroll.title}</h1>
           {regOpen && e.registrationClosesAt && <p className="mt-2 text-sm text-muted">{t.event.closesOn} {fmtDeadline(e.registrationClosesAt, e.timezone, lang)}</p>}
-          {!regOpen && <p role="alert" className="mt-4 rounded-xl bg-sand p-3 text-sm font-medium">{notYet && e.registrationOpensAt ? `${t.enroll.errors.not_open_yet} ${t.event.opensOn} ${fmtDeadline(e.registrationOpensAt, e.timezone, lang)}.` : t.enroll.errors.registration_closed}</p>}
+          {!regOpen && <p role="alert" className="mt-4 rounded-xl bg-sand p-3 text-sm font-medium">{notYet && e.registrationOpensAt ? `${t.enroll.errors.not_open_yet} ${t.event.opensOn} ${fmtDeadline(e.registrationOpensAt, e.timezone, lang)}` : t.enroll.errors.registration_closed}</p>}
           {typeof sp.error === "string" && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{(t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed}</p>}
           {regOpen && <form action={enroll} className="card mt-6 space-y-5 p-6">
             <input type="hidden" name="lang" value={lang} /><input type="hidden" name="event" value={e.id} />

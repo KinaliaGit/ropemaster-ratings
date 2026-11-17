@@ -185,7 +185,7 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
                           <Link href={`/${lang}/participantes/${x.roperId}`} className="font-semibold hover:text-brand-hot">{x.name}</Link>
-                          <p className="text-sm text-muted">{x.category} · {rm.on} {fmtDate(x.removedAt, lang)}</p>
+                          <p className="text-sm text-muted">{x.category} · {rm.on} {fmtDate(x.removedAt.slice(0, 10), lang)}</p>
                         </div>
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${x.paymentStatus === "pagado" ? (x.refundPending ? "bg-amber-100 text-amber-900" : "bg-brand-soft text-brand-hot") : "bg-sand text-muted"}`}>
                           {x.paymentStatus === "pagado" ? (x.refundPending ? rm.refundPending : rm.refundDone) : rm.notPaid}

@@ -114,7 +114,7 @@ export const es = {
     },
     series: {
       title: "Series", blurb: "Agrupa los eventos de una temporada (por ejemplo 9 fechas en el año) y créalos de una vez, cada uno con su propia apertura de inscripciones.", newSeries: "+ Nueva serie", none: "Aún no tienes series. Crea la primera.", manage: "Gestionar", eventsCount: "eventos", myEvents: "Mis eventos", deleted: "Serie eliminada. Sus eventos siguen existiendo como eventos sueltos.",
-      back: "Mis series", publicPage: "Ver página pública", edit: "Editar serie", dates: "Fechas de la serie", noPublic: "La página pública aparece cuando publiques al menos un evento.", created: "¡Serie creada! Ahora agrega sus eventos.", saved: "Cambios guardados.",
+      back: "Mis series", shareHint: "Cualquiera con este enlace ve la serie y sus eventos, y desde ahí se inscribe.", publicPage: "Ver página pública", edit: "Editar serie", dates: "Fechas de la serie", noPublic: "La página pública aparece cuando publiques al menos un evento.", created: "¡Serie creada! Ahora agrega sus eventos.", saved: "Cambios guardados.",
       form: {
         newTitle: "Nueva serie", newBlurb: "Define la temporada y la configuración que se copiará a cada evento. Después agregas los eventos con sus fechas.", editTitle: "Editar serie", editBlurb: "Los cambios en la configuración solo aplican a los eventos que crees después; los ya creados se editan uno por uno.",
         name: "Nombre de la serie", description: "Descripción", start: "Inicia", end: "Termina", timezone: "Zona horaria de los eventos", templateTitle: "Configuración de cada evento", templateHint: "Se copia a cada evento nuevo de la serie; después puedes cambiar cada uno.",

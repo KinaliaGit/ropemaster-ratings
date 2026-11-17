@@ -124,7 +124,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                 <div className="mt-3 space-y-3">
                   {removed.map((x) => (
                     <div key={x.id} className="card border-red-200 p-4">
-                      <p className="font-medium">{x.event?.slug ? <Link href={`/${lang}/eventos/${x.event.slug}`} className="hover:text-brand-hot">{x.event.name}</Link> : x.event?.name ?? "—"}<span className="ml-2 text-sm font-normal text-muted">{x.category} · {t.account.removedOn} {fmtDate(x.removedAt, lang)}</span></p>
+                      <p className="font-medium">{x.event?.slug ? <Link href={`/${lang}/eventos/${x.event.slug}`} className="hover:text-brand-hot">{x.event.name}</Link> : x.event?.name ?? "—"}<span className="ml-2 text-sm font-normal text-muted">{x.category} · {t.account.removedOn} {fmtDate(x.removedAt.slice(0, 10), lang)}</span></p>
                       <p className="mt-1 text-sm"><span className="font-medium">{t.account.removedReason}</span> <span className="whitespace-pre-line">{x.reason}</span></p>
                       {x.refundPending && <p className="mt-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{t.account.removedRefund}</p>}
                       <p className="mt-2 text-xs text-muted">{x.canReenroll ? t.account.removedCanReturn : t.account.removedBlocked}</p>

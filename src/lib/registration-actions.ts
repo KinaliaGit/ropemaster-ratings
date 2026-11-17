@@ -7,7 +7,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
-const KNOWN = ["full", "closed", "already", "invalid_category", "paid", "not_found"];
+const KNOWN = ["registration_closed", "full", "closed", "already", "invalid_category", "paid", "not_found"];
 const codeOf = (message: string) => KNOWN.find((k) => message.includes(k)) ?? "failed";
 
 // Inscribirse a un evento. La base valida todo (evento publicado, categoría del evento, no repetir, cupo con bloqueo) y el precio
@@ -36,4 +36,24 @@ export async function cancelRegistration(formData: FormData) {
   const { error } = await (await createServerSupabase()).rpc("cancel_registration", { p_registration: id });
   if (!error) updateTag("registrations");
   redirect(`/${l}/mi-cuenta?${error ? `error=${codeOf(error.message)}` : "cancelado=1"}`);
+}
+
+// El organizador inscribe a un participante por su correo en un evento propio, también después del cierre de inscripciones (KIN-626).
+// La base valida que el evento sea suyo y respeta cupo y categoría; la inscripción nace pendiente de pago.
+export async function enrollByOrganizer(formData: FormData) {
+  const l = lang(formData.get("lang"));
+  const slug = String(formData.get("event") ?? "");
+  const category = String(formData.get("category") ?? "");
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const back = (q: string) => redirect(`/${l}/organizador/eventos/${encodeURIComponent(slug)}?${q}`);
+  const s = await getSession();
+  if (s?.role !== "organizador" || !s.verified) redirect(`/${l}/organizador`);
+  if (!UUID.test(category) || email.length < 3 || email.length > 200) return back("manual=invalid");
+  const supabase = await createServerSupabase();
+  const { data: ev } = await supabase.from("events").select("id").eq("slug", slug).eq("organizer_id", s.id).maybeSingle();
+  if (!ev) redirect(`/${l}/organizador`);
+  const { error } = await supabase.rpc("organizer_enroll", { p_event: ev.id, p_email: email, p_category: category });
+  if (error) return back(`manual=${["not_found", "already", "full", "invalid_category"].find((k) => error.message.includes(k)) ?? "failed"}`);
+  updateTag("registrations");
+  return back("manual=ok");
 }

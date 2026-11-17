@@ -46,20 +46,20 @@ export async function getEventRegistrants(eventUuid: string, discipline: string,
 
 export type MyRegistration = {
   id: string; paymentStatus: string; paymentMethod: string | null; amountCents: number; category: string;
-  event: { slug: string | null; name: string; date: string | null; city: string | null; paymentInfo: string | null } | null;
+  event: { slug: string | null; name: string; date: string | null; city: string | null; paymentInfo: string | null; closesAt: string | null; timezone: string } | null;
 };
 
 export async function listMyRegistrations(): Promise<MyRegistration[]> {
   const { data, error } = await (await createServerSupabase()).from("registrations")
-    .select("id, payment_status, payment_method, amount_cents, event_categories(name), events(slug, name, event_date, city, event_payment_info(instructions))")
+    .select("id, payment_status, payment_method, amount_cents, event_categories(name), events(slug, name, event_date, city, registration_closes_at, timezone, event_payment_info(instructions))")
     .order("created_at", { ascending: false });
   if (error) throw new Error(`No se pudieron leer tus inscripciones: ${error.message}`);
   type Info = { instructions: string } | { instructions: string }[] | null;
-  type Row = { id: string; payment_status: string; payment_method: string | null; amount_cents: number; event_categories: { name: string } | null; events: { slug: string | null; name: string; event_date: string | null; city: string | null; event_payment_info: Info } | null };
+  type Row = { id: string; payment_status: string; payment_method: string | null; amount_cents: number; event_categories: { name: string } | null; events: { slug: string | null; name: string; event_date: string | null; city: string | null; registration_closes_at: string | null; timezone: string; event_payment_info: Info } | null };
   const info = (i: Info | undefined) => (Array.isArray(i) ? i[0]?.instructions : i?.instructions) ?? null; // solo lo ven los inscritos (la base lo decide)
   return (data as unknown as Row[]).map((r) => ({
     id: r.id, paymentStatus: r.payment_status, paymentMethod: r.payment_method, amountCents: r.amount_cents, category: r.event_categories?.name ?? "",
-    event: r.events ? { slug: r.events.slug, name: r.events.name, date: r.events.event_date, city: r.events.city, paymentInfo: info(r.events.event_payment_info) } : null,
+    event: r.events ? { slug: r.events.slug, name: r.events.name, date: r.events.event_date, city: r.events.city, paymentInfo: info(r.events.event_payment_info), closesAt: r.events.registration_closes_at, timezone: r.events.timezone } : null,
   }));
 }
 

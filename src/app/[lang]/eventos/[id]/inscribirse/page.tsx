@@ -5,6 +5,7 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
 import { getPublicEvent } from "@/lib/data/events";
 import { mxn, type Lang } from "@/lib/format";
+import { fmtDeadline, isRegistrationOpen } from "@/lib/event-time";
 import { Gate } from "@/components/Gate";
 import { enroll } from "@/lib/registration-actions";
 import { getDictionary, resolveLang } from "@/lib/i18n";
@@ -18,14 +19,17 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
   const t = getDictionary(lang);
   const e = await getPublicEvent(id);
   if (!e) notFound();
+  const regOpen = isRegistrationOpen({ closesAt: e.registrationClosesAt, closed: e.registrationClosed });
   return (
     <Gate lang={lang} role="any" next={`/${lang}/eventos/${id}/inscribirse`}>
       {() => (
         <div className="mx-auto max-w-lg px-5 pb-10 pt-12">
           <Link href={`/${lang}/eventos/${e.id}`} className="text-sm text-muted hover:text-ink">← {e.name}</Link>
           <h1 className="mt-3 text-3xl font-semibold">{t.enroll.title}</h1>
+          {regOpen && e.registrationClosesAt && <p className="mt-2 text-sm text-muted">{t.event.closesOn} {fmtDeadline(e.registrationClosesAt, e.timezone, lang)}</p>}
+          {!regOpen && <p role="alert" className="mt-4 rounded-xl bg-sand p-3 text-sm font-medium">{t.enroll.errors.registration_closed}</p>}
           {typeof sp.error === "string" && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{(t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed}</p>}
-          <form action={enroll} className="card mt-6 space-y-5 p-6">
+          {regOpen && <form action={enroll} className="card mt-6 space-y-5 p-6">
             <input type="hidden" name="lang" value={lang} /><input type="hidden" name="event" value={e.id} />
             <fieldset>
               <legend className="text-sm font-medium">{t.enroll.category}</legend>
@@ -38,7 +42,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
             </fieldset>
             <button className="w-full rounded-full bg-brand py-3 font-semibold text-white hover:bg-brand-hot">{t.enroll.submit}</button>
             <p className="text-center text-xs text-muted">{t.enroll.pendingNote}</p>
-          </form>
+          </form>}
         </div>
       )}
     </Gate>

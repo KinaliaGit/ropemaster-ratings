@@ -33,7 +33,7 @@ export const en: Dict = {
     from: "From", 
     organizedBy: "Hosted by", photos: "Photos", noPhotos: "The organizer hasn't uploaded photos yet.", enrolled: "Registered", noEnrolled: "No one has registered yet.",
     results: "Results", resultsClosed: "Final results", resultsInReview: "Results being corrected", noResults: "No results yet.",
-    enrollment: "Registration", enroll: "Register", needAccount: "You need a participant account.", eventFinished: "Event finished", full: "Full",
+    enrollment: "Registration", enroll: "Register", needAccount: "You need a participant account.", eventFinished: "Event finished", full: "Full", closesOn: "Closes on", registrationClosed: "Registration closed",
   },
   pay: {
     method: { efectivo: "Cash", transferencia: "Bank transfer", stripe: "Online" }, markPaid: "Mark paid:", undo: "Undo", error: "Couldn't change the payment. Please try again.",
@@ -44,7 +44,7 @@ export const en: Dict = {
   enroll: {
     title: "Registration", category: "Category", discipline: "Discipline", submit: "Register", pendingNote: "Your spot is reserved as pending payment. Afterwards you can pay online or in cash/by transfer with the organizer. You can cancel it while it isn't paid.",
     errors: {
-      forbidden: "Only participants can register.", invalid_category: "Invalid event or category.", closed: "Registration is closed.", already: "You're already registered in this category.",
+      forbidden: "Only participants can register.", invalid_category: "Invalid event or category.", closed: "Registration is closed.", registration_closed: "Registration for this event has closed.", already: "You're already registered in this category.",
       full: "The event is full.", paid: "That registration is already paid and can't be canceled here.", not_found: "We couldn't find that registration.", failed: "Couldn't complete that. Please try again.",
     },
   },
@@ -94,6 +94,9 @@ export const en: Dict = {
     ev: {
       back: "My events", publicPage: "View public page", publish: "Publish", toDraft: "Move to draft", paid: "Paid", state: "Status · available in the app on sync",
       enrolledTitle: "Registered", participant: "Participant", phone: "Email", rating: "Rating", category: "Category", payment: "Payment", paidAmount: "Paid", pending: "Pending", noneEnrolled: "No one has registered yet.",
+      registration: "Registration", regOpen: "Open", regClosed: "Closed", closesAt: "Closes on", closesAtPast: "Closed on", noDeadline: "No deadline: open until you close it.", closeNow: "Close registration", reopen: "Reopen registration", reopenHint: "If the deadline has passed, reopening removes it; you can set another by editing the event.",
+      manualTitle: "Register someone", manualHint: "Works even when registration is closed. The person must be in Participants; look them up by email.", manualEmail: "Participant email", manualCategory: "Category", manualSubmit: "Register",
+      manual: { ok: "Done: they're registered, payment pending.", invalid: "Check the email and the category.", not_found: "No participant has that email. Add them in Participants first.", already: "Already registered in that category.", full: "The event is full.", invalid_category: "That category isn't from this event.", failed: "Couldn't register. Please try again." },
     },
     dir: { title: "Participants", blurb: "Global directory with contact details, visible to organizers only. Use it to register participants in your events.", name: "Name", email: "Email", rating: "Rating", events: "Events", wins: "Wins", profile: "Profile", verified: "Verified", unclaimed: "Unclaimed",
       addTitle: "Add participant", addBlurb: "Register them with their email so they appear in the directory and can claim their profile when they create their account.", addName: "Full name", addEmail: "Email", addEmailHint: "When the person creates their account with this email, they will claim their profile and history.",
@@ -113,8 +116,9 @@ export const en: Dict = {
     },
     form: {
       paymentInfo: "Payment instructions (transfer or cash)", paymentInfoHint: "Only people who register for your event can see them. E.g. bank account, bank and holder, or \"pay cash at the arena\".", paymentInfoPlaceholder: "Account 0123 4567 8901 2345 67 · Bank · Holder",
+      closes: "Registration deadline", closesHint: "Optional. After this date and time no one else can register (you still can, by hand). Without a date, registration stays open until you close it. It can't be after the day of the event.", timezone: "Event time zone",
       save: "Save changes", editTitle: "Edit event", editBlurb: "Changes show up right away on the public page. Anyone already registered keeps the price they reserved at.", saved: "Changes saved.", edit: "Edit",
-      errors: { capacity: "Capacity can't be lower than the number already registered.", catInUse: "You can't remove a category that already has registrations. You can rename it or change its price." },
+      errors: { closeInvalid: "The closing date or time zone isn't valid.", closeAfterEvent: "Registration can't close after the day of the event.", capacity: "Capacity can't be lower than the number already registered.", catInUse: "You can't remove a category that already has registrations. You can rename it or change its price." },
       photosLater: "After creating the event you can add photos and choose the cover. ", 
       error: "Please check the fields: something is missing or invalid.", title: "New event", blurb: "Once published it appears on the website and your Rope Master app downloads it when it syncs.", name: "Event name", date: "Date", capacity: "Capacity", venue: "Venue", city: "City",
       disciplines: "Disciplines", categories: "Categories and registration fee", categoryName: "Category name", categoryNamePlaceholder: "E.g. Open, Amateur", cost: "Registration fee", costHint: "What each participant pays for this category", addCategory: "+ Add category", description: "Description", cover: "Cover photo", saveDraft: "Save draft", publish: "Publish",

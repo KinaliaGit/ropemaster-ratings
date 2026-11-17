@@ -1067,5 +1067,41 @@ console.log("- Resultados de un evento (0030)");
   await as("anon", null, `select rounds from event_results where id = '${RS(1)}' and event_id = '${EV(1)}'`, "las rondas se piden aparte, por evento y resultado", "some");
 }
 
+// ---- Cierre de inscripciones (0031, KIN-626) ----
+{
+  console.log("— Cierre de inscripciones (0031)");
+  const EVC = "e0000000-0000-0000-0000-0000000000c1", K1 = "ca000000-0000-0000-0000-0000000000c1", K2 = "ca000000-0000-0000-0000-0000000000c2";
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug, event_date, capacity) values ('${EVC}','Con cierre','${A}','publicado','con-cierre','2099-06-15', 50);
+    insert into event_categories (id, event_id, name, fee_cents) values ('${K1}','${EVC}','Libre',10000), ('${K2}','${EVC}','Amateur',5000);
+    insert into roper_contacts (roper_id, email) values ('22222222-0000-0000-0000-000000000002','p2@x.com');
+  `);
+  const upd = (set) => `update events set ${set} where id = '${EVC}'`;
+  await as("authenticated", A, upd("registration_closes_at = '2099-06-01T18:00:00Z'"), "el organizador pone la fecha límite", "some");
+  await as("authenticated", A, upd("registration_closes_at = '2099-06-15T20:00:00Z'"), "puede cerrar el mismo día del evento (zona del evento)", "some");
+  await as("authenticated", A, upd("registration_closes_at = '2099-06-16T12:00:00Z'"), "NO puede cerrar después del día del evento", "deny");
+  await as("authenticated", A, upd("timezone = 'Marte/Olimpo'"), "una zona horaria inválida se rechaza", "deny");
+  await as("authenticated", A, upd("registration_closes_at = '2099-06-01T18:00:00Z'"), "se vuelve a poner la fecha de junio", "some");
+  await as("authenticated", B, upd("registration_closed = true"), "otro organizador NO cierra las inscripciones de A", "deny");
+  await as("authenticated", C, upd("registration_closed = true"), "un participante NO cierra inscripciones", "deny");
+  await as("authenticated", C, `select public.register_for_event('${EVC}','${K1}')`, "antes de la fecha límite SÍ se inscribe", "some");
+
+  await as("authenticated", A, upd("registration_closes_at = '2000-01-01T00:00:00Z'"), "el organizador mueve la fecha límite al pasado", "some");
+  await as("authenticated", P2, `select public.register_for_event('${EVC}','${K1}')`, "pasada la fecha límite NO se puede inscribir (llamando directo)", "deny");
+  await as("authenticated", A, `select public.organizer_enroll('${EVC}','P2@X.com','${K1}')`, "el organizador SÍ inscribe a alguien después del cierre", "some");
+  await as("authenticated", A, `select public.organizer_enroll('${EVC}','p2@x.com','${K1}')`, "no la inscribe dos veces en la misma categoría", "deny");
+  await as("authenticated", A, `select public.organizer_enroll('${EVC}','nadie@x.com','${K1}')`, "un correo sin participante se rechaza", "deny");
+  await as("authenticated", A, `select public.organizer_enroll('${EVC}','p2@x.com','ca000000-0000-0000-0000-000000000001')`, "una categoría de otro evento se rechaza", "deny");
+  await as("authenticated", B, `select public.organizer_enroll('${EVC}','p2@x.com','${K2}')`, "otro organizador NO inscribe en un evento ajeno", "deny");
+  await as("authenticated", C, `select public.organizer_enroll('${EVC}','p2@x.com','${K2}')`, "un participante NO usa organizer_enroll", "deny");
+  await as("anon", null, `select public.organizer_enroll('${EVC}','p2@x.com','${K2}')`, "anónimo NO usa organizer_enroll", "deny");
+
+  await as("authenticated", A, upd("registration_closes_at = null"), "sin fecha límite", "some");
+  await as("authenticated", A, upd("registration_closed = true"), "el organizador cierra antes de tiempo", "some");
+  await as("authenticated", C, `select public.register_for_event('${EVC}','${K2}')`, "cerrado a mano NO se puede inscribir", "deny");
+  await as("authenticated", A, upd("registration_closed = false"), "el organizador reabre", "some");
+  await as("authenticated", C, `select public.register_for_event('${EVC}','${K2}')`, "reabierto SÍ se puede inscribir", "some");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

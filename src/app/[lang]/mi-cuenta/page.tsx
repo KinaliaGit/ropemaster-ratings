@@ -14,6 +14,7 @@ import { cancelRegistration } from "@/lib/registration-actions";
 import { createMyRoperProfile } from "@/lib/profile-actions";
 import { PayButton } from "@/components/PayButton";
 import { listPublicEvents } from "@/lib/data/events";
+import { fmtDeadline } from "@/lib/event-time";
 import { fmtDate, mxn } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
@@ -63,7 +64,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                 const paid = m.paymentStatus === "pagado";
                 const inner = (
                   <>
-                    <span><span className="font-medium">{m.event?.name ?? "—"}</span><span className="block text-sm text-muted">{m.category}{m.event?.date ? ` · ${fmtDate(m.event.date, lang)}` : ""}{m.event?.city ? ` · ${m.event.city}` : ""}</span></span>
+                    <span><span className="font-medium">{m.event?.name ?? "—"}</span><span className="block text-sm text-muted">{m.category}{m.event?.date ? ` · ${fmtDate(m.event.date, lang)}` : ""}{m.event?.city ? ` · ${m.event.city}` : ""}</span>{m.event?.closesAt && <span className="block text-xs text-muted">{Date.parse(m.event.closesAt) > Date.now() ? t.event.closesOn : t.org.ev.closesAtPast} {fmtDeadline(m.event.closesAt, m.event.timezone, lang)}</span>}</span>
                     <span className="text-right text-sm"><span className="block tabular-nums">{mxn(m.amountCents / 100, lang)}</span>
                       <span className={`text-xs font-medium ${paid ? "text-emerald-700" : "text-brand-hot"}`}>{paid ? `${t.account.paid} ✓${m.paymentMethod ? ` · ${t.pay.method[m.paymentMethod as "efectivo" | "transferencia" | "stripe"]}` : ""}` : t.account.pending}</span></span>
                   </>

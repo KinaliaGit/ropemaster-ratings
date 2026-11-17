@@ -4,6 +4,7 @@ import { updateTag } from "next/cache";
 import { getSession } from "@/lib/session";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
+import { closesAfterEvent, DEFAULT_TIMEZONE, isValidTimezone, zonedLocalToIso } from "@/lib/event-time";
 
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
 const text = (v: FormDataEntryValue | null, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -11,6 +12,21 @@ const text = (v: FormDataEntryValue | null, max: number) => (typeof v === "strin
 function slug(name: string) {
   const base = name.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "evento";
   return `${base}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+type Close = { ok: true; timezone: string; closesAt: string | null } | { ok: false; error: "closeInvalid" | "closeAfterEvent" };
+
+// Cierre de inscripciones (KIN-626): fecha y hora LOCALES del evento + su zona horaria. Vacío = sin fecha límite (abiertas hasta que el organizador cierre).
+// No puede caer después del día del evento (el evento solo tiene fecha, así que se permite el mismo día). La base lo vuelve a comprobar.
+function parseClose(formData: FormData, eventDate: string): Close {
+  const tzRaw = text(formData.get("timezone"), 60) || DEFAULT_TIMEZONE;
+  if (!isValidTimezone(tzRaw)) return { ok: false, error: "closeInvalid" };
+  const local = text(formData.get("closesAt"), 16);
+  if (!local) return { ok: true, timezone: tzRaw, closesAt: null };
+  const iso = zonedLocalToIso(local, tzRaw);
+  if (!iso) return { ok: false, error: "closeInvalid" };
+  if (closesAfterEvent(iso, eventDate, tzRaw)) return { ok: false, error: "closeAfterEvent" };
+  return { ok: true, timezone: tzRaw, closesAt: iso };
 }
 
 // Crea el evento (borrador o publicado) en la base y lleva al organizador a su pantalla, donde está el enlace para compartir.
@@ -35,6 +51,9 @@ export async function createEvent(formData: FormData) {
     redirect(`/${l}/organizador/eventos/nuevo?error=1`);
   }
 
+  const close = parseClose(formData, date);
+  if (!close.ok) redirect(`/${l}/organizador/eventos/nuevo?error=${close.error}`);
+
   const status = formData.get("intent") === "publish" ? "publicado" : "borrador";
   const supabase = await createServerSupabase();
   const id = crypto.randomUUID();
@@ -43,6 +62,7 @@ export async function createEvent(formData: FormData) {
   const { error } = await supabase.from("events").insert({
     id, slug: eventSlug, name, event_date: date, city, venue, capacity, disciplines, status,
     description: text(formData.get("description"), 1000), organizer_id: session.id, organizer_name: session.name,
+    timezone: close.timezone, registration_closes_at: close.closesAt,
   });
   if (error) redirect(`/${l}/organizador/eventos/nuevo?error=1`);
 
@@ -93,6 +113,8 @@ export async function updateEvent(formData: FormData) {
   const rows = names.map((n, i) => ({ id: UUID.test(ids[i] ?? "") ? ids[i] : null, name: n, fee: fees[i] ?? 0 })).filter((c) => c.name);
   const disciplines = formData.getAll("discipline").map(String).filter((d) => ACTIVE_DISCIPLINES.some((a) => a.id === d));
   if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || !(capacity > 0) || rows.length === 0 || disciplines.length === 0) return back("1");
+  const close = parseClose(formData, date);
+  if (!close.ok) return back(close.error);
 
   const [{ count: enrolled }, { data: current }, { data: used }] = await Promise.all([
     supabase.from("registrations").select("id", { count: "exact", head: true }).eq("event_id", ev.id),
@@ -106,7 +128,7 @@ export async function updateEvent(formData: FormData) {
   if (toDelete.some((id) => usedIds.has(id))) return back("catInUse");
   const owned = new Set((current ?? []).map((c) => c.id));
 
-  const { error } = await supabase.from("events").update({ name, event_date: date, city, venue, capacity, disciplines, description: text(formData.get("description"), 1000) }).eq("id", ev.id);
+  const { error } = await supabase.from("events").update({ name, event_date: date, city, venue, capacity, disciplines, description: text(formData.get("description"), 1000), timezone: close.timezone, registration_closes_at: close.closesAt }).eq("id", ev.id);
   if (error) return back("1");
   for (const r of rows) {
     if (r.id && owned.has(r.id)) await supabase.from("event_categories").update({ name: r.name, fee_cents: r.fee * 100 }).eq("id", r.id);
@@ -135,4 +157,24 @@ export async function setEventStatus(formData: FormData) {
   await supabase.from("events").update({ status: next }).eq("id", current.id);
   updateTag("events");
   redirect(`/${l}/organizador/eventos/${eventSlug}${next === "publicado" ? "?nuevo=publicado" : ""}`);
+}
+
+// Cierra las inscripciones antes de tiempo o las reabre (KIN-626). Reabrir después de la fecha límite borra esa fecha (queda abierto hasta
+// que el organizador lo cierre o ponga otra fecha al editar). La base solo deja cambiar eventos propios.
+export async function setRegistrationOpen(formData: FormData) {
+  const l = lang(formData.get("lang"));
+  const eventSlug = text(formData.get("id"), 80);
+  const session = await getSession();
+  if (session?.role !== "organizador" || !session.verified || !eventSlug) redirect(`/${l}/organizador`);
+
+  const supabase = await createServerSupabase();
+  const { data: ev } = await supabase.from("events").select("id, status, registration_closes_at").eq("slug", eventSlug).eq("organizer_id", session.id).maybeSingle();
+  if (!ev || ev.status === "finalizado") redirect(`/${l}/organizador`);
+
+  const reopen = formData.get("open") === "true";
+  const deadlinePassed = !!ev.registration_closes_at && Date.parse(ev.registration_closes_at) <= Date.now();
+  const patch = reopen ? { registration_closed: false, ...(deadlinePassed ? { registration_closes_at: null } : {}) } : { registration_closed: true };
+  await supabase.from("events").update(patch).eq("id", ev.id);
+  updateTag("events");
+  redirect(`/${l}/organizador/eventos/${eventSlug}`);
 }

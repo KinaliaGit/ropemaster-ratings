@@ -1,12 +1,14 @@
 "use client";
 import { useState } from "react";
 import { createEvent, updateEvent } from "@/lib/event-actions";
+import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/event-time";
 
 type Labels = {
   name: string; date: string; capacity: string; venue: string; city: string; disciplines: string; categories: string; categoryName: string; categoryNamePlaceholder: string; cost: string; costHint: string; addCategory: string;
   error: string; description: string; saveDraft: string; publish: string; photosLater: string; save: string; errors: Record<string, string>; paymentInfo: string; paymentInfoHint: string; paymentInfoPlaceholder: string;
+  closes: string; closesHint: string; timezone: string;
 };
-export type EventInitial = { slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; paymentInfo: string; disciplines: string[]; cats: { id: string; name: string; fee: number }[] };
+export type EventInitial = { slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; paymentInfo: string; closesAt: string; timezone: string; disciplines: string[]; cats: { id: string; name: string; fee: number }[] };
 
 const input = "mt-1 w-full rounded-xl border border-line bg-white px-4 py-2.5 outline-none focus:border-ink";
 
@@ -55,6 +57,16 @@ export function EventForm({ lang, labels: l, disciplines, error, initial }: { la
         <textarea name="paymentInfo" rows={3} maxLength={1000} defaultValue={initial?.paymentInfo} placeholder={l.paymentInfoPlaceholder} className={input} />
         <span className="mt-1 block text-xs font-normal text-muted">{l.paymentInfoHint}</span>
       </label>
+      <fieldset>
+        <legend className="text-sm font-medium">{l.closes}</legend>
+        <p className="mt-0.5 text-xs text-muted">{l.closesHint}</p>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          <input name="closesAt" type="datetime-local" defaultValue={initial?.closesAt} aria-label={l.closes} className={input.replace("mt-1 ", "")} />
+          <select name="timezone" defaultValue={initial?.timezone ?? DEFAULT_TIMEZONE} aria-label={l.timezone} className={input.replace("mt-1 ", "")}>
+            {(TIMEZONES.includes(initial?.timezone as never) || !initial ? TIMEZONES : [initial.timezone, ...TIMEZONES]).map((z) => <option key={z} value={z}>{z.replace(/_/g, " ")}</option>)}
+          </select>
+        </div>
+      </fieldset>
       {!initial && <p className="rounded-xl bg-sand p-3 text-sm text-muted">{l.photosLater}</p>}
       <label className="block text-sm font-medium">{l.description}<textarea name="description" rows={4} maxLength={1000} defaultValue={initial?.description} className={input} /></label>
       {initial ? (

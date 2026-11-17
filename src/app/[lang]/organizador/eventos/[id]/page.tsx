@@ -4,7 +4,9 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { CopyLink } from "@/components/CopyLink";
-import { setEventStatus } from "@/lib/event-actions";
+import { setEventStatus, setRegistrationOpen } from "@/lib/event-actions";
+import { enrollByOrganizer } from "@/lib/registration-actions";
+import { fmtDeadline, isRegistrationOpen } from "@/lib/event-time";
 import { Gate } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
 import { listEventRegistrations } from "@/lib/data/registrations";
@@ -17,7 +19,7 @@ import type { Lang } from "@/lib/format";
 import { fmtDate, mxn } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
-type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justEdited: boolean; pagoError: boolean; shareUrl: string; stateLabel: Record<string, string> };
+type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justEdited: boolean; pagoError: boolean; manual: string | null; shareUrl: string; stateLabel: Record<string, string> };
 
 type Reg = Awaited<ReturnType<typeof listEventRegistrations>>[number];
 
@@ -48,11 +50,14 @@ function PayForm({ lang, slug, id, method, label, tone }: { lang: Lang; slug: st
   );
 }
 
-async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, shareUrl, stateLabel }: ManageProps) {
+async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manual, shareUrl, stateLabel }: ManageProps) {
   // Un organizador solo gestiona sus propios eventos (la base además lo impone).
   const e = await getOrganizerEvent(s.id, id);
   if (!e) notFound();
   const rows = await listEventRegistrations(e.uuid!);
+  const regOpen = isRegistrationOpen({ closesAt: e.registrationClosesAt, closed: e.registrationClosed });
+  const manualMsg = manual ? (t.org.ev.manual as Record<string, string>)[manual] ?? t.org.ev.manual.failed : null;
+  const field = "rounded-xl border border-line bg-white px-3 py-2 text-sm outline-none focus:border-ink";
   return (
           <>
             <OrgNav lang={lang} t={t} admin={s.isAdmin} />
@@ -89,6 +94,38 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, shar
                 <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{rows.filter((x) => x.paymentStatus === "pagado").length}</p><p className="label mt-1">{t.org.ev.paid}</p></div>
                 <div className="card p-4"><p className="text-2xl font-semibold">{stateLabel[e.status]}</p><p className="label mt-1">{t.org.ev.state}</p></div>
               </div>
+              {e.status !== "borrador" && (
+                <section aria-labelledby="registration" className="card mt-6 p-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h2 id="registration" className="text-lg font-semibold">{t.org.ev.registration} <span className={`ml-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${regOpen ? "bg-brand-soft text-brand-hot" : "bg-sand text-muted"}`}>{regOpen ? t.org.ev.regOpen : t.org.ev.regClosed}</span></h2>
+                      <p className="mt-1 text-sm text-muted">{e.registrationClosesAt ? `${t.org.ev.closesAt} ${fmtDeadline(e.registrationClosesAt, e.timezone, lang)}` : t.org.ev.noDeadline}</p>
+                    </div>
+                    {e.status === "publicado" && (
+                      <form action={setRegistrationOpen}>
+                        <input type="hidden" name="id" value={e.id} /><input type="hidden" name="lang" value={lang} /><input type="hidden" name="open" value={regOpen ? "false" : "true"} />
+                        <button className={`rounded-full px-4 py-2 text-sm font-medium transition ${regOpen ? "bg-sand hover:bg-line" : "bg-brand text-white hover:bg-brand-hot"}`}>{regOpen ? t.org.ev.closeNow : t.org.ev.reopen}</button>
+                      </form>
+                    )}
+                  </div>
+                  {!regOpen && e.status === "publicado" && e.registrationClosesAt && <p className="mt-2 text-xs text-muted">{t.org.ev.reopenHint}</p>}
+                  {e.status === "publicado" && (
+                    <form action={enrollByOrganizer} className="mt-5 border-t border-line pt-5">
+                      <h3 className="text-sm font-semibold">{t.org.ev.manualTitle}</h3>
+                      <p className="mt-0.5 text-xs text-muted">{t.org.ev.manualHint}</p>
+                      {manualMsg && <p role="status" className={`mt-3 rounded-xl p-3 text-sm ${manual === "ok" ? "bg-brand-soft font-medium" : "bg-red-50 text-red-800"}`}>{manualMsg}</p>}
+                      <input type="hidden" name="lang" value={lang} /><input type="hidden" name="event" value={e.id} />
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <input required type="email" name="email" maxLength={200} aria-label={t.org.ev.manualEmail} placeholder={t.org.ev.manualEmail} className={`${field} min-w-56 flex-1`} />
+                        <select required name="category" aria-label={t.org.ev.manualCategory} className={field}>
+                          {e.categories.map((c) => <option key={c.id} value={c.id}>{c.name} · {mxn(c.fee, lang)}</option>)}
+                        </select>
+                        <button className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-white hover:bg-brand-hot">{t.org.ev.manualSubmit}</button>
+                      </div>
+                    </form>
+                  )}
+                </section>
+              )}
               <div className="card mt-8 p-6">
                 <EventPhotos eventSlug={e.id} photos={e.photos} coverUrl={e.cover ?? null}
                   l={{ title: t.uploader.eventPhotos, add: t.uploader.add, hint: t.uploader.hint, cover: t.uploader.cover, makeCover: t.uploader.makeCover, remove: t.uploader.remove, confirmRemove: t.uploader.confirmRemove, uploading: t.uploader.uploading, empty: t.uploader.empty, tooBig: t.uploader.tooBig, invalid: t.uploader.invalid, limit: t.uploader.limit, failed: t.uploader.failed }} />
@@ -132,6 +169,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
   const sp = await props.searchParams;
   const justEdited = sp.editado === "1";
   const pagoError = sp.pagoError === "1";
+  const manual = typeof sp.manual === "string" ? sp.manual : null;
   const justCreated = sp.nuevo === "publicado" ? "publicado" : sp.nuevo === "borrador" ? "borrador" : null;
   // Enlace sin idioma: cada persona que lo abra llega a su idioma (el proxy elige es/en por su navegador).
   const h = await headers();
@@ -142,7 +180,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
   const stateLabel: Record<string, string> = { publicado: t.status.published, borrador: t.status.draft, finalizado: t.status.finished };
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador/eventos/${id}`}>
-      {(s) => <Manage s={s} id={id} lang={lang} t={t} justCreated={justCreated} justEdited={justEdited} pagoError={pagoError} shareUrl={shareUrl} stateLabel={stateLabel} />}
+      {(s) => <Manage s={s} id={id} lang={lang} t={t} justCreated={justCreated} justEdited={justEdited} pagoError={pagoError} manual={manual} shareUrl={shareUrl} stateLabel={stateLabel} />}
     </Gate>
   );
 }

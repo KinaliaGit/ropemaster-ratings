@@ -98,6 +98,7 @@ export type EventRow = {
     payment_status: PaymentStatus;
     amount_cents: number;
     payment_method: PaymentMethod | null;
+    role: "header" | "heeler" | null;
   }[] | null;
 };
 
@@ -132,6 +133,7 @@ export function buildEventsPage(rows: EventRow[], organizer: string, snapshot: s
         payment_status: r.payment_status,
         amount_cents: r.amount_cents,
         payment_method: r.payment_method,
+        role: r.role ?? null,
       })),
     })),
     // El cursor guarda `changed_at` TAL COMO lo entrega la base (con microsegundos): pasarlo por Date lo truncaría a milisegundos y la

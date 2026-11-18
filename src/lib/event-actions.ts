@@ -4,6 +4,7 @@ import { updateTag } from "next/cache";
 import { getSession } from "@/lib/session";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
+import { slugify } from "@/lib/slug";
 import { closesAfterEvent, DEFAULT_TIMEZONE, isValidTimezone, zonedLocalToIso } from "@/lib/event-time";
 
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
@@ -19,12 +20,9 @@ function ratingLimit(v: FormDataEntryValue | null): number | null | "invalid" {
   return Math.round(n * 10) / 10;
 }
 
-function slug(name: string) {
-  const base = name.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "evento";
-  return `${base}-${Math.random().toString(36).slice(2, 6)}`;
-}
+const slug = (name: string) => slugify(name);
 
-type Close = { ok: true; timezone: string; closesAt: string | null } | { ok: false; error: "closeInvalid" | "closeAfterEvent" };
+type Close = { ok: true; timezone: string; closesAt: string | null; opensAt: string | null } | { ok: false; error: "closeInvalid" | "closeAfterEvent" | "opensInvalid" | "opensAfterEvent" | "opensAfterClose" };
 
 // Cierre de inscripciones (KIN-626): fecha y hora LOCALES del evento + su zona horaria. Vacío = sin fecha límite (abiertas hasta que el organizador cierre).
 // No puede caer después del día del evento (el evento solo tiene fecha, así que se permite el mismo día). La base lo vuelve a comprobar.
@@ -32,11 +30,23 @@ function parseClose(formData: FormData, eventDate: string): Close {
   const tzRaw = text(formData.get("timezone"), 60) || DEFAULT_TIMEZONE;
   if (!isValidTimezone(tzRaw)) return { ok: false, error: "closeInvalid" };
   const local = text(formData.get("closesAt"), 16);
-  if (!local) return { ok: true, timezone: tzRaw, closesAt: null };
-  const iso = zonedLocalToIso(local, tzRaw);
-  if (!iso) return { ok: false, error: "closeInvalid" };
-  if (closesAfterEvent(iso, eventDate, tzRaw)) return { ok: false, error: "closeAfterEvent" };
-  return { ok: true, timezone: tzRaw, closesAt: iso };
+  let closesAt: string | null = null;
+  if (local) {
+    closesAt = zonedLocalToIso(local, tzRaw);
+    if (!closesAt) return { ok: false, error: "closeInvalid" };
+    if (closesAfterEvent(closesAt, eventDate, tzRaw)) return { ok: false, error: "closeAfterEvent" };
+  }
+  // Apertura de inscripciones (KIN-625): vacía = desde que el evento se publica; con fecha y hora, antes de ella nadie se inscribe solo.
+  // Debe ser anterior al cierre y no puede caer después del día del evento.
+  const opensLocal = text(formData.get("opensAt"), 16);
+  let opensAt: string | null = null;
+  if (opensLocal) {
+    opensAt = zonedLocalToIso(opensLocal, tzRaw);
+    if (!opensAt) return { ok: false, error: "opensInvalid" };
+    if (closesAfterEvent(opensAt, eventDate, tzRaw)) return { ok: false, error: "opensAfterEvent" };
+    if (closesAt && Date.parse(opensAt) >= Date.parse(closesAt)) return { ok: false, error: "opensAfterClose" };
+  }
+  return { ok: true, timezone: tzRaw, closesAt, opensAt };
 }
 
 // Crea el evento (borrador o publicado) en la base y lleva al organizador a su pantalla, donde está el enlace para compartir.
@@ -75,7 +85,7 @@ export async function createEvent(formData: FormData) {
   const { error } = await supabase.from("events").insert({
     id, slug: eventSlug, name, event_date: date, city, venue, capacity, disciplines, status, max_roper_rating: limit,
     description: text(formData.get("description"), 1000), organizer_id: session.id, organizer_name: session.name,
-    timezone: close.timezone, registration_closes_at: close.closesAt,
+    timezone: close.timezone, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt,
   });
   if (error) redirect(`/${l}/organizador/eventos/nuevo?error=1`);
 
@@ -143,8 +153,9 @@ export async function updateEvent(formData: FormData) {
   if (toDelete.some((id) => usedIds.has(id))) return back("catInUse");
   const owned = new Set((current ?? []).map((c) => c.id));
 
-  const { error } = await supabase.from("events").update({ name, event_date: date, city, venue, capacity, disciplines, max_roper_rating: limit, description: text(formData.get("description"), 1000), timezone: close.timezone, registration_closes_at: close.closesAt }).eq("id", ev.id);
-  if (error) return back("1");
+  const { error } = await supabase.from("events").update({ name, event_date: date, city, venue, capacity, disciplines, max_roper_rating: limit, description: text(formData.get("description"), 1000), timezone: close.timezone, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt }).eq("id", ev.id);
+  // Un evento de una serie debe seguir dentro de las fechas de su serie (la base lo exige).
+  if (error) return back(error.message.includes("outside_series") ? "outsideSeries" : error.message.includes("open_after") ? "opensAfterClose" : "1");
   for (const r of rows) {
     if (r.id && owned.has(r.id)) await supabase.from("event_categories").update({ name: r.name, fee_cents: r.fee * 100 }).eq("id", r.id);
     else await supabase.from("event_categories").insert({ event_id: ev.id, name: r.name, fee_cents: r.fee * 100 });

@@ -5,7 +5,7 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
 import { getPublicEvent } from "@/lib/data/events";
 import { mxn, type Lang } from "@/lib/format";
-import { fmtDeadline, isRegistrationOpen } from "@/lib/event-time";
+import { fmtDeadline, isNotOpenYet, isRegistrationOpen } from "@/lib/event-time";
 import { Gate } from "@/components/Gate";
 import { enroll } from "@/lib/registration-actions";
 import { STRIPE_ENABLED } from "@/lib/flags";
@@ -20,15 +20,16 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
   const t = getDictionary(lang);
   const e = await getPublicEvent(id);
   if (!e) notFound();
-  const regOpen = isRegistrationOpen({ closesAt: e.registrationClosesAt, closed: e.registrationClosed });
+  const regOpen = isRegistrationOpen({ opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
+  const notYet = !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt });
   return (
     <Gate lang={lang} role="any" next={`/${lang}/eventos/${id}/inscribirse`}>
-      {() => (
+      {(s) => (
         <div className="mx-auto max-w-lg px-5 pb-10 pt-12">
           <Link href={`/${lang}/eventos/${e.id}`} className="text-sm text-muted hover:text-ink">← {e.name}</Link>
           <h1 className="mt-3 text-3xl font-semibold">{t.enroll.title}</h1>
           {regOpen && e.registrationClosesAt && <p className="mt-2 text-sm text-muted">{t.event.closesOn} {fmtDeadline(e.registrationClosesAt, e.timezone, lang)}</p>}
-          {!regOpen && <p role="alert" className="mt-4 rounded-xl bg-sand p-3 text-sm font-medium">{t.enroll.errors.registration_closed}</p>}
+          {!regOpen && <p role="alert" className="mt-4 rounded-xl bg-sand p-3 text-sm font-medium">{notYet && e.registrationOpensAt ? `${t.enroll.errors.not_open_yet} ${t.event.opensOn} ${fmtDeadline(e.registrationOpensAt, e.timezone, lang)}` : t.enroll.errors.registration_closed}</p>}
           {typeof sp.error === "string" && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{(t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed}</p>}
           {regOpen && <form action={enroll} className="card mt-6 space-y-5 p-6">
             <input type="hidden" name="lang" value={lang} /><input type="hidden" name="event" value={e.id} />
@@ -41,6 +42,19 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
                 </label>
               ))}
             </fieldset>
+            {s.roleChoice?.role === "both" && (
+              <fieldset>
+                <legend className="text-sm font-medium">{t.enroll.roleTitle}</legend>
+                {(["header", "heeler", "both"] as const).map((r) => (
+                  <label key={r} className="mt-2 flex cursor-pointer items-center rounded-xl border border-line p-3 has-checked:border-ink has-checked:bg-sand">
+                    <input type="radio" name="role" value={r} required defaultChecked={r === (s.roleChoice?.favorite ?? "header")} className="mr-2 accent-brand" />
+                    {r === "both" ? t.enroll.both : t.roles[r]}
+                    {r === s.roleChoice?.favorite && <span className="ml-2 text-xs text-muted">({t.roles.favorite})</span>}
+                  </label>
+                ))}
+                <p className="mt-2 text-xs text-muted">{t.enroll.roleHint}</p>
+              </fieldset>
+            )}
             {e.maxRoperRating !== null && <p className="text-xs text-muted">{t.event.maxRating}: <span className="tabular-nums">{e.maxRoperRating.toFixed(1)}</span></p>}
             <button className="w-full rounded-full bg-brand py-3 font-semibold text-white hover:bg-brand-hot">{t.enroll.submit}</button>
             <p className="text-center text-xs text-muted">{STRIPE_ENABLED ? t.enroll.pendingNote : t.enroll.pendingNoteOffline}</p>

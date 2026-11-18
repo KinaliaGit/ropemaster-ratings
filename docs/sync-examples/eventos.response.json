@@ -28,7 +28,8 @@
           "category": "Libre",
           "payment_status": "pagado",
           "amount_cents": 80000,
-          "payment_method": "efectivo"
+          "payment_method": "efectivo",
+          "role": "header"
         },
         {
           "id": "f0000000-0000-0000-0000-0000000000f2",
@@ -38,7 +39,8 @@
           "category": "Segunda fuerza",
           "payment_status": "pendiente",
           "amount_cents": 60000,
-          "payment_method": null
+          "payment_method": null,
+          "role": "heeler"
         },
         {
           "id": "f0000000-0000-0000-0000-0000000000f3",
@@ -48,7 +50,8 @@
           "category": "Libre",
           "payment_status": "reembolsado",
           "amount_cents": 80000,
-          "payment_method": "stripe"
+          "payment_method": "stripe",
+          "role": null
         }
       ]
     }

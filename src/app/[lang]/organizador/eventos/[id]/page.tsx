@@ -7,7 +7,7 @@ import { CopyLink } from "@/components/CopyLink";
 import { setEventStatus, setRegistrationOpen } from "@/lib/event-actions";
 import { enrollByOrganizer, removeRegistration, setRemovalReenroll, setRemovalRefunded } from "@/lib/registration-actions";
 import { RemoveRegistrationDialog } from "@/components/RemoveRegistrationDialog";
-import { fmtDeadline, isRegistrationOpen } from "@/lib/event-time";
+import { fmtDeadline, isNotOpenYet, isRegistrationOpen } from "@/lib/event-time";
 import { Gate } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
 import { listEventRegistrations, listEventRemovals } from "@/lib/data/registrations";
@@ -63,7 +63,8 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
     <RemoveRegistrationDialog action={removeRegistration} lang={lang} slug={e.id} id={r.id} name={r.name} category={r.category} paymentLabel={payLabel(r)} paid={r.paymentStatus === "pagado"}
       l={{ button: rm.button, title: rm.title, person: rm.person, payment: rm.payment, reasonLabel: rm.reasonLabel, reasonPlaceholder: rm.reasonPlaceholder, presets: rm.presets, other: rm.other, presetList: rm.presetList, refundWarning: rm.refundWarning, cancel: rm.cancel, confirm: rm.confirm, minChars: rm.minChars }} />
   ));
-  const regOpen = isRegistrationOpen({ closesAt: e.registrationClosesAt, closed: e.registrationClosed });
+  const regOpen = isRegistrationOpen({ opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
+  const notYet = !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt }); // apertura programada: se abre sola, no hay nada que cerrar ni reabrir
   const manualMsg = manual ? (t.org.ev.manual as Record<string, string>)[manual] ?? t.org.ev.manual.failed : null;
   const field = "rounded-xl border border-line bg-white px-3 py-2 text-sm outline-none focus:border-ink";
   return (
@@ -75,6 +76,7 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                 <div>
                   <h1 className="text-3xl font-semibold">{e.name}</h1>
                   <p className="text-muted">{e.date ? fmtDate(e.date, lang) : "–"} · {e.venue}, {e.city}</p>
+                  {e.series && <p className="mt-1 text-sm"><Link href={`/${lang}/organizador/series/${e.series.slug}`} className="font-medium text-brand-hot hover:underline">{t.org.ev.partOfSeries}: {e.series.name} →</Link></p>}
                 </div>
                 <div className="flex gap-2">
                   {e.status !== "borrador" && <Link href={`/${lang}/eventos/${e.id}`} className="rounded-full bg-sand px-4 py-2 text-sm font-medium hover:bg-line">{t.org.ev.publicPage}</Link>}
@@ -107,10 +109,11 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                 <section aria-labelledby="registration" className="card mt-6 p-6">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <h2 id="registration" className="text-lg font-semibold">{t.org.ev.registration} <span className={`ml-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${regOpen ? "bg-brand-soft text-brand-hot" : "bg-sand text-muted"}`}>{regOpen ? t.org.ev.regOpen : t.org.ev.regClosed}</span></h2>
+                      <h2 id="registration" className="text-lg font-semibold">{t.org.ev.registration} <span className={`ml-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${regOpen ? "bg-brand-soft text-brand-hot" : "bg-sand text-muted"}`}>{regOpen ? t.org.ev.regOpen : notYet ? t.org.ev.regNotYet : t.org.ev.regClosed}</span></h2>
+                      {e.registrationOpensAt && <p className="mt-1 text-sm text-muted">{t.org.ev.opensAt} {fmtDeadline(e.registrationOpensAt, e.timezone, lang)}</p>}
                       <p className="mt-1 text-sm text-muted">{e.registrationClosesAt ? `${t.org.ev.closesAt} ${fmtDeadline(e.registrationClosesAt, e.timezone, lang)}` : t.org.ev.noDeadline}</p>
                     </div>
-                    {e.status === "publicado" && (
+                    {e.status === "publicado" && !notYet && (
                       <form action={setRegistrationOpen}>
                         <input type="hidden" name="id" value={e.id} /><input type="hidden" name="lang" value={lang} /><input type="hidden" name="open" value={regOpen ? "false" : "true"} />
                         <button className={`rounded-full px-4 py-2 text-sm font-medium transition ${regOpen ? "bg-sand hover:bg-line" : "bg-brand text-white hover:bg-brand-hot"}`}>{regOpen ? t.org.ev.closeNow : t.org.ev.reopen}</button>
@@ -129,6 +132,10 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                         <select required name="category" aria-label={t.org.ev.manualCategory} className={field}>
                           {e.categories.map((c) => <option key={c.id} value={c.id}>{c.name} · {mxn(c.fee, lang)}</option>)}
                         </select>
+                        <select name="role" aria-label={t.org.ev.manualRole} className={field}>
+                          <option value="">{t.org.ev.manualRole}: {t.org.ev.manualRoleAuto}</option>
+                          <option value="header">{t.roles.header}</option><option value="heeler">{t.roles.heeler}</option><option value="both">{t.org.ev.manualBoth}</option>
+                        </select>
                         <button className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-white hover:bg-brand-hot">{t.org.ev.manualSubmit}</button>
                       </div>
                     </form>
@@ -145,7 +152,7 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                 {rows.map((r) => (
                   <div key={r.id} className="card p-4">
                     <Link href={`/${lang}/participantes/${r.roperId}`} className="font-semibold hover:text-brand-hot">{r.name}</Link>
-                    <p className="mt-0.5 text-sm text-muted">{r.category}{r.email ? ` · ${r.email}` : ""}</p>
+                    <p className="mt-0.5 text-sm text-muted">{r.category}{r.role ? ` · ${t.roles[r.role as "header" | "heeler"]}` : ""}{r.email ? ` · ${r.email}` : ""}</p>
                     <div className="mt-3"><PaymentCell r={r} lang={lang} slug={e.id} t={t} /></div>
                     <div className="mt-3">{removeButton(r)}</div>
                   </div>
@@ -153,19 +160,19 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
               </div>
               <div className="card mt-3 hidden overflow-x-auto sm:block">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-sand label"><tr><th className="p-3">{t.org.ev.participant}</th><th>{t.org.ev.phone}</th><th>{t.org.ev.category}</th><th>{t.org.ev.payment}</th><th><span className="sr-only">{rm.button}</span></th></tr></thead>
+                  <thead className="bg-sand label"><tr><th className="p-3">{t.org.ev.participant}</th><th>{t.org.ev.phone}</th><th>{t.org.ev.category}</th><th>{t.org.ev.role}</th><th>{t.org.ev.payment}</th><th><span className="sr-only">{rm.button}</span></th></tr></thead>
                   <tbody>
                     {rows.map((r) => {
                       return (
                         <tr key={r.id} className="border-t border-line">
                           <td className="p-3 font-medium"><Link href={`/${lang}/participantes/${r.roperId}`} className="hover:text-brand-hot">{r.name}</Link></td>
-                          <td className="text-muted">{r.email ?? "–"}</td><td>{r.category}</td>
+                          <td className="text-muted">{r.email ?? "–"}</td><td>{r.category}</td><td>{r.role ? t.roles[r.role as "header" | "heeler"] : "–"}</td>
                           <td className="py-2 pr-3"><PaymentCell r={r} lang={lang} slug={e.id} t={t} /></td>
                           <td className="py-2 pr-3 text-right">{removeButton(r)}</td>
                         </tr>
                       );
                     })}
-                    {rows.length === 0 && <tr><td colSpan={5} className="p-4 text-muted">{t.org.ev.noneEnrolled}</td></tr>}
+                    {rows.length === 0 && <tr><td colSpan={6} className="p-4 text-muted">{t.org.ev.noneEnrolled}</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -178,7 +185,7 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
                           <Link href={`/${lang}/participantes/${x.roperId}`} className="font-semibold hover:text-brand-hot">{x.name}</Link>
-                          <p className="text-sm text-muted">{x.category} · {rm.on} {fmtDate(x.removedAt, lang)}</p>
+                          <p className="text-sm text-muted">{x.category} · {rm.on} {fmtDate(x.removedAt.slice(0, 10), lang)}</p>
                         </div>
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${x.paymentStatus === "pagado" ? (x.refundPending ? "bg-amber-100 text-amber-900" : "bg-brand-soft text-brand-hot") : "bg-sand text-muted"}`}>
                           {x.paymentStatus === "pagado" ? (x.refundPending ? rm.refundPending : rm.refundDone) : rm.notPaid}

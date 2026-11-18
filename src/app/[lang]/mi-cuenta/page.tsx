@@ -10,7 +10,8 @@ import { initials, publicAvatarUrl } from "@/lib/people";
 import { listRankingPage } from "@/lib/data/ropers";
 import { rankedToRoper } from "@/lib/ranking";
 import { listMyRegistrations, listMyRemovals } from "@/lib/data/registrations";
-import { cancelRegistration } from "@/lib/registration-actions";
+import { cancelRegistration, changeRegistrationRole } from "@/lib/registration-actions";
+import { isRegistrationOpen } from "@/lib/event-time";
 import { createMyRoperProfile, setMyRole } from "@/lib/profile-actions";
 import { RoleFields } from "@/components/RoleFields";
 import { roleText } from "@/lib/roles";
@@ -29,7 +30,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
   const sp = await props.searchParams;
   const t = getDictionary(lang);
   const [events, top] = await Promise.all([listPublicEvents(), listRankingPage("lazo").then((p) => p.rows.slice(0, 4).map((r) => rankedToRoper(r, "lazo")))]);
-  const notice = sp.pago === "ok" ? t.pay.returned : sp.perfil === "ok" ? t.account.profileCreated : sp.rol === "ok" ? t.account.roleSaved : sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
+  const notice = sp.pago === "ok" ? t.pay.returned : sp.perfil === "ok" ? t.account.profileCreated : sp.rol === "ok" ? t.account.roleSaved : sp.rolInscripcion === "ok" ? t.account.roleChanged : sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
   return (
     <Gate lang={lang} role="any" next={`/${lang}/mi-cuenta`}>
       {async (s) => {
@@ -79,7 +80,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                 const paid = m.paymentStatus === "pagado";
                 const inner = (
                   <>
-                    <span><span className="font-medium">{m.event?.name ?? "—"}</span><span className="block text-sm text-muted">{m.category}{m.event?.date ? ` · ${fmtDate(m.event.date, lang)}` : ""}{m.event?.city ? ` · ${m.event.city}` : ""}</span>{m.event?.closesAt && <span className="block text-xs text-muted">{Date.parse(m.event.closesAt) > Date.now() ? t.event.closesOn : t.org.ev.closesAtPast} {fmtDeadline(m.event.closesAt, m.event.timezone, lang)}</span>}</span>
+                    <span><span className="font-medium">{m.event?.name ?? "—"}</span><span className="block text-sm text-muted">{m.category}{m.role ? ` · ${t.roles[m.role as "header" | "heeler"]}` : ""}{m.event?.date ? ` · ${fmtDate(m.event.date, lang)}` : ""}{m.event?.city ? ` · ${m.event.city}` : ""}</span>{m.event?.closesAt && <span className="block text-xs text-muted">{Date.parse(m.event.closesAt) > Date.now() ? t.event.closesOn : t.org.ev.closesAtPast} {fmtDeadline(m.event.closesAt, m.event.timezone, lang)}</span>}</span>
                     <span className="text-right text-sm"><span className="block tabular-nums">{mxn(m.amountCents / 100, lang)}</span>
                       <span className={`text-xs font-medium ${paid ? "text-emerald-700" : "text-brand-hot"}`}>{paid ? `${t.account.paid} ✓${m.paymentMethod ? ` · ${t.pay.method[m.paymentMethod as "efectivo" | "transferencia" | "stripe"]}` : ""}` : t.account.pending}</span></span>
                   </>
@@ -95,6 +96,16 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                         </form>
                       )}
                     </div>
+                    {s.roleChoice?.role === "both" && m.event && m.event.status === "publicado" && isRegistrationOpen({ closesAt: m.event.closesAt, closed: m.event.registrationClosed }) && (
+                      <form action={changeRegistrationRole} className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                        <input type="hidden" name="lang" value={lang} /><input type="hidden" name="id" value={m.id} />
+                        <label htmlFor={`role-${m.id}`} className="text-muted">{t.account.regRole}</label>
+                        <select id={`role-${m.id}`} name="role" defaultValue={m.role ?? s.roleChoice.favorite ?? "header"} className="rounded-xl border border-line bg-white px-3 py-1.5 text-sm">
+                          <option value="header">{t.roles.header}</option><option value="heeler">{t.roles.heeler}</option>
+                        </select>
+                        <button className="rounded-full border border-line px-3 py-1.5 text-xs font-medium hover:border-ink">{t.account.changeRole}</button>
+                      </form>
+                    )}
                     {!paid && (
                       <div className="mt-4 rounded-2xl bg-sand p-4 text-sm">
                         <p className="font-semibold">{t.pay.howTitle}</p>
@@ -114,7 +125,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                 <div className="mt-3 space-y-3">
                   {removed.map((x) => (
                     <div key={x.id} className="card border-red-200 p-4">
-                      <p className="font-medium">{x.event?.slug ? <Link href={`/${lang}/eventos/${x.event.slug}`} className="hover:text-brand-hot">{x.event.name}</Link> : x.event?.name ?? "—"}<span className="ml-2 text-sm font-normal text-muted">{x.category} · {t.account.removedOn} {fmtDate(x.removedAt, lang)}</span></p>
+                      <p className="font-medium">{x.event?.slug ? <Link href={`/${lang}/eventos/${x.event.slug}`} className="hover:text-brand-hot">{x.event.name}</Link> : x.event?.name ?? "—"}<span className="ml-2 text-sm font-normal text-muted">{x.category} · {t.account.removedOn} {fmtDate(x.removedAt.slice(0, 10), lang)}</span></p>
                       <p className="mt-1 text-sm"><span className="font-medium">{t.account.removedReason}</span> <span className="whitespace-pre-line">{x.reason}</span></p>
                       {x.refundPending && <p className="mt-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{t.account.removedRefund}</p>}
                       <p className="mt-2 text-xs text-muted">{x.canReenroll ? t.account.removedCanReturn : t.account.removedBlocked}</p>

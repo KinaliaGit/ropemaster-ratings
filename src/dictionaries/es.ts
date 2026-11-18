@@ -33,7 +33,7 @@ export const es = {
     from: "Desde", 
     organizedBy: "Organiza", photos: "Fotos", noPhotos: "El organizador aún no ha subido fotos.", enrolled: "Inscritos", noEnrolled: "Aún no hay inscritos.",
     results: "Resultados", resultsClosed: "Resultados cerrados", resultsInReview: "Resultados en corrección", noResults: "Aún no hay resultados.",
-    enrollment: "Inscripción", enroll: "Inscribirme", needAccount: "Necesitas una cuenta de participante.", eventFinished: "Evento finalizado", full: "Cupo lleno",
+    enrollment: "Inscripción", enroll: "Inscribirme", needAccount: "Necesitas una cuenta de participante.", eventFinished: "Evento finalizado", full: "Cupo lleno", maxRating: "Rating máximo para inscribirse",
   },
   pay: {
     method: { efectivo: "Efectivo", transferencia: "Transferencia", stripe: "En línea" }, markPaid: "Marcar pagado:", undo: "Deshacer", error: "No se pudo cambiar el pago. Intenta de nuevo.",
@@ -45,7 +45,7 @@ export const es = {
     title: "Inscripción", category: "Categoría", discipline: "Modalidad", submit: "Inscribirme", pendingNote: "Tu lugar queda apartado como pendiente de pago. Después podrás pagar en línea o en efectivo/transferencia con el organizador. Puedes cancelarlo mientras no esté pagado.",
     errors: {
       forbidden: "Solo los participantes pueden inscribirse.", invalid_category: "Evento o categoría inválidos.", closed: "Las inscripciones están cerradas.", already: "Ya estás inscrito en esta categoría.",
-      full: "El cupo está lleno.", paid: "Esa inscripción ya está pagada y no se puede cancelar aquí.", not_found: "No encontramos esa inscripción.", failed: "No se pudo completar. Intenta de nuevo.",
+      full: "El cupo está lleno.", rating_limit: "Tu rating supera el máximo individual de este evento.", paid: "Esa inscripción ya está pagada y no se puede cancelar aquí.", not_found: "No encontramos esa inscripción.", failed: "No se pudo completar. Intenta de nuevo.",
     },
   },
   people: {
@@ -114,10 +114,10 @@ export const es = {
     form: {
       paymentInfo: "Instrucciones de pago (transferencia o efectivo)", paymentInfoHint: "Solo las ven quienes se inscriben a tu evento. Ej.: CLABE, banco y titular, o «paga en efectivo en la arena».", paymentInfoPlaceholder: "CLABE 0123 4567 8901 2345 67 · Banco · Titular",
       save: "Guardar cambios", editTitle: "Editar evento", editBlurb: "Los cambios se ven al momento en la página pública. Lo ya inscrito conserva el precio con el que se apartó.", saved: "Cambios guardados.", edit: "Editar",
-      errors: { capacity: "El cupo no puede ser menor que los inscritos que ya hay.", catInUse: "No puedes quitar una categoría que ya tiene inscritos. Puedes renombrarla o cambiar su costo." },
+      errors: { capacity: "El cupo no puede ser menor que los inscritos que ya hay.", catInUse: "No puedes quitar una categoría que ya tiene inscritos. Puedes renombrarla o cambiar su costo.", ratingLimit: "El rating máximo debe ser un número entre 0 y 10." },
       photosLater: "Después de crear el evento podrás agregar fotos y elegir la portada.", 
       error: "Revisa los campos: faltan datos o hay valores inválidos.", title: "Nuevo evento", blurb: "Al publicarlo aparece en la web y tu app Rope Master lo descarga al sincronizar.", name: "Nombre del evento", date: "Fecha", capacity: "Cupo", venue: "Sede", city: "Ciudad",
-      disciplines: "Modalidades", categories: "Categorías y costo de inscripción", categoryName: "Nombre de la categoría", categoryNamePlaceholder: "Ej. Libre, Amateur", cost: "Costo de inscripción", costHint: "Lo que paga cada participante por esta categoría", addCategory: "+ Agregar categoría", description: "Descripción", cover: "Foto de portada", saveDraft: "Guardar borrador", publish: "Publicar",
+      disciplines: "Modalidades", categories: "Categorías y costo de inscripción", categoryName: "Nombre de la categoría", categoryNamePlaceholder: "Ej. Libre, Amateur", cost: "Costo de inscripción", costHint: "Lo que paga cada participante por esta categoría", maxRoperRating: "Rating máximo para inscribirse (opcional)", maxRoperRatingHint: "Quien tenga un rating mayor no podrá inscribirse. Déjalo vacío si no hay límite.", addCategory: "+ Agregar categoría", description: "Descripción", cover: "Foto de portada", saveDraft: "Guardar borrador", publish: "Publicar",
     },
     app: {
       title: "Conecta tu app Rope Master", blurb: "Lo que publiques aquí llega solo a tu app: eventos y participantes se descargan cuando tienes internet y después los usas sin conexión.",

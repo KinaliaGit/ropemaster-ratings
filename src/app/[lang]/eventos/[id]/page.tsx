@@ -87,6 +87,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
             <ul className="mt-3">
               {e.categories.map((c) => <li key={c.id} className="flex justify-between border-b border-line py-3 text-sm last:border-0"><span>{c.name}</span><span className="tabular-nums">{mxn(c.fee, lang)}</span></li>)}
             </ul>
+            {e.maxRoperRating !== null && <p className="mt-3 text-xs text-muted">{t.event.maxRating}: <span className="tabular-nums">{e.maxRoperRating.toFixed(1)}</span></p>}
             {open
               ? <Link href={`/${lang}/eventos/${e.id}/inscribirse`} className="mt-4 block rounded-full bg-ink py-3 text-center text-sm font-medium text-white transition hover:bg-brand-hot">{t.event.enroll}</Link>
               : <p className="mt-4 rounded-full bg-sand py-3 text-center text-sm text-muted">{e.status === "finalizado" ? t.event.eventFinished : t.event.full}</p>}

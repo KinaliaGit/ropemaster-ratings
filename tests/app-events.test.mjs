@@ -13,7 +13,7 @@ const EVENT = "e0000000-0000-0000-0000-0000000000e1";
 // Las filas tal como las entrega la función de la base (app_organizer_events): de aquí sale el ejemplo del contrato.
 const dbRow = () => ({
   id: EVENT, slug: "rodeo-norte-2026", name: "Rodeo Norte 2026", event_date: "2026-12-06", city: "Monterrey", venue: "Lienzo Charro del Norte",
-  description: "Rodeo de fin de año, lazo en equipo.", disciplines: ["lazo"], capacity: 100, status: "publicado", changed_at: "2026-11-05T18:30:00+00:00",
+  description: "Rodeo de fin de año, lazo en equipo.", disciplines: ["lazo"], capacity: 100, max_roper_rating: 6.5, status: "publicado", changed_at: "2026-11-05T18:30:00+00:00",
   categories: example.events[0].categories,
   registrations: example.events[0].registrations,
 });
@@ -46,6 +46,16 @@ test("un evento sin datos opcionales no rompe a la app: texto vacío, listas vac
   const [event] = page.events;
   assert.deepEqual([event.date, event.city, event.venue, event.description, event.disciplines, event.capacity], ["", "", "", "", [], null]);
   assert.deepEqual([event.categories, event.registrations], [[], []]);
+});
+
+test("el rating máximo individual (KIN-638) sale como número, o null cuando no hay límite o la fila no lo trae", () => {
+  const [withLimit] = buildEventsPage([{ ...dbRow(), max_roper_rating: "6.5" }], "org", "2026-11-06T09:00:00.000Z").events;
+  assert.equal(withLimit.max_roper_rating, 6.5);
+  const withoutField = dbRow();
+  delete withoutField.max_roper_rating;
+  for (const row of [{ ...dbRow(), max_roper_rating: null }, withoutField]) {
+    assert.equal(buildEventsPage([row], "org", "2026-11-06T09:00:00.000Z").events[0].max_roper_rating, null);
+  }
 });
 
 test("since acepta fechas ISO con hora y las normaliza; rechaza lo demás con invalid_field", () => {

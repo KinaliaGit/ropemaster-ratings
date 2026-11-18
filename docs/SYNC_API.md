@@ -64,7 +64,7 @@ inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
 ```json
 { "contract_version": 1, "organizer": "<id del organizador>", "events": [{
   "id": "…", "slug": "rodeo-norte-2026", "name": "…", "date": "2026-12-06", "city": "…", "venue": "…", "status": "publicado",
-  "disciplines": ["lazo"], "capacity": 100, "description": "…", "updated_at": "2026-11-05T18:30:00.000Z",
+  "disciplines": ["lazo"], "capacity": 100, "max_roper_rating": 6.5, "description": "…", "updated_at": "2026-11-05T18:30:00.000Z",
   "categories": [{ "id": "…", "name": "Libre", "fee_cents": 80000 }],
   "registrations": [{ "id": "…", "roper_global_id": "…", "name": "…", "category_id": "…", "category": "Libre",
                       "payment_status": "pagado", "amount_cents": 80000, "payment_method": "efectivo" }]
@@ -79,6 +79,7 @@ inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
 | `status` | `publicado` \| `finalizado` | |
 | `disciplines` | lista de ids de modalidad | `lazo`, `barriles` (ver *Modalidades*). |
 | `capacity` | entero o `null` | `null` = sin límite. |
+| `max_roper_rating` | número (0 a 10, un decimal) o `null` | Rating máximo individual para inscribirse (KIN-638); `null` = sin límite. La web no deja inscribir a quien lo rebase (rating de la modalidad del evento). La app lo guarda en el evento importado y le pone el mismo tope a su roster. Campo opcional: una web anterior no lo manda. |
 | `updated_at` | fecha ISO-8601 UTC | Último cambio del evento, sus inscripciones o sus categorías. |
 | `categories[].fee_cents` | entero >= 0 | Montos SIEMPRE en centavos. |
 | `registrations[].id` | UUID | Id de la inscripción. Una persona puede tener una por categoría. |

@@ -9,7 +9,7 @@ import { PAGE_SIZE, buildEventsPage, checkVersion, parseEventsQuery, type EventR
 //   -> { contract_version, organizer, events: [...], next_cursor: string | null, generated_at: ISO }
 // `since` devuelve solo los eventos que cambiaron desde esa fecha, y un cambio en sus inscripciones o categorías cuenta. Cada evento
 // que cambió llega completo, con la lista vigente de inscritos. Guardar `generated_at` para el siguiente `since`.
-// Orden de las comprobaciones: código de conexión (401/429), versión y parámetros (400/426), organizador activo (403).
+// Orden de las comprobaciones: token de la sesión (401/429), versión y parámetros (400/426), organizador activo (403).
 // Los borradores no se envían. NUNCA se registran los nombres de los inscritos en logs.
 const headers = { "Cache-Control": "no-store" };
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers });
@@ -46,7 +46,16 @@ export async function GET(request: Request) {
     });
     if (error) return unavailable();
 
-    return json(buildEventsPage((data ?? []) as EventRow[], auth.organizer, snapshot));
+    const rows = (data ?? []) as EventRow[];
+    // El rating máximo para inscribirse (KIN-638) se lee aparte para no tocar la función SQL de la sincronización.
+    const page = rows.slice(0, PAGE_SIZE);
+    if (page.length > 0) {
+      const { data: limits, error: limitsError } = await db.from("events").select("id, max_roper_rating").in("id", page.map((row) => row.id));
+      if (limitsError) return unavailable();
+      const byId = new Map((limits ?? []).map((row) => [row.id as string, row.max_roper_rating as number | null]));
+      for (const row of page) row.max_roper_rating = byId.get(row.id) ?? null;
+    }
+    return json(buildEventsPage(rows, auth.organizer, snapshot));
   } catch {
     return unavailable();
   }

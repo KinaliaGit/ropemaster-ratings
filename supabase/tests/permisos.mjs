@@ -179,6 +179,32 @@ await as("authenticated", P2, "select id from registrations", "otro participante
 await as("authenticated", A, "select id from registrations", "el organizador ve las inscripciones de SU evento", "some");
 await as("authenticated", B, "select id from registrations", "otro organizador NO las ve", "deny");
 await as("anon", null, "select n from public.event_registration_counts() where n = 2", "conteo público de inscritos", "some");
+
+console.log("— Límite de rating individual (0036)");
+const RL_EVENT = "e0000000-0000-0000-0000-0000000000a1", RL_CAT = "ca000000-0000-0000-0000-0000000000a1";
+const RL_HIGH = "22222222-0000-0000-0000-0000000000a3", RL_NEW = "22222222-0000-0000-0000-0000000000a4";
+const U_HIGH = "11111111-aaaa-0000-0000-0000000000a3", U_NEW = "11111111-aaaa-0000-0000-0000000000a4";
+await db.exec(`
+  insert into events (id, name, organizer_id, status, slug, capacity, disciplines, max_roper_rating) values ('${RL_EVENT}','Con límite','${A}','publicado','con-limite',10,'{lazo}',6.5);
+  insert into event_categories (id, event_id, name, fee_cents) values ('${RL_CAT}','${RL_EVENT}','Libre',10000);
+  insert into auth.users (id, email, email_confirmed_at) values ('${U_HIGH}','alto@x.com',now()), ('${U_NEW}','nuevo@x.com',now());
+  insert into profiles (user_id, role, display_name) values ('${U_HIGH}','participante','Alto'), ('${U_NEW}','participante','Nuevo');
+  insert into ropers (id, full_name, user_id) values ('${RL_HIGH}','Rating Alto','${U_HIGH}'), ('${RL_NEW}','Rating Nuevo','${U_NEW}');
+  insert into roper_ratings (roper_id, discipline, rating) values ('${RL_HIGH}','lazo',7.2), ('${RL_HIGH}','barriles',3.0), ('11111111-0000-0000-0000-000000000001','lazo',6.5);
+`);
+await as("authenticated", U_HIGH, `select public.register_for_event('${RL_EVENT}','${RL_CAT}')`, "con rating por ENCIMA del límite NO se inscribe", "deny");
+await as("authenticated", C, `select public.register_for_event('${RL_EVENT}','${RL_CAT}')`, "con rating IGUAL al límite sí se inscribe", "some");
+await as("authenticated", U_NEW, `select public.register_for_event('${RL_EVENT}','${RL_CAT}')`, "sin rating todavía (parte de 1) sí se inscribe", "some");
+await db.exec(`update events set max_roper_rating = null where id = '${RL_EVENT}'`);
+await as("authenticated", U_HIGH, `select public.register_for_event('${RL_EVENT}','${RL_CAT}')`, "sin límite se inscribe cualquier rating", "some");
+await db.exec(`update events set max_roper_rating = 6.5, disciplines = '{barriles}' where id = '${RL_EVENT}'`);
+await as("authenticated", P2, `select public.register_for_event('${RL_EVENT}','${RL_CAT}')`, "cuenta el rating de la modalidad del evento (no de otra)", "some");
+await db.exec(`delete from registrations where event_id = '${RL_EVENT}'; update events set disciplines = '{lazo}' where id = '${RL_EVENT}'`);
+await as("authenticated", A, "update events set max_roper_rating = 5 where id = '" + RL_EVENT + "'", "el organizador dueño SÍ cambia el límite", "some");
+await as("authenticated", B, "update events set max_roper_rating = 1 where id = '" + RL_EVENT + "'", "otro organizador NO cambia el límite", "deny");
+await as("authenticated", C, "update events set max_roper_rating = 10 where id = '" + RL_EVENT + "'", "un participante NO cambia el límite", "deny");
+await as("authenticated", A, "update events set max_roper_rating = 11 where id = '" + RL_EVENT + "'", "un límite fuera de 0 a 10 se rechaza", "deny");
+await as("anon", null, "select max_roper_rating from events where max_roper_rating is not null and slug = 'con-limite'", "el límite de un evento publicado es público", "some");
 await as("anon", null, `select roper_id from public.event_registrants('${EV}')`, "lista pública de inscritos (ids)", "some");
 await as("anon", null, "select roper_id from public.event_registrants('e0000000-0000-0000-0000-000000000002')", "la lista de un borrador NO es pública", "deny");
 // cupo: 1 lugar; el segundo falla
@@ -291,23 +317,20 @@ async function check(label, cond) {
   console.log(`${cond ? "✔" : "✘ FALLO"}  ${label.padEnd(58)} → ${cond ? "ok" : "no se cumple"}`);
 }
 
-console.log("- Códigos de conexión de la app (0011)");
-await as("service_role", null, `select rotate_api_token('${A}', 'hash-uno')`, "el servidor genera un código", "some");
-await as("service_role", null, `select rotate_api_token('${A}', 'hash-dos')`, "el servidor genera otro (revoca el anterior)", "some");
+console.log("- Tokens de la app (0011, 0025)");
+await as("service_role", null, `select create_device_token('${A}', 'hash-uno', 'Equipo uno')`, "el servidor crea el token de un equipo", "some");
+await as("service_role", null, `select create_device_token('${A}', 'hash-dos', 'Equipo dos')`, "el servidor crea el de otro equipo (el primero sigue activo)", "some");
 {
-  const r = await db.query(`select count(*) filter (where revoked_at is null)::int as activos, count(*) filter (where revoked_at is not null)::int as revocados from api_tokens where organizer_id = '${A}'`);
-  await check("queda 1 código activo y 1 revocado", r.rows[0].activos === 1 && r.rows[0].revocados === 1);
-  let dup = false;
-  try { await db.query(`insert into api_tokens (organizer_id, token_hash) values ('${A}', 'hash-tres')`); } catch { dup = true; }
-  await check("la base impide dos códigos activos del mismo organizador", dup);
+  const r = await db.query(`select count(*) filter (where revoked_at is null)::int as activos from api_tokens where organizer_id = '${A}'`);
+  await check("quedan 2 tokens activos (uno por equipo)", r.rows[0].activos === 2);
 }
-await as("authenticated", A, "select id, created_at, last_used_at, revoked_at from api_tokens", "el organizador ve las fechas de SUS códigos", "some");
-await as("authenticated", A, "select token_hash from api_tokens", "NO ve el hash de sus códigos", "deny");
-await as("authenticated", B, "select id from api_tokens", "NO ve códigos de otro organizador", "deny");
-await as("authenticated", A, `update api_tokens set revoked_at = null where organizer_id = '${A}'`, "NO reactiva ni edita códigos directo", "deny");
-await as("authenticated", A, `insert into api_tokens (organizer_id, token_hash) values ('${A}', 'x')`, "NO crea códigos directo", "deny");
-await as("authenticated", A, `select rotate_api_token('${A}', 'x')`, "NO ejecuta la rotación (solo el servidor)", "deny");
-await as("anon", null, "select id from api_tokens", "anónimo NO ve códigos", "deny");
+await as("authenticated", A, "select id, created_at, last_used_at, revoked_at from api_tokens", "el organizador ve las fechas de SUS tokens", "some");
+await as("authenticated", A, "select token_hash from api_tokens", "NO ve el hash de sus tokens", "deny");
+await as("authenticated", B, "select id from api_tokens", "NO ve tokens de otro organizador", "deny");
+await as("authenticated", A, `update api_tokens set revoked_at = null where organizer_id = '${A}'`, "NO reactiva ni edita tokens directo", "deny");
+await as("authenticated", A, `insert into api_tokens (organizer_id, token_hash) values ('${A}', 'x')`, "NO crea tokens directo", "deny");
+await as("authenticated", A, `select create_device_token('${A}', 'x', 'y')`, "NO crea tokens con la función (solo el servidor)", "deny");
+await as("anon", null, "select id from api_tokens", "anónimo NO ve tokens", "deny");
 await as("authenticated", A, "select * from api_auth_failures", "NO ve los intentos fallidos", "deny");
 await as("authenticated", A, "select api_auth_is_blocked('x')", "NO consulta el bloqueo por IP", "deny");
 await as("anon", null, "select api_auth_record_failure('x')", "anónimo NO registra intentos fallidos", "deny");
@@ -606,17 +629,16 @@ console.log("- Un token por equipo y vencimiento por inactividad (0025)");
   await check("otro organizador NO puede revocar un equipo ajeno", (await svc("select public.revoke_api_token($1, $2) as ok", [T2, d1]))[0].ok === false && (await verify("t1-d1")) === T1);
   await check("revocar dos veces el mismo equipo no falla: la segunda devuelve false", (await svc("select public.revoke_api_token($1, $2) as ok", [T1, d2]))[0].ok === false);
 
-  // --- el código manual y los equipos no se pisan
-  await svc("select public.rotate_api_token($1, 'm1')", [T1]);
-  await svc("select public.rotate_api_token($1, 'm2')", [T1]);
-  await check("generar un código manual nuevo revoca solo el manual anterior, no los equipos", (await count(T1, "manual")) === 1 && (await count(T1, "login")) === 3
-    && (await verify("m1")) === null && (await verify("m2")) === T1);
-  await check("el código manual NO cuenta dentro de los 3 equipos", (await device(T1, "t1-d5")) === null);
-  await check("crear equipos no revoca el código manual", (await verify("m2")) === T1);
-  await check("tener varios equipos activos NO rompe la tarjeta del código manual (a lo más un manual activo)", (await count(T1, "manual")) === 1);
-  let dupManual = false;
-  try { await db.query(`insert into api_tokens (organizer_id, token_hash, kind) values ('${T1}', 'manual-dos', 'manual')`); } catch { dupManual = true; }
-  await check("seguir permitido: un solo código manual activo por organizador", dupManual);
+  // --- sin códigos manuales (0037, KIN-631)
+  await check("rotate_api_token ya no existe: ni el servidor puede crear un código manual", await (async () => { try { await svc("select public.rotate_api_token($1, 'm1')", [T1]); return false; } catch { await db.exec("reset role"); return true; } })());
+  // Un código manual que siguiera activo cuando se aplica la migración queda revocado, y los equipos no se tocan.
+  await db.query(`insert into api_tokens (organizer_id, token_hash, kind) values ('${T1}', 'manual-viejo', 'manual')`);
+  await check("antes de la migración, un código manual activo sí servía", (await verify("manual-viejo")) === T1);
+  await db.exec(readFileSync(`${dir}/0037_quitar_codigos_manuales.sql`, "utf8"));
+  await check("la migración 0037 revoca los códigos manuales activos", (await verify("manual-viejo")) === null && (await count(T1, "manual")) === 0);
+  await check("la migración 0037 no toca a los equipos", (await verify("t1-d1")) === T1 && (await count(T1, "login")) === 3);
+  await check("la migración 0037 se puede repetir sin efecto", (await db.exec(readFileSync(`${dir}/0037_quitar_codigos_manuales.sql`, "utf8")), (await verify("t1-d1")) === T1));
+  await check("el cuarto equipo sigue sin crearse (los códigos manuales nunca contaron dentro de los 3)", (await device(T1, "t1-d5")) === null);
 
   // --- nombre del equipo
   await device(T2, "t2-vacio", "   ");

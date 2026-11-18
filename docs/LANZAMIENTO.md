@@ -17,7 +17,7 @@ Estado al 2026-11-05, rama `feat/organizadores-reales` (PR #1). ✅ hecho y prob
 ## Dinero
 - ✅ Efectivo y transferencia: el organizador marca «pagado»; instrucciones de pago visibles solo para inscritos (0018).
 - 🟡 Pago en línea con Stripe: código y webhook listos pero **sin probar contra Stripe real** y apagados sin llaves.
-- ⬜ Stripe en producción con llaves nuevas (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`), cuenta conectada por organizador guardada en la base (hoy `STRIPE_TEST_CONNECTED_ACCOUNT`), comisión y reembolsos decididos, y un cobro real de punta a punta (issues de Neaves).
+- ⬜ Stripe en producción (la interfaz está oculta con la bandera `STRIPE_ENABLED`; con `STRIPE_ENABLED=true` vuelve a mostrarse) con llaves nuevas (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`), cuenta conectada por organizador guardada en la base (hoy `STRIPE_TEST_CONNECTED_ACCOUNT`), comisión y reembolsos decididos, y un cobro real de punta a punta (issues de Neaves).
 
 ## Inscripciones
 - ✅ Cupo seguro probado con inscripciones simultáneas contra la base real; conteos y listas reales; cancelar mientras esté pendiente.

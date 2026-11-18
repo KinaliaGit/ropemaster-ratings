@@ -3,20 +3,20 @@
 La app (Tauri) descarga eventos y participantes del organizador cuando hay internet y los guarda en su
 SQLite local. Sin internet la app sigue funcionando con lo ya descargado.
 
-Autenticación: `Authorization: Bearer <código>`. El organizador genera el código en su panel (pestaña *App local*); se muestra una sola vez y la base (`api_tokens`) guarda solo su hash sha256. Generar uno nuevo revoca el anterior, y también se puede revocar sin generar otro. Un código revocado deja de funcionar al instante, y reiniciar el servidor no desconecta a la app. El panel muestra cuándo se creó y cuándo se usó por última vez.
+Autenticación: `Authorization: Bearer <token>`. El token lo entrega `POST /api/app/login` (la app entra con el correo y la contraseña del organizador; ya no hay códigos que se copien y se peguen a mano, KIN-631). Se muestra una sola vez y la base (`api_tokens`) guarda solo su hash sha256. Un token revocado deja de funcionar al instante, y reiniciar el servidor no desconecta a la app. El panel (pestaña *App local*) lista los equipos conectados con cuándo se conectaron y cuándo se usaron por última vez, y permite revocar cada uno.
 
-Cada equipo tiene su propio token (hasta 3 por organizador; el código manual es aparte, uno solo, y no cuenta dentro de los 3). Generar el código manual nuevo revoca solo el manual anterior, no a los equipos. **Todo token vence a los 30 días sin usarse**; cada uso exitoso reinicia el plazo, y sin internet no vence por reloj de la app: lo decide la web cuando la app vuelve a conectarse. Un token vencido responde `401` igual que uno revocado, y la app pide reconectar sin tocar sus datos locales.
+Cada equipo tiene su propio token (hasta 3 por organizador). **Todo token vence a los 30 días sin usarse**; cada uso exitoso reinicia el plazo, y sin internet no vence por reloj de la app: lo decide la web cuando la app vuelve a conectarse. Un token vencido responde `401` igual que uno revocado, y la app pide reconectar sin tocar sus datos locales.
 
-- `401` (`code: "invalid_token"`): código inválido, revocado o vencido por 30 días sin uso (no reintentar; la app pide reconectar).
-- `429` (`code: "rate_limited"`): demasiados intentos con un código inválido desde la misma IP (20 en 5 minutos). Trae `Retry-After`.
-- `503` (`code: "service_unavailable"`): falla temporal al verificar el código. Sí reintentar.
+- `401` (`code: "invalid_token"`): token inválido, revocado o vencido por 30 días sin uso (no reintentar; la app pide reconectar).
+- `429` (`code: "rate_limited"`): demasiados intentos con un token inválido desde la misma IP (20 en 5 minutos). Trae `Retry-After`.
+- `503` (`code: "service_unavailable"`): falla temporal al verificar el token. Sí reintentar.
 
-Configuración del servidor: `SUPABASE_SERVICE_ROLE_KEY` (secreta, solo servidor) es obligatoria en producción. Sin ella, fuera de producción los códigos viven en memoria y se pierden al reiniciar; en producción la API responde `503`. El valor fijo `APP_SYNC_TOKEN` solo funciona fuera de producción, para pruebas locales.
+Configuración del servidor: `SUPABASE_SERVICE_ROLE_KEY` (secreta, solo servidor) es obligatoria en producción; sin ella la API responde `503`. El valor fijo `APP_SYNC_TOKEN` solo funciona fuera de producción, para pruebas locales.
 
 ## `POST /api/app/login`
 La app entra con el correo y la contraseña de la cuenta de organizador de la web (los mismos del sitio). La web comprueba la contraseña con
 Supabase Auth, **no abre una sesión de navegador** y entrega un token propio para ese equipo. Ese token se usa como `Authorization: Bearer <token>`
-en todos los demás endpoints, igual que el código manual. La app lo guarda en el llavero del sistema (nunca la contraseña) y sin internet sigue
+en todos los demás endpoints. La app lo guarda en el llavero del sistema (nunca la contraseña) y sin internet sigue
 funcionando con lo que ya tiene: el login solo se necesita para conectar y para reconectar.
 
 Cuerpo (ver `sync-examples/login.request.json`): `contract_version`, `email`, `password` y `device_name` (opcional, hasta 60 caracteres; si falta queda "Equipo").
@@ -44,7 +44,7 @@ solo lo olvida; la web lo deja vencer a los 30 días sin uso o el organizador lo
 
 Estado: implementada (KIN-585). Ejemplo completo y versionado: [`docs/sync-examples/eventos.response.json`](sync-examples/eventos.response.json); la web lo comprueba en sus pruebas y la app puede usarlo tal cual como dato de prueba.
 
-Eventos del organizador del código con estado `publicado` o `finalizado` (los borradores nunca se envían), cada uno con sus categorías y sus
+Eventos del organizador del token con estado `publicado` o `finalizado` (los borradores nunca se envían), cada uno con sus categorías y sus
 inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
 
 - **Versión del contrato.** La respuesta trae `contract_version` (hoy `1`). La app puede declarar la que entiende con el encabezado opcional
@@ -64,7 +64,7 @@ inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
 ```json
 { "contract_version": 1, "organizer": "<id del organizador>", "events": [{
   "id": "…", "slug": "rodeo-norte-2026", "name": "…", "date": "2026-12-06", "city": "…", "venue": "…", "status": "publicado",
-  "disciplines": ["lazo"], "capacity": 100, "description": "…", "updated_at": "2026-11-05T18:30:00.000Z",
+  "disciplines": ["lazo"], "capacity": 100, "max_roper_rating": 6.5, "description": "…", "updated_at": "2026-11-05T18:30:00.000Z",
   "categories": [{ "id": "…", "name": "Libre", "fee_cents": 80000 }],
   "registrations": [{ "id": "…", "roper_global_id": "…", "name": "…", "category_id": "…", "category": "Libre",
                       "payment_status": "pagado", "amount_cents": 80000, "payment_method": "efectivo" }]
@@ -79,6 +79,7 @@ inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
 | `status` | `publicado` \| `finalizado` | |
 | `disciplines` | lista de ids de modalidad | `lazo`, `barriles` (ver *Modalidades*). |
 | `capacity` | entero o `null` | `null` = sin límite. |
+| `max_roper_rating` | número (0 a 10, un decimal) o `null` | Rating máximo individual para inscribirse (KIN-638); `null` = sin límite. La web no deja inscribir a quien lo rebase (rating de la modalidad del evento). La app lo guarda en el evento importado y le pone el mismo tope a su roster. Campo opcional: una web anterior no lo manda. |
 | `updated_at` | fecha ISO-8601 UTC | Último cambio del evento, sus inscripciones o sus categorías. |
 | `categories[].fee_cents` | entero >= 0 | Montos SIEMPRE en centavos. |
 | `registrations[].id` | UUID | Id de la inscripción. Una persona puede tener una por categoría y rol (ver `role`). |
@@ -109,22 +110,22 @@ Errores (todos con `{ "code": "…", "error": "texto para personas" }`; la app d
 | HTTP | `code` | Cuándo | ¿Reintentar? |
 |---|---|---|---|
 | `400` | `invalid_field` | `since`, `cursor` o `X-Contract-Version` mal formados | no, es un error de la app |
-| `401` | `invalid_token` | código inválido o revocado | no. La app pide reconectar en Ajustes → Cuenta web |
+| `401` | `invalid_token` | token inválido o revocado | no. La app pide reconectar en Ajustes → Cuenta web |
 | `403` | `organizer_not_active` | el organizador no tiene licencia vigente ni aprobación manual | no, hasta que lo activen |
 | `426` | `version_unsupported` | la web ya no acepta esa versión del contrato | no, hay que actualizar la app |
-| `429` | `rate_limited` | demasiados intentos con un código inválido. Trae `Retry-After` (segundos) | sí, esperando `Retry-After` |
+| `429` | `rate_limited` | demasiados intentos con un token inválido. Trae `Retry-After` (segundos) | sí, esperando `Retry-After` |
 | `503` | `service_unavailable` | falla temporal de la web o de la base | sí, con espera creciente |
 
-Orden de las comprobaciones: código de conexión (`401`/`429`/`503`), versión y parámetros (`400`/`426`), organizador activo (`403`).
+Orden de las comprobaciones: token de la sesión (`401`/`429`/`503`), versión y parámetros (`400`/`426`), organizador activo (`403`).
 
 ## `GET /api/app/participantes?event_id=<uuid>&since=<ISO-8601>&cursor=<texto>`
 
 **La sincronización de participantes es SIEMPRE por evento (decisión del 2026-11-05).** No existe un modo "todo el
-directorio": devuelve solo a las personas inscritas en UN evento del organizador del código de conexión. Con decenas de
+directorio": devuelve solo a las personas inscritas en UN evento del organizador del token de la sesión. Con decenas de
 miles de lazadores, bajar todo sería enorme y expondría correos de gente ajena a ese organizador. Reglas:
 
 - `event_id` es **obligatorio** (el `id` del evento en la web, el mismo que entrega `GET /api/app/eventos`). Sin él, `400`.
-- El evento debe ser del organizador del código. Si no existe o es de otro, `404` (sin revelar si existe).
+- El evento debe ser del organizador del token. Si no existe o es de otro, `404` (sin revelar si existe).
 - Solo organizadores **activos** (licencia vigente o aprobación manual). Si no lo es, `403` con un mensaje claro y sin correos.
 - La identidad es el **correo** (único y en minúsculas). El celular ya no es llave ni se verifica, y no se envía.
 - `since` y `cursor` son por evento: la app guarda un `since` distinto para cada uno. `generated_at` es el corte de la
@@ -155,10 +156,10 @@ estado de reclamo, sus ratings o su inscripción en ese evento. `since` es inclu
 |---|---|---|
 | `200` | Página entregada (puede traer `participants: []`) | no hace falta |
 | `400` | Falta `event_id`, o `event_id`, `since` o `cursor` no son válidos | no, es un error de la app |
-| `401` | Código de conexión inválido o revocado | no, hay que reconectar |
+| `401` | Token inválido o revocado | no, hay que reconectar |
 | `403` | El organizador no está activo (sin licencia vigente ni aprobación) | no, hasta que lo apruebe un admin |
 | `404` | El evento no existe o no es del organizador (no se distingue) | no |
-| `429` | Demasiados intentos con un código inválido (trae `Retry-After`) | sí, después de esperar |
+| `429` | Demasiados intentos con un token inválido (trae `Retry-After`) | sí, después de esperar |
 | `503` | Falla temporal | sí |
 
 Las respuestas llevan `Cache-Control: no-store`. Los correos nunca se escriben en los registros del servidor.
@@ -182,7 +183,7 @@ evento **cerrado** no cambia hasta reabrirlo con un motivo, y reabrir se hace **
   muestra "actualiza la app". No descarta nada.
 
 ### `POST /api/app/resultados`
-Sube un lote de resultados. Misma autenticación `Authorization: Bearer <código>`.
+Sube un lote de resultados. Misma autenticación `Authorization: Bearer <token>`.
 
 Campos del cuerpo: `contract_version`, `client_batch_id` (UUID del envío, solo para bitácora) y `results[]`.
 
@@ -225,6 +226,15 @@ Cada elemento de `rounds`:
 | `penalty_ms` | entero | >= 0. Por defecto 0 |
 | `substitution` | objeto, opcional | Quién corrió en sustitución en esa ronda (ver abajo). `null` equivale a no ponerlo |
 
+**Varias corridas en una misma ronda (KIN-629).** Un lazador puede tener muchas corridas en la misma ronda (se le asignan tiros y tira varias
+veces). Como una ronda `regular` no se repite dentro de la misma `stage`, hoy solo la primera corrida va como `regular` y las demás de esa ronda
+llegan como `extra`, igual que una corrida extra real (el botón de la app, KIN-548): con este contrato **la web no las puede distinguir**.
+Por eso la web no trata `extra` como "corrida extra" cuando la ronda ya tiene una `regular`: las agrupa por `stage` y `round`, pone la `regular`
+primero y las numera ("Ronda 1 · Corrida 2"), sin tag. Solo etiqueta "Corrida extra" cuando esa ronda no tiene ninguna `regular`. Ninguna entra
+al resumen. **Limitación:** una corrida extra real que comparta ronda con una `regular` se ve igual que otra corrida de esa ronda.
+Pendiente con la app: si se quiere distinguirlas, el contrato necesita un campo propio (por ejemplo el número de corrida dentro de la ronda
+o una marca de "corrida extra del botón"); es un cambio de contrato (`contract_version`), no solo de la web.
+
 `substitution`: `role` (`header` o `heeler`: qué lugar del equipo ocupó el sustituto), `substitute_name` (1 a 120, obligatorio),
 `substitute_global_id` (UUID o `null` si no tiene lazador en la web) y `counts_for_substitute` (booleano, por defecto `false`: si la corrida también
 cuenta para el sustituto). La corrida se queda con el lazador original: **no se crea un resultado aparte para el sustituto**.
@@ -262,7 +272,7 @@ Códigos de rechazo por resultado:
 |---|---|---|
 | `200` | Lote procesado (revisar el estado de cada resultado) | no hace falta |
 | `400` | Cuerpo mal formado o campos obligatorios ausentes | no, es un error de la app |
-| `401` | Código de conexión inválido o revocado | no. La app pide reconectar en Ajustes → Cuenta web |
+| `401` | Token inválido o revocado | no. La app pide reconectar en Ajustes → Cuenta web |
 | `403` | El organizador no está activo (sin licencia vigente ni aprobación) | no, hasta que lo apruebe un admin |
 | `404` | Cierre o reapertura de un evento que no existe o no es del organizador | no |
 | `409` | Conflicto a nivel de lote (solo en el cierre, ver abajo) | no, hay que corregir |
@@ -354,7 +364,7 @@ Revisado contra el esquema de la web (`supabase/migrations`) y el de la app (`ro
 2. **Fórmula del rating** (KIN-571): el recálculo está en pausa y no es parte de este contrato. Si la fórmula necesita datos que no
    están aquí (por ejemplo número de participantes por ronda), habrá que añadirlos de forma compatible.
 3. **Límites** de 200 resultados y 256 KB: razonables para un evento típico, confirmar con un evento grande real.
-4. **Autenticación:** este contrato asume el código de conexión por organizador (KIN-584). El valor fijo `APP_SYNC_TOKEN` solo
+4. **Autenticación:** este contrato asume el token de sesión por equipo (KIN-606). El valor fijo `APP_SYNC_TOKEN` solo
    debe existir en desarrollo.
 
 ## Lado de la app (pendiente)

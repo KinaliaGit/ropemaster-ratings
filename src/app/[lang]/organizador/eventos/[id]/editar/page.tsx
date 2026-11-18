@@ -35,7 +35,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/eventos/[
               <EventForm
                 lang={lang} error={typeof sp.error === "string" ? sp.error : undefined} labels={f}
                 disciplines={ACTIVE_DISCIPLINES.map((d) => ({ id: d.id, label: t.disc[d.id].label }))}
-                initial={{ slug: e.id, name: e.name, date: e.date, capacity: e.capacity, venue: e.venue, city: e.city, description: e.description, paymentInfo, opensAt: e.registrationOpensAt ? isoToZonedLocal(e.registrationOpensAt, e.timezone) : "", closesAt: e.registrationClosesAt ? isoToZonedLocal(e.registrationClosesAt, e.timezone) : "", timezone: e.timezone, disciplines: e.disciplines, cats: e.categories.map((c) => ({ id: c.id, name: c.name, fee: c.fee })) }}
+                initial={{ slug: e.id, name: e.name, date: e.date, capacity: e.capacity, venue: e.venue, city: e.city, description: e.description, paymentInfo, opensAt: e.registrationOpensAt ? isoToZonedLocal(e.registrationOpensAt, e.timezone) : "", closesAt: e.registrationClosesAt ? isoToZonedLocal(e.registrationClosesAt, e.timezone) : "", timezone: e.timezone, maxRoperRating: e.maxRoperRating, disciplines: e.disciplines, cats: e.categories.map((c) => ({ id: c.id, name: c.name, fee: c.fee })) }}
               />
             </div>
           </>

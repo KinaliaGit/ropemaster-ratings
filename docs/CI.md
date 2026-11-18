@@ -32,7 +32,7 @@ Esto no se puede versionar en el repo; hay que activarlo en *Settings* o con `gh
    - Require status checks to pass: `Lint, tipos y build` y `Permisos de la base`; activar *Require branches to be up to date*.
    - Block force pushes y restringir borrado de la rama.
    - Activar *Do not allow bypassing* (incluye admins) si quieren que nadie empuje directo.
-2. **Dependabot**: *Settings → Code security* → activar *Dependabot alerts* y *Dependabot security updates*. Las actualizaciones semanales ya están configuradas en `.github/dependabot.yml`.
+2. **Dependabot**: *Settings → Code security* → activar *Dependabot alerts* y *Dependabot security updates*. Las actualizaciones semanales de versiones están desactivadas a propósito.
 3. **Secret scanning** y *push protection*: en el mismo panel. En repos privados requieren GitHub Secret Protection (Advanced Security) en la organización; si el plan no lo incluye, el botón no aparece.
 
 Nota: en repos privados, la protección de ramas también depende del plan de la organización (Team o superior).

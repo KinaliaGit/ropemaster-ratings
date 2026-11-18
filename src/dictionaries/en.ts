@@ -34,7 +34,7 @@ export const en: Dict = {
     from: "From", 
     organizedBy: "Hosted by", photos: "Photos", noPhotos: "The organizer hasn't uploaded photos yet.", enrolled: "Registered", noEnrolled: "No one has registered yet.",
     results: "Results", resultsClosed: "Final results", resultsInReview: "Results being corrected", noResults: "No results yet.",
-    enrollment: "Registration", enroll: "Register", needAccount: "You need a participant account.", eventFinished: "Event finished", full: "Full", closesOn: "Closes on", registrationClosed: "Registration closed", opensOn: "Registration opens on", notYetOpen: "Registration opens soon",
+    enrollment: "Registration", enroll: "Register", needAccount: "You need a participant account.", eventFinished: "Event finished", full: "Full", closesOn: "Closes on", maxRating: "Maximum rating to register", registrationClosed: "Registration closed", opensOn: "Registration opens on", notYetOpen: "Registration opens soon",
   },
   series: {
     label: "Series", dates: "From", to: "to", eventsTitle: "Events in the series", noEvents: "This series has no published events yet.", organizedBy: "Organized by", view: "View event", enrolled: "registered",
@@ -48,10 +48,10 @@ export const en: Dict = {
     returned: "Thank you! We're confirming your payment; it will show as paid in a few seconds.", paidWith: "Paid with", errors: { unauthenticated: "Sign in to pay.", invalid: "We couldn't find that registration.", already: "That registration is already paid.", noPayouts: "The organizer hasn't enabled online payments yet.", generic: "Couldn't start the payment." },
   },
   enroll: {
-    title: "Registration", category: "Category", discipline: "Discipline", roleTitle: "You are registered as Both. Choose the role you enter this event with:", roleHint: "Your favorite is preselected. Choosing \"Both\" creates two registrations, each with its own spot and fee.", both: "Both", submit: "Register", pendingNote: "Your spot is reserved as pending payment. Afterwards you can pay online or in cash/by transfer with the organizer. You can cancel it while it isn't paid.",
+    title: "Registration", category: "Category", discipline: "Discipline", roleTitle: "You are registered as Both. Choose the role you enter this event with:", roleHint: "Your favorite is preselected. Choosing \"Both\" creates two registrations, each with its own spot and fee.", both: "Both", submit: "Register", pendingNote: "Your spot is reserved as pending payment. Afterwards you can pay online or in cash/by transfer with the organizer. You can cancel it while it isn't paid.", pendingNoteOffline: "Your spot is reserved as pending payment. Afterwards you'll pay in cash or by transfer with the organizer. You can cancel it while it isn't paid.",
     errors: {
       forbidden: "Only participants can register.", role: "Choose the role you compete in (and your favorite if both).", invalid_category: "Invalid event or category.", closed: "Registration is closed.", registration_closed: "Registration for this event has closed.", not_open_yet: "Registration for this event hasn't opened yet.", role_required: "Choose the role you enter this event with.", invalid_role: "That role does not match your profile.", removed: "The organizer removed you from this event. Contact them if you think it was a mistake.", already: "You're already registered in this category.",
-      full: "The event is full.", paid: "That registration is already paid and can't be canceled here.", not_found: "We couldn't find that registration.", failed: "Couldn't complete that. Please try again.",
+      full: "The event is full.", rating_limit: "Your rating is above this event's individual maximum.", paid: "That registration is already paid and can't be canceled here.", not_found: "We couldn't find that registration.", failed: "Couldn't complete that. Please try again.",
     },
   },
   people: {
@@ -64,7 +64,7 @@ export const en: Dict = {
     contactNote: "Contact details are not public. Not you, or something's wrong?", report: "Report", verifiedEvent: "Verified event",
     ratingsByMode: "Rating by discipline",
     loadMore: "Load more", loadError: "Couldn't load. Please try again.", retry: "Try again",
-    round: "Round", roundFinal: "Final", roundTiebreak: "Tiebreak", extra: "Extra", help: "Assist", noTime: "No time", substitute: "Substitute", header: "header", heeler: "heeler", countsForSubstitute: "also counts for the substitute",
+    round: "Round", run: "Run", roundFinal: "Final", roundTiebreak: "Tiebreak", extra: "Extra run", extraHint: "A standalone extra run, with no regular run in that round. It is not a penalty and does not count toward the total time or place.", help: "Assist", helpHint: "An assist run that covers an open spot in the draw. It does not count toward the total time or place.", noTime: "No time", substitute: "Substitute", header: "header", heeler: "heeler", countsForSubstitute: "also counts for the substitute",
     unknownName: "Participant", viewRounds: "View rounds", hideRounds: "Hide rounds", noRounds: "No round detail.", bestPlace: "Best place", bestRun: "Best run", runsCount: "rounds",
   },
   auth: {
@@ -157,21 +157,14 @@ export const en: Dict = {
       opens: "Registration opens", opensHint: "Optional. Before this date and time no one can register (you still can, by hand) and it opens by itself when it arrives. Without a date, it opens as soon as you publish the event. Must be before the deadline.",
       closes: "Registration deadline", closesHint: "Optional. After this date and time no one else can register (you still can, by hand). Without a date, registration stays open until you close it. It can't be after the day of the event.", timezone: "Event time zone",
       save: "Save changes", editTitle: "Edit event", editBlurb: "Changes show up right away on the public page. Anyone already registered keeps the price they reserved at.", saved: "Changes saved.", edit: "Edit",
-      errors: { closeInvalid: "The closing date or time zone isn't valid.", closeAfterEvent: "Registration can't close after the day of the event.", opensInvalid: "The opening date isn't valid.", opensAfterEvent: "Registration can't open after the day of the event.", opensAfterClose: "The opening must be before the registration deadline.", outsideSeries: "The event date must be within the dates of its series.", capacity: "Capacity can't be lower than the number already registered.", catInUse: "You can't remove a category that already has registrations. You can rename it or change its price." },
+      errors: { closeInvalid: "The closing date or time zone isn't valid.", closeAfterEvent: "Registration can't close after the day of the event.", opensInvalid: "The opening date isn't valid.", opensAfterEvent: "Registration can't open after the day of the event.", opensAfterClose: "The opening must be before the registration deadline.", outsideSeries: "The event date must be within the dates of its series.", capacity: "Capacity can't be lower than the number already registered.", catInUse: "You can't remove a category that already has registrations. You can rename it or change its price.", ratingLimit: "The maximum rating must be a number between 0 and 10." },
       photosLater: "After creating the event you can add photos and choose the cover. ", 
       error: "Please check the fields: something is missing or invalid.", title: "New event", blurb: "Once published it appears on the website and your Rope Master app downloads it when it syncs.", name: "Event name", date: "Date", capacity: "Capacity", venue: "Venue", city: "City",
-      disciplines: "Disciplines", categories: "Categories and registration fee", categoryName: "Category name", categoryNamePlaceholder: "E.g. Open, Amateur", cost: "Registration fee", costHint: "What each participant pays for this category", addCategory: "+ Add category", description: "Description", cover: "Cover photo", saveDraft: "Save draft", publish: "Publish",
+      disciplines: "Disciplines", categories: "Categories and registration fee", categoryName: "Category name", categoryNamePlaceholder: "E.g. Open, Amateur", cost: "Registration fee", costHint: "What each participant pays for this category", maxRoperRating: "Maximum rating to register (optional)", maxRoperRatingHint: "Anyone with a higher rating won't be able to register. Leave it empty for no limit.", addCategory: "+ Add category", description: "Description", cover: "Cover photo", saveDraft: "Save draft", publish: "Publish",
     },
     app: {
       title: "Connect your Rope Master app", blurb: "What you publish here reaches your app by itself: events and participants download when you're online, then you use them offline.",
       steps: ["In the app, go to Settings → Web account.", "Sign in with your email and password from this site.", "Press Sync: your events and participants download to the app."],
-      code: {
-        title: "Connection code (backup)", backup: "Only if you can't sign in to the app with your email and password. It works the same, but you paste it by hand.", connected: "Connected", notConnected: "Not connected", since: "Code created on", none: "You haven't generated a code yet.",
-        generate: "Generate code", regenerate: "Generate a new one", copy: "Copy", copied: "Copied", shownOnce: "Copy it now: for security it won't be shown again.",
-        replaceNote: "If you generate a new one, the old one stops working and you'll need to paste the new one in the app.", error: "Couldn't generate the code. Try again.",
-        lastUsed: "Last used", neverUsed: "Not used yet", revoke: "Revoke code",
-        revokeConfirm: "If you revoke it, the connected app stops working immediately. Revoke the code?", revokeError: "Couldn't revoke the code. Try again.",
-      },
       devices: {
         title: "Connected computers", blurb: "Each computer where you sign in to the app with your email and password. You can have up to 3. A computer that doesn't connect for 30 days stops working and asks for your password again.",
         none: "You haven't connected any computer yet.", since: "Connected on", lastUsed: "Last used", neverUsed: "Not used yet", expires: "Expires on", expired: "Expired: sign in again from the app",

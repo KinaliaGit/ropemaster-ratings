@@ -4,6 +4,7 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
 import { StripeConnectButton } from "@/components/StripeConnectButton";
+import { STRIPE_ENABLED } from "@/lib/flags";
 import { listOrganizerEvents } from "@/lib/data/events";
 import { fmtDate, mxn } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
@@ -39,7 +40,7 @@ async function Panel({ s, lang, t, welcome }: { s: Session; lang: Lang; t: Dict;
         <dl className="mt-6 grid gap-3 sm:grid-cols-3">
           {stats.map(([l, v]) => <div key={l} className="card p-4"><dd className="text-3xl font-semibold tabular-nums">{v}</dd><dt className="label mt-1">{l}</dt></div>)}
         </dl>
-        <StripeConnectButton lang={lang} {...t.org.stripe} />
+        {STRIPE_ENABLED && <StripeConnectButton lang={lang} {...t.org.stripe} />}
         <h2 className="mt-10 text-xl font-semibold">{t.org.myEvents}</h2>
         {mine.length === 0 ? <p className="mt-3 rounded-2xl bg-sand p-6 text-center text-muted">{t.org.noEvents}</p> : (
           <>

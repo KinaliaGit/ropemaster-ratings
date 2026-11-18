@@ -12,6 +12,7 @@
       "status": "publicado",
       "disciplines": ["lazo"],
       "capacity": 100,
+      "max_roper_rating": 6.5,
       "description": "Rodeo de fin de año, lazo en equipo.",
       "updated_at": "2026-11-05T18:30:00.000Z",
       "categories": [

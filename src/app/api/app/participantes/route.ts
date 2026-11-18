@@ -9,7 +9,7 @@ import { PAGE_SIZE, buildPage, parseParticipantsQuery, type ParticipantRow } fro
 //
 // La sincronización es SIEMPRE por evento: `event_id` es obligatorio y no existe un modo "todo el directorio". Solo se devuelven las
 // personas inscritas en ese evento, con su correo (la identidad en la web), si ya reclamaron su perfil y su rating por modalidad.
-// Orden de las comprobaciones: código de conexión (401/429), parámetros (400), organizador activo (403), evento suyo (404).
+// Orden de las comprobaciones: token de la sesión (401/429), parámetros (400), organizador activo (403), evento suyo (404).
 //   GET /api/app/participantes?event_id=<uuid>&since=<ISO>&cursor=<texto>
 //   -> { participants: [...], next_cursor: string | null, generated_at: ISO }
 // NUNCA se registran los correos en logs.

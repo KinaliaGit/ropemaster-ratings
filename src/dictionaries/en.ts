@@ -34,7 +34,12 @@ export const en: Dict = {
     from: "From", 
     organizedBy: "Hosted by", photos: "Photos", noPhotos: "The organizer hasn't uploaded photos yet.", enrolled: "Registered", noEnrolled: "No one has registered yet.",
     results: "Results", resultsClosed: "Final results", resultsInReview: "Results being corrected", noResults: "No results yet.",
-    enrollment: "Registration", enroll: "Register", needAccount: "You need a participant account.", eventFinished: "Event finished", full: "Full", closesOn: "Closes on", registrationClosed: "Registration closed",
+    enrollment: "Registration", enroll: "Register", needAccount: "You need a participant account.", eventFinished: "Event finished", full: "Full", closesOn: "Closes on", registrationClosed: "Registration closed", opensOn: "Registration opens on", notYetOpen: "Registration opens soon",
+  },
+  series: {
+    label: "Series", dates: "From", to: "to", eventsTitle: "Events in the series", noEvents: "This series has no published events yet.", organizedBy: "Organized by", view: "View event", enrolled: "registered",
+    opensOn: "Opens", closesOn: "Closes", openCount: "open", nextEvent: "Next event", partOf: "Part of the series", all: "See the whole series", eventsCount: "events",
+    phase: { draft: "Draft", upcoming: "Upcoming", open: "Registration open", full: "Full", closed: "Registration closed", finished: "Finished" },
   },
   pay: {
     method: { efectivo: "Cash", transferencia: "Bank transfer", stripe: "Online" }, markPaid: "Mark paid:", undo: "Undo", error: "Couldn't change the payment. Please try again.",
@@ -45,7 +50,7 @@ export const en: Dict = {
   enroll: {
     title: "Registration", category: "Category", discipline: "Discipline", roleTitle: "You are registered as Both. Choose the role you enter this event with:", roleHint: "Your favorite is preselected. Choosing \"Both\" creates two registrations, each with its own spot and fee.", both: "Both", submit: "Register", pendingNote: "Your spot is reserved as pending payment. Afterwards you can pay online or in cash/by transfer with the organizer. You can cancel it while it isn't paid.",
     errors: {
-      forbidden: "Only participants can register.", role: "Choose the role you compete in (and your favorite if both).", invalid_category: "Invalid event or category.", closed: "Registration is closed.", registration_closed: "Registration for this event has closed.", role_required: "Choose the role you enter this event with.", invalid_role: "That role does not match your profile.", removed: "The organizer removed you from this event. Contact them if you think it was a mistake.", already: "You're already registered in this category.",
+      forbidden: "Only participants can register.", role: "Choose the role you compete in (and your favorite if both).", invalid_category: "Invalid event or category.", closed: "Registration is closed.", registration_closed: "Registration for this event has closed.", not_open_yet: "Registration for this event hasn't opened yet.", role_required: "Choose the role you enter this event with.", invalid_role: "That role does not match your profile.", removed: "The organizer removed you from this event. Contact them if you think it was a mistake.", already: "You're already registered in this category.",
       full: "The event is full.", paid: "That registration is already paid and can't be canceled here.", not_found: "We couldn't find that registration.", failed: "Couldn't complete that. Please try again.",
     },
   },
@@ -89,13 +94,13 @@ export const en: Dict = {
     },
     welcome: "Account created! You can now create your first event.", noEvents: "You have no events yet. Create the first one.", noParticipants: "No participants have registered yet.",
     accountType: "Organizer account", newEvent: "+ New event", events: "Events", enrolled: "Registered", collected: "Collected", myEvents: "My events", manage: "Manage",
-    tabs: { appShort: "App", adminShort: "Admin", admin: "Administration", summary: "Overview", participants: "Participants", app: "Local app" },
+    tabs: { series: "Series", appShort: "App", adminShort: "Admin", admin: "Administration", summary: "Overview", participants: "Participants", app: "Local app" },
     tbl: { event: "Event", date: "Date", state: "Status", enrolled: "Registered" },
     stripe: { title: "Enable payments.", text: "Connect your Stripe account to receive registrations straight into your bank.", btn: "Connect Stripe", opening: "Opening…" },
     ev: {
       back: "My events", publicPage: "View public page", publish: "Publish", toDraft: "Move to draft", paid: "Paid", state: "Status · available in the app on sync",
       enrolledTitle: "Registered", participant: "Participant", phone: "Email", rating: "Rating", category: "Category", payment: "Payment", paidAmount: "Paid", pending: "Pending", noneEnrolled: "No one has registered yet.",
-      registration: "Registration", regOpen: "Open", regClosed: "Closed", closesAt: "Closes on", closesAtPast: "Closed on", noDeadline: "No deadline: open until you close it.", closeNow: "Close registration", reopen: "Reopen registration", reopenHint: "If the deadline has passed, reopening removes it; you can set another by editing the event.",
+      registration: "Registration", regOpen: "Open", regClosed: "Closed", regNotYet: "Coming soon", opensAt: "Opens on", partOfSeries: "Part of the series", closesAt: "Closes on", closesAtPast: "Closed on", noDeadline: "No deadline: open until you close it.", closeNow: "Close registration", reopen: "Reopen registration", reopenHint: "If the deadline has passed, reopening removes it; you can set another by editing the event.",
       role: "Role", manualRole: "Role", manualRoleAuto: "From their profile", manualBoth: "Both", manualTitle: "Register someone", manualHint: "Works even when registration is closed. The person must be in Participants; look them up by email.", manualEmail: "Participant email", manualCategory: "Category", manualSubmit: "Register",
       manual: { ok: "Done: they're registered, payment pending.", invalid: "Check the email and the category.", not_found: "No participant has that email. Add them in Participants first.", already: "Already registered in that category.", full: "The event is full.", invalid_category: "That category isn't from this event.", invalid_role: "That role does not match the person's profile.", failed: "Couldn't register. Please try again." },
       remove: {
@@ -106,6 +111,30 @@ export const en: Dict = {
         allow: "Allow them to register again", block: "Block again", allowed: "Can register again", blocked: "Cannot register on their own", notPaid: "No payment",
         msg: { ok: "Done: they were removed and their spot is free.", reenroll: "Done: we updated whether they can register again.", refund: "Done: we updated the refund.", invalid_reason: "Write a reason of at least 3 characters.", has_results: "They already have results in this event: they cannot be removed.", closed: "The event is already finished: nobody can be removed.", not_found: "We could not find that registration.", no_payment: "That registration had no payment.", failed: "Could not complete. Try again." },
       },
+    },
+    series: {
+      title: "Series", blurb: "Group the events of a season (for example 9 dates through the year) and create them all at once, each with its own registration opening.", newSeries: "+ New series", none: "You have no series yet. Create the first one.", manage: "Manage", eventsCount: "events", myEvents: "My events", deleted: "Series deleted. Its events still exist as standalone events.",
+      back: "My series", shareHint: "Anyone with this link sees the series and its events, and can register from there.", publicPage: "View public page", edit: "Edit series", dates: "Series dates", noPublic: "The public page appears once you publish at least one event.", created: "Series created! Now add its events.", saved: "Changes saved.",
+      form: {
+        newTitle: "New series", newBlurb: "Set the season and the configuration copied to each event. Then you add the events with their dates.", editTitle: "Edit series", editBlurb: "Changes to the configuration only apply to events you create afterwards; existing events are edited one by one.",
+        name: "Series name", description: "Description", start: "Starts", end: "Ends", timezone: "Time zone of the events", templateTitle: "Configuration of each event", templateHint: "Copied to each new event in the series; you can change each one afterwards.",
+        city: "City", venue: "Venue", capacity: "Capacity per event", disciplines: "Disciplines", categories: "Categories and entry fee", categoryName: "Category name", cost: "Entry fee", costHint: "What each participant pays for this category", addCategory: "+ Add category",
+        paymentInfo: "Payment instructions (transfer or cash)", paymentInfoHint: "Only people who register can see them. Copied to each event.", create: "Create series", save: "Save changes",
+        errors: { "1": "Check the fields: something is missing or invalid.", range: "The series can't end before it starts.", outsideRange: "Some events of the series fall outside those dates. Move those events first or widen the range." },
+      },
+      ev: {
+        title: "Events in the series", none: "No events yet. Add them below.", addTitle: "Add events", addHint: "Each event copies the series configuration (venue, capacity, categories and payment). Add one or several at once; you can edit each one afterwards.",
+        name: "Event name", date: "Date", opens: "Registration opens", opensHint: "Empty = opens as soon as you publish the event. With a date and time it opens by itself.", addRow: "+ Add another event", removeRow: "Remove", createDraft: "Create as drafts", createPublish: "Create and publish",
+        publishDrafts: "Publish all drafts", delete: "Delete", deleteTitle: "Delete this event", deleteText: "The event is deleted and this can't be undone. Only possible if it has no registrations or results.", deleteConfirm: "Yes, delete", keep: "Cancel",
+        manage: "Manage", edit: "Edit", enrolled: "Registered", range: "Allowed dates:", defaultName: "Round", opensOn: "Opens", opensNow: "As soon as it's published", closesOn: "Closes",
+        msg: { agregados: "Done: we created", agregadosEnd: "event(s).", borrado: "Event deleted.", publicados: "Done: drafts published." },
+        errors: {
+          noEvents: "Add at least one event with a name and a date.", invalidRow: "Check the events: each needs a name and a valid date, and the opening must be a valid date and time.", outsideRange: "Some dates fall outside the series range. Adjust the event dates or the series dates.",
+          open_after_event: "Registration can't open after the day of the event.", series_full: "A series can have up to 30 events.", template_incomplete: "Complete the series configuration (venue, capacity, disciplines and categories) before adding events.",
+          failed: "Couldn't complete. Try again.", del_has_registrations: "That event already has registrations: it can't be deleted.", del_has_results: "That event already has results: it can't be deleted.", del_closed: "That event has finished: it can't be deleted.", del_not_found: "We couldn't find that event.", del_failed: "Couldn't delete. Try again.",
+        },
+      },
+      danger: { title: "Delete series", text: "Its events are not deleted: they stay as standalone events, with their registrations and results.", confirm: "Delete the series" },
     },
     dir: { title: "Participants", blurb: "Global directory with contact details, visible to organizers only. Use it to register participants in your events.", name: "Name", email: "Email", rating: "Rating", events: "Events", wins: "Wins", profile: "Profile", verified: "Verified", unclaimed: "Unclaimed",
       addTitle: "Add participant", addBlurb: "Register them with their email so they appear in the directory and can claim their profile when they create their account.", addName: "Full name", addEmail: "Email", addEmailHint: "When the person creates their account with this email, they will claim their profile and history.",
@@ -125,9 +154,10 @@ export const en: Dict = {
     },
     form: {
       paymentInfo: "Payment instructions (transfer or cash)", paymentInfoHint: "Only people who register for your event can see them. E.g. bank account, bank and holder, or \"pay cash at the arena\".", paymentInfoPlaceholder: "Account 0123 4567 8901 2345 67 · Bank · Holder",
+      opens: "Registration opens", opensHint: "Optional. Before this date and time no one can register (you still can, by hand) and it opens by itself when it arrives. Without a date, it opens as soon as you publish the event. Must be before the deadline.",
       closes: "Registration deadline", closesHint: "Optional. After this date and time no one else can register (you still can, by hand). Without a date, registration stays open until you close it. It can't be after the day of the event.", timezone: "Event time zone",
       save: "Save changes", editTitle: "Edit event", editBlurb: "Changes show up right away on the public page. Anyone already registered keeps the price they reserved at.", saved: "Changes saved.", edit: "Edit",
-      errors: { closeInvalid: "The closing date or time zone isn't valid.", closeAfterEvent: "Registration can't close after the day of the event.", capacity: "Capacity can't be lower than the number already registered.", catInUse: "You can't remove a category that already has registrations. You can rename it or change its price." },
+      errors: { closeInvalid: "The closing date or time zone isn't valid.", closeAfterEvent: "Registration can't close after the day of the event.", opensInvalid: "The opening date isn't valid.", opensAfterEvent: "Registration can't open after the day of the event.", opensAfterClose: "The opening must be before the registration deadline.", outsideSeries: "The event date must be within the dates of its series.", capacity: "Capacity can't be lower than the number already registered.", catInUse: "You can't remove a category that already has registrations. You can rename it or change its price." },
       photosLater: "After creating the event you can add photos and choose the cover. ", 
       error: "Please check the fields: something is missing or invalid.", title: "New event", blurb: "Once published it appears on the website and your Rope Master app downloads it when it syncs.", name: "Event name", date: "Date", capacity: "Capacity", venue: "Venue", city: "City",
       disciplines: "Disciplines", categories: "Categories and registration fee", categoryName: "Category name", categoryNamePlaceholder: "E.g. Open, Amateur", cost: "Registration fee", costHint: "What each participant pays for this category", addCategory: "+ Add category", description: "Description", cover: "Cover photo", saveDraft: "Save draft", publish: "Publish",

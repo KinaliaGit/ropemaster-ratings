@@ -8,6 +8,7 @@ export function OrgNav({ lang, t, admin = false }: { lang: Lang; t: Dict; admin?
     <OrgTabs
       tabs={[
         { href: base, label: t.org.tabs.summary, match: [`${base}/eventos`] },
+        { href: `${base}/series`, label: t.org.tabs.series, match: [`${base}/series`] },
         { href: `${base}/participantes`, label: t.org.tabs.participants },
         { href: `${base}/app`, label: t.org.tabs.app, short: t.org.tabs.appShort },
         ...(admin ? [{ href: `${base}/admin`, label: t.org.tabs.admin, short: t.org.tabs.adminShort }] : []),

@@ -6,9 +6,9 @@ import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/event-time";
 type Labels = {
   name: string; date: string; capacity: string; venue: string; city: string; disciplines: string; categories: string; categoryName: string; categoryNamePlaceholder: string; cost: string; costHint: string; addCategory: string;
   error: string; description: string; saveDraft: string; publish: string; photosLater: string; save: string; errors: Record<string, string>; paymentInfo: string; paymentInfoHint: string; paymentInfoPlaceholder: string;
-  closes: string; closesHint: string; timezone: string;
+  opens: string; opensHint: string; closes: string; closesHint: string; timezone: string;
 };
-export type EventInitial = { slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; paymentInfo: string; closesAt: string; timezone: string; disciplines: string[]; cats: { id: string; name: string; fee: number }[] };
+export type EventInitial = { slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; paymentInfo: string; opensAt: string; closesAt: string; timezone: string; disciplines: string[]; cats: { id: string; name: string; fee: number }[] };
 
 const input = "mt-1 w-full rounded-xl border border-line bg-white px-4 py-2.5 outline-none focus:border-ink";
 
@@ -57,6 +57,11 @@ export function EventForm({ lang, labels: l, disciplines, error, initial }: { la
         <textarea name="paymentInfo" rows={3} maxLength={1000} defaultValue={initial?.paymentInfo} placeholder={l.paymentInfoPlaceholder} className={input} />
         <span className="mt-1 block text-xs font-normal text-muted">{l.paymentInfoHint}</span>
       </label>
+      <fieldset>
+        <legend className="text-sm font-medium">{l.opens}</legend>
+        <p className="mt-0.5 text-xs text-muted">{l.opensHint}</p>
+        <input name="opensAt" type="datetime-local" defaultValue={initial?.opensAt} aria-label={l.opens} className={`${input.replace("mt-1 ", "")} mt-2 sm:w-1/2`} />
+      </fieldset>
       <fieldset>
         <legend className="text-sm font-medium">{l.closes}</legend>
         <p className="mt-0.5 text-xs text-muted">{l.closesHint}</p>

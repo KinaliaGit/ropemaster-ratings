@@ -57,12 +57,28 @@ export const zonedDateOf = (iso: string, tz: string) => isoToZonedLocal(iso, tz)
 // ¿La fecha de cierre cae después del día del evento? El evento solo tiene fecha (sin hora), así que se permite cerrar el mismo día.
 export const closesAfterEvent = (closesIso: string, eventDate: string, tz: string) => zonedDateOf(closesIso, tz) > eventDate;
 
-export type RegistrationWindow = { closesAt: string | null; closed: boolean };
+// Ventana de inscripción: puede abrirse en una fecha programada (KIN-625; vacía = desde que el evento se publica) y cerrarse en otra (KIN-626).
+export type RegistrationWindow = { opensAt?: string | null; closesAt: string | null; closed: boolean };
 
-// ¿Siguen abiertas las inscripciones? (sin contar cupo ni estado del evento). Sin fecha, abiertas hasta que el organizador cierre.
+// ¿Todavía no llega la apertura programada?
+export const isNotOpenYet = (w: Pick<RegistrationWindow, "opensAt">, now: number = Date.now()) => !!w.opensAt && now < Date.parse(w.opensAt);
+
+// ¿Están abiertas las inscripciones? (sin contar cupo ni estado del evento). Sin fecha de cierre, abiertas hasta que el organizador cierre;
+// con apertura programada, cerradas hasta que llegue esa fecha (se abren solas: se compara contra la hora actual).
 export function isRegistrationOpen(w: RegistrationWindow, now: number = Date.now()): boolean {
-  if (w.closed) return false;
+  if (w.closed || isNotOpenYet(w, now)) return false;
   return !w.closesAt || now < Date.parse(w.closesAt);
+}
+
+// Etapa de un evento para las listas de una serie: borrador, próximo (publicado, las inscripciones aún no abren), inscripciones abiertas,
+// cupo lleno, inscripciones cerradas o finalizado.
+export type EventPhase = "draft" | "upcoming" | "open" | "full" | "closed" | "finished";
+export function eventPhase(e: { status: string; enrolled: number; capacity: number } & RegistrationWindow, now: number = Date.now()): EventPhase {
+  if (e.status === "finalizado") return "finished";
+  if (e.status === "borrador") return "draft";
+  if (e.closed || (e.closesAt && now >= Date.parse(e.closesAt))) return "closed";
+  if (isNotOpenYet(e, now)) return "upcoming";
+  return e.capacity > 0 && e.enrolled >= e.capacity ? "full" : "open";
 }
 
 // "5 de diciembre de 2026, 18:00" en la zona del evento (con la abreviatura de la zona).

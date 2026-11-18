@@ -368,3 +368,13 @@ Revisado contra el esquema de la web (`supabase/migrations`) y el de la app (`ro
 ## Modalidades
 Los ids de modalidad son `lazo` y `barriles` (los mismos en `events.disciplines`, `event_results.discipline` y `ratings`).
 La app debe mapear cada modo de juego local a su id; los modos que la web aún no activa se ignoran.
+
+## Series de eventos (KIN-625): aún no forman parte del contrato
+
+La web ya permite armar series (un organizador agrupa hasta 30 eventos de una temporada). Esta versión del contrato (`contract_version` 1) **no las
+incluye**: `GET /api/app/eventos` sigue devolviendo cada evento por separado, y un evento de una serie se ve como cualquier otro evento. Los datos
+quedan listos para exponerlos después sin cambiar el esquema: `event_series` (id, slug, nombre, descripción, `start_date`, `end_date`, `timezone`)
+y `events.series_id`. Cuando se exponga será un cambio aditivo (p. ej. `series: { id, name, start_date, end_date }` en cada evento).
+
+`events.registration_opens_at` (apertura programada de inscripciones) tampoco viaja en el contrato: solo afecta a quién puede inscribirse desde la web.
+El organizador sigue pudiendo inscribir a mano antes de la apertura.

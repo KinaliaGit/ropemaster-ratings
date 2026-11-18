@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { closesAfterEvent, fmtDeadline, isoToZonedLocal, isRegistrationOpen, isValidTimezone, zonedDateOf, zonedLocalToIso } from "../src/lib/event-time.ts";
+import { closesAfterEvent, eventPhase, fmtDeadline, isNotOpenYet, isoToZonedLocal, isRegistrationOpen, isValidTimezone, zonedDateOf, zonedLocalToIso } from "../src/lib/event-time.ts";
 
 const MX = "America/Mexico_City";
 
@@ -48,4 +48,29 @@ test("la fecha límite se muestra en la zona del evento", () => {
   assert.match(fmtDeadline(iso, MX, "es"), /5 de diciembre de 2026/);
   assert.match(fmtDeadline(iso, MX, "es"), /6:00/);
   assert.match(fmtDeadline(iso, MX, "en"), /December 5, 2026/);
+});
+
+test("la apertura programada mantiene cerradas las inscripciones hasta su fecha y se abre sola", () => {
+  const opens = "2026-12-01T18:00:00.000Z", before = Date.parse("2026-12-01T17:59:59Z"), after = Date.parse("2026-12-01T18:00:00Z");
+  assert.equal(isNotOpenYet({ opensAt: opens }, before), true);
+  assert.equal(isNotOpenYet({ opensAt: opens }, after), false);
+  assert.equal(isNotOpenYet({ opensAt: null }, before), false);
+  assert.equal(isRegistrationOpen({ opensAt: opens, closesAt: null, closed: false }, before), false);
+  assert.equal(isRegistrationOpen({ opensAt: opens, closesAt: null, closed: false }, after), true);
+  assert.equal(isRegistrationOpen({ opensAt: opens, closesAt: "2026-12-10T00:00:00.000Z", closed: false }, Date.parse("2026-12-10T00:00:00Z")), false); // ya cerró
+  assert.equal(isRegistrationOpen({ opensAt: opens, closesAt: null, closed: true }, after), false); // cerrado a mano
+  assert.equal(isRegistrationOpen({ closesAt: null, closed: false }, before), true); // sin apertura programada: abiertas
+});
+
+test("la etapa de un evento de la serie: próximo, abiertas, lleno, cerradas, finalizado y borrador", () => {
+  const now = Date.parse("2026-12-01T12:00:00Z");
+  const base = { status: "publicado", enrolled: 3, capacity: 10, opensAt: null, closesAt: null, closed: false };
+  assert.equal(eventPhase(base, now), "open");
+  assert.equal(eventPhase({ ...base, opensAt: "2026-12-05T00:00:00.000Z" }, now), "upcoming");
+  assert.equal(eventPhase({ ...base, opensAt: "2026-11-01T00:00:00.000Z" }, now), "open");
+  assert.equal(eventPhase({ ...base, enrolled: 10 }, now), "full");
+  assert.equal(eventPhase({ ...base, closed: true }, now), "closed");
+  assert.equal(eventPhase({ ...base, closesAt: "2026-12-01T00:00:00.000Z" }, now), "closed");
+  assert.equal(eventPhase({ ...base, status: "borrador" }, now), "draft");
+  assert.equal(eventPhase({ ...base, status: "finalizado", closed: true }, now), "finished");
 });

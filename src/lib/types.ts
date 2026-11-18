@@ -9,7 +9,7 @@ export type EventItem = {
   id: string; name: string; date: string; city: string; venue: string;
   disciplines: string[]; categories: Category[]; capacity: number; enrolled: number;
   organizer: string; uuid?: string; organizerId?: string; tone: number; cover?: string; photos: { id: string; url: string }[];
-  timezone: string; registrationClosesAt: string | null; registrationClosed: boolean; updatedAt: string; description: string; status: "publicado" | "borrador" | "finalizado";
+  timezone: string; registrationOpensAt: string | null; registrationClosesAt: string | null; registrationClosed: boolean; series: { slug: string; name: string } | null; updatedAt: string; description: string; status: "publicado" | "borrador" | "finalizado";
   resultsClosed: boolean; // los resultados ya están cerrados (candado de la app); un evento finalizado con los resultados abiertos está en corrección
 };
 

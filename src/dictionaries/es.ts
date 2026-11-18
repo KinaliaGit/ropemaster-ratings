@@ -34,7 +34,12 @@ export const es = {
     from: "Desde", 
     organizedBy: "Organiza", photos: "Fotos", noPhotos: "El organizador aún no ha subido fotos.", enrolled: "Inscritos", noEnrolled: "Aún no hay inscritos.",
     results: "Resultados", resultsClosed: "Resultados cerrados", resultsInReview: "Resultados en corrección", noResults: "Aún no hay resultados.",
-    enrollment: "Inscripción", enroll: "Inscribirme", needAccount: "Necesitas una cuenta de participante.", eventFinished: "Evento finalizado", full: "Cupo lleno", closesOn: "Cierra el", registrationClosed: "Inscripciones cerradas",
+    enrollment: "Inscripción", enroll: "Inscribirme", needAccount: "Necesitas una cuenta de participante.", eventFinished: "Evento finalizado", full: "Cupo lleno", closesOn: "Cierra el", registrationClosed: "Inscripciones cerradas", opensOn: "Las inscripciones abren el", notYetOpen: "Inscripciones próximamente",
+  },
+  series: {
+    label: "Serie", dates: "Del", to: "al", eventsTitle: "Eventos de la serie", noEvents: "Esta serie aún no tiene eventos publicados.", organizedBy: "Organiza", view: "Ver evento", enrolled: "inscritos",
+    opensOn: "Abren el", closesOn: "Cierran el", openCount: "abiertos", nextEvent: "Próximo evento", partOf: "Parte de la serie", all: "Ver toda la serie", eventsCount: "eventos",
+    phase: { draft: "Borrador", upcoming: "Próximo", open: "Inscripciones abiertas", full: "Cupo lleno", closed: "Inscripciones cerradas", finished: "Finalizado" },
   },
   pay: {
     method: { efectivo: "Efectivo", transferencia: "Transferencia", stripe: "En línea" }, markPaid: "Marcar pagado:", undo: "Deshacer", error: "No se pudo cambiar el pago. Intenta de nuevo.",
@@ -45,7 +50,7 @@ export const es = {
   enroll: {
     title: "Inscripción", category: "Categoría", discipline: "Modalidad", roleTitle: "Estás registrado como Ambos. Elige con qué rol entras a este evento:", roleHint: "Tu favorito viene preseleccionado. Si eliges \"Los dos\" se crean dos inscripciones, cada una con su lugar en el cupo y su costo.", both: "Los dos", submit: "Inscribirme", pendingNote: "Tu lugar queda apartado como pendiente de pago. Después podrás pagar en línea o en efectivo/transferencia con el organizador. Puedes cancelarlo mientras no esté pagado.",
     errors: {
-      forbidden: "Solo los participantes pueden inscribirse.", role: "Elige con qué rol compites (y tu favorito si son ambos).", invalid_category: "Evento o categoría inválidos.", closed: "Las inscripciones están cerradas.", registration_closed: "Las inscripciones de este evento ya cerraron.", role_required: "Elige con qué rol entras a este evento.", invalid_role: "Ese rol no corresponde a tu perfil.", removed: "El organizador te sacó de este evento. Contáctalo si crees que fue un error.", already: "Ya estás inscrito en esta categoría.",
+      forbidden: "Solo los participantes pueden inscribirse.", role: "Elige con qué rol compites (y tu favorito si son ambos).", invalid_category: "Evento o categoría inválidos.", closed: "Las inscripciones están cerradas.", registration_closed: "Las inscripciones de este evento ya cerraron.", not_open_yet: "Las inscripciones de este evento todavía no abren.", role_required: "Elige con qué rol entras a este evento.", invalid_role: "Ese rol no corresponde a tu perfil.", removed: "El organizador te sacó de este evento. Contáctalo si crees que fue un error.", already: "Ya estás inscrito en esta categoría.",
       full: "El cupo está lleno.", paid: "Esa inscripción ya está pagada y no se puede cancelar aquí.", not_found: "No encontramos esa inscripción.", failed: "No se pudo completar. Intenta de nuevo.",
     },
   },
@@ -89,13 +94,13 @@ export const es = {
     },
     welcome: "¡Cuenta creada! Ya puedes crear tu primer evento.", noEvents: "Aún no tienes eventos. Crea el primero.", noParticipants: "Todavía no hay participantes registrados.",
     accountType: "Cuenta de organizador", newEvent: "+ Nuevo evento", events: "Eventos", enrolled: "Inscritos", collected: "Cobrado", myEvents: "Mis eventos", manage: "Gestionar",
-    tabs: { appShort: "App", adminShort: "Admin", admin: "Administración", summary: "Resumen", participants: "Participantes", app: "App local" },
+    tabs: { series: "Series", appShort: "App", adminShort: "Admin", admin: "Administración", summary: "Resumen", participants: "Participantes", app: "App local" },
     tbl: { event: "Evento", date: "Fecha", state: "Estado", enrolled: "Inscritos" },
     stripe: { title: "Activa tus cobros.", text: "Conecta tu cuenta de Stripe para recibir las inscripciones directo en tu banco.", btn: "Conectar Stripe", opening: "Abriendo…" },
     ev: {
       back: "Mis eventos", publicPage: "Ver página pública", publish: "Publicar", toDraft: "Pasar a borrador", paid: "Pagados", state: "Estado · disponible en la app al sincronizar",
       enrolledTitle: "Inscritos", participant: "Participante", phone: "Correo", rating: "Rating", category: "Categoría", payment: "Pago", paidAmount: "Pagado", pending: "Pendiente", noneEnrolled: "Aún no hay inscritos.",
-      registration: "Inscripciones", regOpen: "Abiertas", regClosed: "Cerradas", closesAt: "Cierran el", closesAtPast: "Cerraron el", noDeadline: "Sin fecha límite: abiertas hasta que las cierres.", closeNow: "Cerrar inscripciones", reopen: "Reabrir inscripciones", reopenHint: "Si ya pasó la fecha límite, al reabrir se quita; puedes poner otra al editar el evento.",
+      registration: "Inscripciones", regOpen: "Abiertas", regClosed: "Cerradas", regNotYet: "Próximamente", opensAt: "Abren el", partOfSeries: "Parte de la serie", closesAt: "Cierran el", closesAtPast: "Cerraron el", noDeadline: "Sin fecha límite: abiertas hasta que las cierres.", closeNow: "Cerrar inscripciones", reopen: "Reabrir inscripciones", reopenHint: "Si ya pasó la fecha límite, al reabrir se quita; puedes poner otra al editar el evento.",
       role: "Rol", manualRole: "Rol", manualRoleAuto: "Según su perfil", manualBoth: "Los dos", manualTitle: "Inscribir a alguien", manualHint: "Funciona aunque las inscripciones estén cerradas. La persona debe estar en Participantes; búscala por su correo.", manualEmail: "Correo del participante", manualCategory: "Categoría", manualSubmit: "Inscribir",
       manual: { ok: "Listo: quedó inscrito, con el pago pendiente.", invalid: "Revisa el correo y la categoría.", not_found: "No hay ningún participante con ese correo. Agrégalo primero en Participantes.", already: "Ya estaba inscrito en esa categoría.", full: "El cupo está lleno.", invalid_category: "Esa categoría no es de este evento.", invalid_role: "Ese rol no corresponde al perfil de la persona.", failed: "No se pudo inscribir. Intenta de nuevo." },
       remove: {
@@ -106,6 +111,30 @@ export const es = {
         allow: "Permitir que vuelva a inscribirse", block: "Volver a bloquear", allowed: "Puede volver a inscribirse", blocked: "No puede inscribirse solo", notPaid: "Sin pago",
         msg: { ok: "Listo: lo sacaste del evento y se liberó su lugar.", reenroll: "Listo: actualizamos si puede volver a inscribirse.", refund: "Listo: actualizamos el reembolso.", invalid_reason: "Escribe un motivo de al menos 3 caracteres.", has_results: "Ya tiene resultados en este evento: no se puede sacar.", closed: "El evento ya finalizó: no se puede sacar a nadie.", not_found: "No encontramos esa inscripción.", no_payment: "Esa inscripción no tenía pago.", failed: "No se pudo completar. Intenta de nuevo." },
       },
+    },
+    series: {
+      title: "Series", blurb: "Agrupa los eventos de una temporada (por ejemplo 9 fechas en el año) y créalos de una vez, cada uno con su propia apertura de inscripciones.", newSeries: "+ Nueva serie", none: "Aún no tienes series. Crea la primera.", manage: "Gestionar", eventsCount: "eventos", myEvents: "Mis eventos", deleted: "Serie eliminada. Sus eventos siguen existiendo como eventos sueltos.",
+      back: "Mis series", shareHint: "Cualquiera con este enlace ve la serie y sus eventos, y desde ahí se inscribe.", publicPage: "Ver página pública", edit: "Editar serie", dates: "Fechas de la serie", noPublic: "La página pública aparece cuando publiques al menos un evento.", created: "¡Serie creada! Ahora agrega sus eventos.", saved: "Cambios guardados.",
+      form: {
+        newTitle: "Nueva serie", newBlurb: "Define la temporada y la configuración que se copiará a cada evento. Después agregas los eventos con sus fechas.", editTitle: "Editar serie", editBlurb: "Los cambios en la configuración solo aplican a los eventos que crees después; los ya creados se editan uno por uno.",
+        name: "Nombre de la serie", description: "Descripción", start: "Inicia", end: "Termina", timezone: "Zona horaria de los eventos", templateTitle: "Configuración de cada evento", templateHint: "Se copia a cada evento nuevo de la serie; después puedes cambiar cada uno.",
+        city: "Ciudad", venue: "Sede", capacity: "Cupo por evento", disciplines: "Modalidades", categories: "Categorías y costo de inscripción", categoryName: "Nombre de la categoría", cost: "Costo de inscripción", costHint: "Lo que paga cada participante por esta categoría", addCategory: "+ Agregar categoría",
+        paymentInfo: "Instrucciones de pago (transferencia o efectivo)", paymentInfoHint: "Solo las ven quienes se inscriben. Se copian a cada evento.", create: "Crear serie", save: "Guardar cambios",
+        errors: { "1": "Revisa los campos: faltan datos o hay valores inválidos.", range: "La serie no puede terminar antes de empezar.", outsideRange: "Hay eventos de la serie fuera de esas fechas. Mueve esos eventos primero o amplía el rango." },
+      },
+      ev: {
+        title: "Eventos de la serie", none: "Aún no hay eventos. Agrégalos abajo.", addTitle: "Agregar eventos", addHint: "Cada evento copia la configuración de la serie (sede, cupo, categorías y pago). Agrega uno o varios de golpe; después puedes editar cada uno.",
+        name: "Nombre del evento", date: "Fecha", opens: "Apertura de inscripciones", opensHint: "Vacío = abren desde que publicas el evento. Con fecha y hora se abren solas.", addRow: "+ Agregar otro evento", removeRow: "Quitar", createDraft: "Crear como borradores", createPublish: "Crear y publicar",
+        publishDrafts: "Publicar todos los borradores", delete: "Eliminar", deleteTitle: "Eliminar este evento", deleteText: "Se borra el evento y no se puede deshacer. Solo se puede si no tiene inscritos ni resultados.", deleteConfirm: "Sí, eliminar", keep: "Cancelar",
+        manage: "Gestionar", edit: "Editar", enrolled: "Inscritos", range: "Fechas permitidas:", defaultName: "Fecha", opensOn: "Abren el", opensNow: "Desde que se publica", closesOn: "Cierran el",
+        msg: { agregados: "Listo: creamos", agregadosEnd: "evento(s).", borrado: "Evento eliminado.", publicados: "Listo: publicamos los borradores." },
+        errors: {
+          noEvents: "Agrega al menos un evento con nombre y fecha.", invalidRow: "Revisa los eventos: cada uno necesita nombre y una fecha válida, y la apertura debe ser una fecha y hora válidas.", outsideRange: "Hay fechas fuera del rango de la serie. Ajusta las fechas del evento o las de la serie.",
+          open_after_event: "La apertura de inscripciones no puede ser después del día del evento.", series_full: "Una serie admite hasta 30 eventos.", template_incomplete: "Completa la configuración de la serie (sede, cupo, modalidades y categorías) antes de agregar eventos.",
+          failed: "No se pudo completar. Intenta de nuevo.", del_has_registrations: "Ese evento ya tiene inscritos: no se puede eliminar.", del_has_results: "Ese evento ya tiene resultados: no se puede eliminar.", del_closed: "Ese evento ya finalizó: no se puede eliminar.", del_not_found: "No encontramos ese evento.", del_failed: "No se pudo eliminar. Intenta de nuevo.",
+        },
+      },
+      danger: { title: "Eliminar serie", text: "Sus eventos no se borran: quedan como eventos sueltos, con sus inscritos y resultados.", confirm: "Eliminar la serie" },
     },
     dir: { title: "Participantes", blurb: "Directorio global con datos de contacto, visible solo para organizadores. Úsalo para registrar participantes en tus eventos.", name: "Nombre", email: "Correo", rating: "Rating", events: "Eventos", wins: "Victorias", profile: "Perfil", verified: "Verificado", unclaimed: "Sin reclamar",
       addTitle: "Agregar participante", addBlurb: "Regístralo con su correo para que aparezca en el directorio y pueda reclamar su perfil al crear su cuenta.", addName: "Nombre completo", addEmail: "Correo", addEmailHint: "Cuando la persona cree su cuenta con este correo, reclamará su perfil e historial.",
@@ -125,9 +154,10 @@ export const es = {
     },
     form: {
       paymentInfo: "Instrucciones de pago (transferencia o efectivo)", paymentInfoHint: "Solo las ven quienes se inscriben a tu evento. Ej.: CLABE, banco y titular, o «paga en efectivo en la arena».", paymentInfoPlaceholder: "CLABE 0123 4567 8901 2345 67 · Banco · Titular",
+      opens: "Apertura de inscripciones", opensHint: "Opcional. Antes de esta fecha y hora nadie se puede inscribir (tú sí, a mano) y se abren solas al llegar. Sin fecha, abren desde que publicas el evento. Debe ser antes del cierre.",
       closes: "Cierre de inscripciones", closesHint: "Opcional. Pasada esta fecha y hora nadie más se puede inscribir (tú sí, a mano). Sin fecha, siguen abiertas hasta que las cierres. No puede ser después del día del evento.", timezone: "Zona horaria del evento",
       save: "Guardar cambios", editTitle: "Editar evento", editBlurb: "Los cambios se ven al momento en la página pública. Lo ya inscrito conserva el precio con el que se apartó.", saved: "Cambios guardados.", edit: "Editar",
-      errors: { closeInvalid: "La fecha de cierre o la zona horaria no son válidas.", closeAfterEvent: "El cierre de inscripciones no puede ser después del día del evento.", capacity: "El cupo no puede ser menor que los inscritos que ya hay.", catInUse: "No puedes quitar una categoría que ya tiene inscritos. Puedes renombrarla o cambiar su costo." },
+      errors: { closeInvalid: "La fecha de cierre o la zona horaria no son válidas.", closeAfterEvent: "El cierre de inscripciones no puede ser después del día del evento.", opensInvalid: "La fecha de apertura no es válida.", opensAfterEvent: "La apertura de inscripciones no puede ser después del día del evento.", opensAfterClose: "La apertura debe ser antes del cierre de inscripciones.", outsideSeries: "La fecha del evento debe estar dentro de las fechas de su serie.", capacity: "El cupo no puede ser menor que los inscritos que ya hay.", catInUse: "No puedes quitar una categoría que ya tiene inscritos. Puedes renombrarla o cambiar su costo." },
       photosLater: "Después de crear el evento podrás agregar fotos y elegir la portada.", 
       error: "Revisa los campos: faltan datos o hay valores inválidos.", title: "Nuevo evento", blurb: "Al publicarlo aparece en la web y tu app Rope Master lo descarga al sincronizar.", name: "Nombre del evento", date: "Fecha", capacity: "Cupo", venue: "Sede", city: "Ciudad",
       disciplines: "Modalidades", categories: "Categorías y costo de inscripción", categoryName: "Nombre de la categoría", categoryNamePlaceholder: "Ej. Libre, Amateur", cost: "Costo de inscripción", costHint: "Lo que paga cada participante por esta categoría", addCategory: "+ Agregar categoría", description: "Descripción", cover: "Foto de portada", saveDraft: "Guardar borrador", publish: "Publicar",

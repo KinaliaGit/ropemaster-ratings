@@ -1312,5 +1312,119 @@ console.log("- Resultados de un evento (0030)");
   await as("service_role", null, `select 1 from public.app_organizer_events('${A}', null, now() + interval '1 minute', null, null, 50) e, jsonb_array_elements(e.registrations) r where e.id = '${EVL}' and r->>'role' is null`, "y null en las de perfiles sin rol", "some");
 }
 
+// ---- Series de eventos (0035, KIN-625) ----
+{
+  console.log("— Series de eventos (0035)");
+  const S1 = "5e000000-0000-0000-0000-000000000001";
+  // B ya tiene licencia en este punto de las pruebas: sirve como "otro organizador"; NL es un organizador sin licencia ni aprobación.
+  const NL = "5e5e5e5e-0000-0000-0000-0000000000a1";
+  await db.exec(`
+    insert into auth.users (id, email, email_confirmed_at) values ('${NL}','sinlicencia@x.com',now());
+    insert into profiles (user_id, role, display_name, organizer_verified) values ('${NL}','organizador','Sin licencia',false);
+  `);
+  const check = (label, ok) => { if (!ok) failures++; console.log(`${ok ? "✔" : "✘ FALLO"}  ${label}`); };
+  const num = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const ev = (n, date, opens) => ({ id: `5e5e5e5e-0000-0000-0000-0000000000${String(n).padStart(2, "0")}`, slug: `serie-fecha-${n}`, name: `Fecha ${n}`, date, opens_at: opens ?? null });
+  const add = (events, publish = true, series = S1) => `select public.add_series_events('${series}', '${JSON.stringify(events)}'::jsonb, ${publish})`;
+
+  // Crear la serie y su plantilla
+  const ins = (org, extra = "") => `insert into event_series (id, slug, organizer_id, organizer_name, name, start_date, end_date ${extra ? ", " + extra.split("|")[0] : ""}) values ('${S1}', 'serie-2099', '${org}', 'Org', 'Serie 2099', '2099-01-01', '2099-12-31' ${extra ? ", " + extra.split("|")[1] : ""})`;
+  await as("authenticated", NL, ins(NL), "un organizador SIN licencia NO crea series", "deny");
+  await as("authenticated", C, ins(C), "un participante NO crea series", "deny");
+  await as("authenticated", A, ins(B), "NO crea una serie a nombre de otro organizador", "deny");
+  await as("anon", null, ins(A), "anónimo NO crea series", "deny");
+  await as("authenticated", A, `insert into event_series (slug, organizer_id, name, start_date, end_date) values ('mala-serie', '${A}', 'Mala', '2099-05-01', '2099-04-01')`, "el fin no puede ser antes del inicio", "deny");
+  await as("authenticated", A, ins(A), "el organizador verificado SÍ crea su serie", "some");
+  await as("authenticated", A, `insert into event_series_template (series_id, city, venue, capacity, disciplines, categories, payment_info) values ('${S1}', 'Monterrey', 'Lienzo', 80, array['lazo'], '[{"name":"Libre","fee_cents":80000},{"name":"Amateur","fee_cents":50000}]'::jsonb, 'Transferencia a la cuenta 123')`, "SÍ guarda la plantilla de la serie", "some");
+  await as("authenticated", B, `insert into event_series_template (series_id, city, venue, capacity, disciplines, categories) values ('${S1}', 'x', 'x', 1, array['lazo'], '[]'::jsonb)`, "otro organizador NO escribe la plantilla ajena", "deny");
+  await as("authenticated", NL, `select public.add_series_events('${S1}', '[]'::jsonb, true)`, "(sin licencia) tampoco usa las funciones de la serie", "deny");
+
+  // Visibilidad: sin eventos visibles la serie solo la ve su dueño; la plantilla (con instrucciones de pago) solo el dueño
+  await as("anon", null, `select id from event_series where id = '${S1}'`, "sin eventos visibles el público NO ve la serie", "deny");
+  await as("authenticated", C, `select id from event_series where id = '${S1}'`, "un participante tampoco", "deny");
+  await as("authenticated", A, `select id from event_series where id = '${S1}'`, "el dueño SÍ la ve", "some");
+  await as("authenticated", A, `select series_id from event_series_template where series_id = '${S1}'`, "el dueño SÍ ve su plantilla", "some");
+
+  // Crear eventos de golpe
+  await as("authenticated", NL, add([ev(1, "2099-03-01")]), "un organizador sin licencia NO crea eventos de la serie", "deny");
+  await as("authenticated", B, add([ev(1, "2099-03-01")]), "otro organizador NO crea eventos en la serie ajena", "deny");
+  await as("authenticated", C, add([ev(1, "2099-03-01")]), "un participante NO crea eventos de la serie", "deny");
+  await as("anon", null, add([ev(1, "2099-03-01")]), "anónimo NO crea eventos de la serie", "deny");
+  const other = "5e000000-0000-0000-0000-0000000000ff";
+  await db.exec(`insert into event_series (id, slug, organizer_id, name, start_date, end_date) values ('${other}', 'serie-de-d', '${D}', 'De D', '2099-01-01', '2099-12-31')`);
+  await as("authenticated", A, add([ev(1, "2099-03-01")], true, other), "NO agrega eventos a la serie de otro organizador", "deny");
+  await as("authenticated", A, add([ev(1, "2099-03-01"), ev(2, "2100-01-15")]), "una fecha fuera del rango de la serie se rechaza", "deny");
+  check("todo o nada: no se creó ni el evento válido", await num(`select count(*) n from events where series_id = '${S1}'`) === 0);
+  await as("authenticated", A, add([]), "una lista vacía se rechaza", "deny");
+  await as("authenticated", A, add([{ ...ev(1, "2099-03-01"), slug: "Mal Slug" }]), "un enlace inválido se rechaza", "deny");
+  await as("authenticated", A, add([{ ...ev(1, "2099-03-01"), opens_at: "2099-03-02T12:00:00Z" }]), "la apertura no puede ser después del día del evento", "deny");
+  await as("authenticated", A, add([ev(1, "2099-03-01"), ev(2, "2099-04-01", "2099-03-15T15:00:00Z"), ev(3, "2099-05-01")]), "SÍ crea 3 eventos de golpe (uno con apertura programada)", "some");
+  check("los 3 eventos quedaron en la serie y publicados", await num(`select count(*) n from events where series_id = '${S1}' and status = 'publicado' and organizer_id = '${A}'`) === 3);
+  check("cada evento copió la plantilla (ciudad, sede, cupo y modalidades)", await num(`select count(*) n from events where series_id = '${S1}' and city = 'Monterrey' and venue = 'Lienzo' and capacity = 80 and disciplines = array['lazo']`) === 3);
+  check("cada evento copió las categorías con su costo", await num(`select count(*) n from event_categories c join events e on e.id = c.event_id where e.series_id = '${S1}' and ((c.name = 'Libre' and c.fee_cents = 80000) or (c.name = 'Amateur' and c.fee_cents = 50000))`) === 6);
+  check("y las instrucciones de pago", await num(`select count(*) n from event_payment_info i join events e on e.id = i.event_id where e.series_id = '${S1}' and i.instructions = 'Transferencia a la cuenta 123'`) === 3);
+  check("la apertura programada se guardó solo en el evento que la pidió", await num(`select count(*) n from events where series_id = '${S1}' and registration_opens_at is not null`) === 1);
+  await as("authenticated", A, add([ev(1, "2099-06-01")]), "repetir un id de evento se rechaza", "deny");
+  await as("authenticated", A, add([{ ...ev(4, "2099-06-01"), slug: "serie-fecha-1" }]), "repetir un enlace se rechaza", "deny");
+
+  // Lo público
+  await as("anon", null, `select id from event_series where id = '${S1}'`, "con eventos publicados el público SÍ ve la serie", "some");
+  await as("anon", null, `select series_id from event_series_template where series_id = '${S1}'`, "pero NO ve su plantilla (instrucciones de pago)", "deny");
+  await as("authenticated", C, `select series_id from event_series_template where series_id = '${S1}'`, "un participante tampoco ve la plantilla", "deny");
+  await as("authenticated", B, `select series_id from event_series_template where series_id = '${S1}'`, "otro organizador tampoco", "deny");
+  await as("anon", null, `select id from event_series where id = '${other}'`, "una serie sin eventos visibles sigue oculta", "deny");
+
+  // Apertura programada de inscripciones
+  const E2 = ev(2, "2099-04-01").id, E1 = ev(1, "2099-03-01").id;
+  const kat = async (e) => (await db.query(`select id from event_categories where event_id = '${e}' limit 1`)).rows[0].id;
+  await as("authenticated", C, `select public.register_for_event('${E2}', '${await kat(E2)}', 'header')`, "antes de la apertura programada NO se puede inscribir (llamando directo)", "deny");
+  await as("authenticated", C, `select public.register_for_event('${E1}', '${await kat(E1)}', 'header')`, "un evento sin apertura programada SÍ acepta inscripciones", "some");
+  await as("authenticated", A, `select public.organizer_enroll('${E2}', 'c@x.com', '${await kat(E2)}')`, "(sin contacto de correo) el organizador NO inscribe a quien no existe", "deny");
+  await as("authenticated", A, `update events set registration_opens_at = '2099-03-15T15:00:00Z', registration_closes_at = '2099-03-15T15:00:00Z' where id = '${E2}'`, "la apertura debe ser antes del cierre", "deny");
+  await as("authenticated", A, `update events set registration_opens_at = '2099-04-02T12:00:00Z' where id = '${E2}'`, "la apertura no puede caer después del día del evento", "deny");
+  await as("authenticated", B, `update events set registration_opens_at = null where id = '${E2}'`, "otro organizador NO cambia la apertura ajena", "deny");
+  await as("authenticated", A, `update events set registration_opens_at = '2000-01-01T00:00:00Z' where id = '${E2}'`, "el organizador pone la apertura en el pasado (ya abierta)", "some");
+  await as("authenticated", C, `select public.register_for_event('${E2}', '${await kat(E2)}', 'header')`, "llegada la fecha de apertura SÍ se inscribe, sin que nadie la abra", "some");
+  await as("authenticated", A, `update events set registration_opens_at = null where id = '${E2}'`, "quitar la apertura programada (desde que se publica)", "some");
+
+  // Rango de la serie y límite de eventos
+  await as("authenticated", A, `update event_series set end_date = '2099-04-15' where id = '${S1}'`, "NO se acorta la serie dejando fuera un evento (mayo)", "deny");
+  await as("authenticated", A, `update event_series set start_date = '2099-03-15' where id = '${S1}'`, "NO se recorta el inicio dejando fuera un evento (marzo)", "deny");
+  await as("authenticated", A, `update event_series set end_date = '2099-12-31', description = 'Nueva descripción' where id = '${S1}'`, "SÍ edita la serie sin dejar fuera a nadie", "some");
+  await as("authenticated", B, `update event_series set name = 'hack' where id = '${S1}'`, "otro organizador NO edita la serie", "deny");
+  await as("authenticated", A, `update event_series set organizer_id = '${B}' where id = '${S1}'`, "NO traspasa la serie a otro organizador", "deny");
+  await as("authenticated", A, `update events set event_date = '2100-02-01' where id = '${E1}'`, "NO se mueve un evento de la serie fuera de su rango", "deny");
+  await as("authenticated", A, `update events set event_date = '2099-03-20' where id = '${E1}'`, "SÍ se mueve un evento dentro del rango", "some");
+  await as("authenticated", A, `update events set series_id = null where id = '${E1}'`, "NO se saca un evento de la serie con UPDATE directo", "deny");
+  const many = Array.from({ length: 27 }, (_, i) => ev(10 + i, "2099-07-01"));
+  await as("authenticated", A, add(many, false), "SÍ crea hasta 30 eventos en la serie (borradores)", "some");
+  check("la serie tiene 30 eventos", await num(`select count(*) n from events where series_id = '${S1}'`) === 30);
+  await as("authenticated", A, add([ev(40, "2099-08-01")]), "el evento 31 se rechaza", "deny");
+  check("los borradores de la serie NO los ve el público", await num(`select count(*) n from events where series_id = '${S1}' and status = 'borrador'`) === 27);
+  await as("anon", null, `select id from events where series_id = '${S1}'`, "el público solo ve los 3 publicados", "some");
+
+  // Borrar eventos de la serie
+  const D1 = ev(10, "2099-07-01").id;
+  await as("authenticated", B, `select public.delete_series_event('${D1}')`, "otro organizador NO borra el evento", "deny");
+  await as("authenticated", C, `select public.delete_series_event('${D1}')`, "un participante NO borra el evento", "deny");
+  await as("anon", null, `select public.delete_series_event('${D1}')`, "anónimo NO borra el evento", "deny");
+  await as("authenticated", A, `select public.delete_series_event('${E2}')`, "NO borra un evento que ya tiene inscritos", "deny");
+  await as("authenticated", A, `select public.delete_series_event('e0000000-0000-0000-0000-000000000001')`, "NO borra un evento que no es de una serie", "deny");
+  await as("authenticated", A, `select public.delete_series_event('${D1}')`, "SÍ borra un evento de su serie sin inscritos", "some");
+  check("el evento ya no existe y se liberó su lugar en la serie", await num(`select count(*) n from events where id = '${D1}'`) === 0 && await num(`select count(*) n from events where series_id = '${S1}'`) === 29);
+  await db.exec(`update events set status = 'finalizado' where id = '${ev(11, "2099-07-01").id}'`);
+  await as("authenticated", A, `select public.delete_series_event('${ev(11, "2099-07-01").id}')`, "NO borra un evento finalizado", "deny");
+
+  // Un evento de la serie sigue siendo un evento normal
+  await as("authenticated", A, `update events set name = 'Fecha 1 editada', capacity = 120 where id = '${E1}'`, "el organizador edita un evento de la serie como cualquier otro", "some");
+  await as("authenticated", C, `select public.register_for_event('${E1}', '${await kat(E1)}', 'header')`, "ya inscrito en esa categoría: se rechaza como en cualquier evento", "deny");
+
+  // Borrar la serie deja sus eventos sueltos
+  await as("authenticated", B, `delete from event_series where id = '${S1}'`, "otro organizador NO borra la serie", "deny");
+  await as("authenticated", A, `delete from event_series where id = '${S1}'`, "el dueño SÍ borra la serie", "some");
+  check("sus eventos siguen existiendo, sin serie", await num(`select count(*) n from events where id = '${E1}' and series_id is null`) === 1 && await num(`select count(*) n from events where id = '${E2}' and series_id is null`) === 1);
+  check("la plantilla se borró con la serie", await num(`select count(*) n from event_series_template where series_id = '${S1}'`) === 0);
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

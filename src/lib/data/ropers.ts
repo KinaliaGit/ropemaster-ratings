@@ -3,6 +3,7 @@ import { createPublicClient } from "@/lib/supabase/public";
 import { ACTIVE_DISCIPLINES, type DisciplineId } from "@/lib/disciplines";
 import type { Roper, Stat } from "@/lib/types";
 import { INITIAL_RATING } from "@/lib/rating";
+import { roleFromRow } from "@/lib/roles";
 import { RANKING_PAGE_SIZE, toRankingPage, type RankingPage } from "@/lib/ranking";
 import { HISTORY_PAGE_SIZE, decodeHistoryCursor, toHistoryPage, toRounds, toSummary, type HistoryPage, type Round, type Summary } from "@/lib/results-history";
 
@@ -45,7 +46,7 @@ export async function getPublicRoper(id: string): Promise<Roper | null> {
   if (!UUID.test(id)) return null;
   const sb = createPublicClient();
   const [person, ratings] = await Promise.all([
-    sb.from("ropers").select("id, full_name, avatar_path").eq("id", id).maybeSingle(),
+    sb.from("ropers").select("id, full_name, avatar_path, primary_role, favorite_role").eq("id", id).maybeSingle(),
     sb.from("roper_ratings").select("discipline, rating, events_count, wins, updated_at").eq("roper_id", id),
   ]);
   if (person.error) throw new Error(`No se pudo leer el participante: ${person.error.message}`);
@@ -55,7 +56,7 @@ export async function getPublicRoper(id: string): Promise<Roper | null> {
     if (ACTIVE_DISCIPLINES.some((d) => d.id === r.discipline)) stats[r.discipline as DisciplineId] = toStat(r);
   }
   for (const d of ACTIVE_DISCIPLINES) stats[d.id] ??= initialStat(); // sin rating aún: parte del inicial
-  return { id: person.data.id, name: person.data.full_name, avatarPath: person.data.avatar_path, stats };
+  return { id: person.data.id, name: person.data.full_name, avatarPath: person.data.avatar_path, role: roleFromRow(person.data.primary_role, person.data.favorite_role), stats };
 }
 
 // Historial del lazador, UNA PÁGINA a la vez (KIN-609): de lo más reciente a lo más antiguo, solo de eventos publicados o finalizados.

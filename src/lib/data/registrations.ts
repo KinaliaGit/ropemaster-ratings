@@ -46,20 +46,20 @@ export async function getEventRegistrants(eventUuid: string, discipline: string,
 
 export type MyRegistration = {
   id: string; paymentStatus: string; paymentMethod: string | null; amountCents: number; category: string;
-  event: { slug: string | null; name: string; date: string | null; city: string | null; paymentInfo: string | null } | null;
+  event: { slug: string | null; name: string; date: string | null; city: string | null; paymentInfo: string | null; closesAt: string | null; timezone: string } | null;
 };
 
 export async function listMyRegistrations(): Promise<MyRegistration[]> {
   const { data, error } = await (await createServerSupabase()).from("registrations")
-    .select("id, payment_status, payment_method, amount_cents, event_categories(name), events(slug, name, event_date, city, event_payment_info(instructions))")
+    .select("id, payment_status, payment_method, amount_cents, event_categories(name), events(slug, name, event_date, city, registration_closes_at, timezone, event_payment_info(instructions))")
     .order("created_at", { ascending: false });
   if (error) throw new Error(`No se pudieron leer tus inscripciones: ${error.message}`);
   type Info = { instructions: string } | { instructions: string }[] | null;
-  type Row = { id: string; payment_status: string; payment_method: string | null; amount_cents: number; event_categories: { name: string } | null; events: { slug: string | null; name: string; event_date: string | null; city: string | null; event_payment_info: Info } | null };
+  type Row = { id: string; payment_status: string; payment_method: string | null; amount_cents: number; event_categories: { name: string } | null; events: { slug: string | null; name: string; event_date: string | null; city: string | null; registration_closes_at: string | null; timezone: string; event_payment_info: Info } | null };
   const info = (i: Info | undefined) => (Array.isArray(i) ? i[0]?.instructions : i?.instructions) ?? null; // solo lo ven los inscritos (la base lo decide)
   return (data as unknown as Row[]).map((r) => ({
     id: r.id, paymentStatus: r.payment_status, paymentMethod: r.payment_method, amountCents: r.amount_cents, category: r.event_categories?.name ?? "",
-    event: r.events ? { slug: r.events.slug, name: r.events.name, date: r.events.event_date, city: r.events.city, paymentInfo: info(r.events.event_payment_info) } : null,
+    event: r.events ? { slug: r.events.slug, name: r.events.name, date: r.events.event_date, city: r.events.city, paymentInfo: info(r.events.event_payment_info), closesAt: r.events.registration_closes_at, timezone: r.events.timezone } : null,
   }));
 }
 
@@ -87,4 +87,35 @@ export async function listEventRegistrations(eventUuid: string): Promise<EventRe
 export async function getPaymentInstructions(eventUuid: string): Promise<string> {
   const { data } = await (await createServerSupabase()).from("event_payment_info").select("instructions").eq("event_id", eventUuid).maybeSingle();
   return data?.instructions ?? "";
+}
+
+// ---- Inscritos sacados del evento (KIN-621) ----
+
+export type Removal = {
+  id: string; roperId: string; name: string; category: string; reason: string; removedAt: string; paymentStatus: string; paymentMethod: string | null;
+  amountCents: number; refundPending: boolean; refundDoneAt: string | null; canReenroll: boolean;
+};
+
+// Sacados de un evento propio, del más reciente al más antiguo (la base solo deja verlos al organizador del evento y a un admin).
+export async function listEventRemovals(eventUuid: string): Promise<Removal[]> {
+  const { data, error } = await (await createServerSupabase()).from("registration_removals")
+    .select("id, roper_id, category_name, reason, removed_at, payment_status, payment_method, amount_cents, refund_pending, refund_done_at, can_reenroll, ropers(full_name)")
+    .eq("event_id", eventUuid).order("removed_at", { ascending: false });
+  if (error) throw new Error(`No se pudieron leer los sacados del evento: ${error.message}`);
+  type Row = { id: string; roper_id: string; category_name: string; reason: string; removed_at: string; payment_status: string; payment_method: string | null; amount_cents: number; refund_pending: boolean; refund_done_at: string | null; can_reenroll: boolean; ropers: { full_name: string } | null };
+  return (data as unknown as Row[]).map((r) => ({
+    id: r.id, roperId: r.roper_id, name: r.ropers?.full_name ?? "—", category: r.category_name, reason: r.reason, removedAt: r.removed_at, paymentStatus: r.payment_status,
+    paymentMethod: r.payment_method, amountCents: r.amount_cents, refundPending: r.refund_pending, refundDoneAt: r.refund_done_at, canReenroll: r.can_reenroll,
+  }));
+}
+
+export type MyRemoval = { id: string; event: { slug: string | null; name: string } | null; category: string; reason: string; removedAt: string; refundPending: boolean; canReenroll: boolean };
+
+// Eventos de los que me sacaron, con el motivo. La base solo devuelve los míos; el evento puede no verse si volvió a borrador.
+export async function listMyRemovals(): Promise<MyRemoval[]> {
+  const { data, error } = await (await createServerSupabase()).from("registration_removals")
+    .select("id, category_name, reason, removed_at, refund_pending, can_reenroll, events(slug, name)").order("removed_at", { ascending: false });
+  if (error) throw new Error(`No se pudieron leer tus bajas: ${error.message}`);
+  type Row = { id: string; category_name: string; reason: string; removed_at: string; refund_pending: boolean; can_reenroll: boolean; events: { slug: string | null; name: string } | null };
+  return (data as unknown as Row[]).map((r) => ({ id: r.id, event: r.events, category: r.category_name, reason: r.reason, removedAt: r.removed_at, refundPending: r.refund_pending, canReenroll: r.can_reenroll }));
 }

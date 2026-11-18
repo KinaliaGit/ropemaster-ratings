@@ -4,6 +4,7 @@ import { MAX_UPLOAD_MB } from "@/lib/limits";
 export const es = {
   meta: { title: "Rope Master Ratings", description: "El registro global de lazadores: rating, historial y resultados de cada evento." },
   common: { brand: "Rope Master", ratings: "Ratings", loading: "Cargando…", back: "Volver", of: "de" },
+  roles: { legend: "¿Con qué rol sueles competir?", header: "Cabecero", heeler: "Pialador", both: "Ambos", favoriteLegend: "¿Cuál es tu rol favorito, el que usas más?", favorite: "favorito", undefined: "Sin definir" },
   nav: { myLazador: "Mi perfil de lazador", createLazador: "Crear mi perfil de lazador", events: "Eventos", participants: "Participantes", signIn: "Entrar", myPanel: "Mi panel", myAccount: "Mi cuenta", signOut: "Salir", publicSite: "Sitio público", language: "Idioma" },
   promo: {
     label: "Rope Master", title: "El software para organizar tu evento de lazo.",
@@ -33,7 +34,7 @@ export const es = {
     from: "Desde", 
     organizedBy: "Organiza", photos: "Fotos", noPhotos: "El organizador aún no ha subido fotos.", enrolled: "Inscritos", noEnrolled: "Aún no hay inscritos.",
     results: "Resultados", resultsClosed: "Resultados cerrados", resultsInReview: "Resultados en corrección", noResults: "Aún no hay resultados.",
-    enrollment: "Inscripción", enroll: "Inscribirme", needAccount: "Necesitas una cuenta de participante.", eventFinished: "Evento finalizado", full: "Cupo lleno", maxRating: "Rating máximo para inscribirse",
+    enrollment: "Inscripción", enroll: "Inscribirme", needAccount: "Necesitas una cuenta de participante.", eventFinished: "Evento finalizado", full: "Cupo lleno", closesOn: "Cierra el", maxRating: "Rating máximo para inscribirse", registrationClosed: "Inscripciones cerradas",
   },
   pay: {
     method: { efectivo: "Efectivo", transferencia: "Transferencia", stripe: "En línea" }, markPaid: "Marcar pagado:", undo: "Deshacer", error: "No se pudo cambiar el pago. Intenta de nuevo.",
@@ -44,7 +45,7 @@ export const es = {
   enroll: {
     title: "Inscripción", category: "Categoría", discipline: "Modalidad", submit: "Inscribirme", pendingNote: "Tu lugar queda apartado como pendiente de pago. Después podrás pagar en línea o en efectivo/transferencia con el organizador. Puedes cancelarlo mientras no esté pagado.", pendingNoteOffline: "Tu lugar queda apartado como pendiente de pago. Después pagarás en efectivo o por transferencia con el organizador. Puedes cancelarlo mientras no esté pagado.",
     errors: {
-      forbidden: "Solo los participantes pueden inscribirse.", invalid_category: "Evento o categoría inválidos.", closed: "Las inscripciones están cerradas.", already: "Ya estás inscrito en esta categoría.",
+      forbidden: "Solo los participantes pueden inscribirse.", role: "Elige con qué rol compites (y tu favorito si son ambos).", invalid_category: "Evento o categoría inválidos.", closed: "Las inscripciones están cerradas.", registration_closed: "Las inscripciones de este evento ya cerraron.", removed: "El organizador te sacó de este evento. Contáctalo si crees que fue un error.", already: "Ya estás inscrito en esta categoría.",
       full: "El cupo está lleno.", rating_limit: "Tu rating supera el máximo individual de este evento.", paid: "Esa inscripción ya está pagada y no se puede cancelar aquí.", not_found: "No encontramos esa inscripción.", failed: "No se pudo completar. Intenta de nuevo.",
     },
   },
@@ -65,7 +66,7 @@ export const es = {
     errorUnconfirmed: "Primero confirma tu correo: te enviamos un enlace al registrarte.", errorConfirm: "El enlace de confirmación no es válido o ya venció. Entra con tu correo y contraseña o pide otro.", resend: "Reenviar correo de confirmación", resent: "Te lo enviamos de nuevo.",
     password: "Contraseña", passwordHint: "Mínimo 8 caracteres", signInBtn: "Entrar", participantAccess: "Acceso de participantes", errorRoleOrganizer: "Esa cuenta no es de organizador. Elige «Participante» para entrar.", errorRoleParticipant: "Esa cuenta no es de participante. Elige «Organizador» para entrar.", organizerAccess: "Acceso de organizadores", or: "o",
     errorInvalid: "Correo o contraseña incorrectos.", errorExists: "Ya existe una cuenta con ese correo.", errorPassword: "La contraseña debe tener al menos 8 caracteres.",
-    errorGeneric: "No se pudo completar. Intenta de nuevo.", checkEmail: "Te enviamos un correo para confirmar tu cuenta. Ábrelo y vuelve a entrar.",
+    errorGeneric: "No se pudo completar. Intenta de nuevo.", errorRole: "Elige con qué rol compites (y tu favorito si son ambos).", checkEmail: "Te enviamos un correo para confirmar tu cuenta. Ábrelo y vuelve a entrar.",
     signInTitle: "Iniciar sesión", needAccount: "Necesitas una cuenta para continuar.",
     asParticipant: "Entrar como participante", asOrganizer: "Entrar como organizador", firstTime: "¿Primera vez?", createAccount: "Crear cuenta",
     participant: "Participante", organizer: "Organizador",
@@ -76,9 +77,9 @@ export const es = {
   account: {
     createTitle: "Crea tu perfil de lazador", createText: "Tu cuenta es de organizador. Si también compites, crea tu perfil de lazador: tendrás tu rating, tu historial y podrás inscribirte a eventos. Si otro organizador ya te registró con tu correo, reclamas ese perfil.", createBtn: "Crear mi perfil de lazador", profileCreated: "¡Listo! Tu perfil de lazador está creado.", typeOrganizer: "Organizador · perfil de lazador",
     photo: { add: "Agregar foto", change: "Cambiar foto", remove: "Quitar", saving: "Guardando…", tooBig: `La foto pesa más de ${MAX_UPLOAD_MB} MB. Elige una más ligera.`, error: "No se pudo guardar la foto. Usa una imagen JPG, PNG o WebP." },
-    type: "Cuenta de participante", myRegistrations: "Mis inscripciones",
+    type: "Cuenta de participante", roleTitle: "Mi rol", roleUndefined: "Aún no has elegido con qué rol compites. Elígelo para que los organizadores lo vean; no te bloquea nada mientras tanto.", roleSave: "Guardar rol", roleSaved: "Listo, guardamos tu rol.", myRegistrations: "Mis inscripciones",
     noRegistrations: "Aún no te has inscrito a ningún evento.", available: "Eventos disponibles", noneAvailable: "No hay eventos nuevos por ahora.",
-    enrolledOk: "¡Listo! Tu lugar quedó apartado. Abajo ves cómo pagar.", canceledOk: "Inscripción cancelada.", cancel: "Cancelar",
+    enrolledOk: "¡Listo! Tu lugar quedó apartado. Abajo ves cómo pagar.", canceledOk: "Inscripción cancelada.", removedTitle: "Eventos de los que te sacaron", removedOn: "Te sacaron el", removedReason: "Motivo:", removedRefund: "Ya habías pagado: el organizador te devolverá el dinero manualmente (reembolso pendiente).", removedRefundDone: "El organizador ya marcó tu reembolso como hecho.", removedCanReturn: "El organizador permite que te vuelvas a inscribir.", removedBlocked: "Para volver a inscribirte, pídeselo al organizador.", cancel: "Cancelar",
     ranking: "Ranking", seeAll: "Ver todos", publicProfile: "Ver mi perfil público e historial", paid: "Pagado", pending: "Pago pendiente",
   },
   org: {
@@ -94,6 +95,17 @@ export const es = {
     ev: {
       back: "Mis eventos", publicPage: "Ver página pública", publish: "Publicar", toDraft: "Pasar a borrador", paid: "Pagados", state: "Estado · disponible en la app al sincronizar",
       enrolledTitle: "Inscritos", participant: "Participante", phone: "Correo", rating: "Rating", category: "Categoría", payment: "Pago", paidAmount: "Pagado", pending: "Pendiente", noneEnrolled: "Aún no hay inscritos.",
+      registration: "Inscripciones", regOpen: "Abiertas", regClosed: "Cerradas", closesAt: "Cierran el", closesAtPast: "Cerraron el", noDeadline: "Sin fecha límite: abiertas hasta que las cierres.", closeNow: "Cerrar inscripciones", reopen: "Reabrir inscripciones", reopenHint: "Si ya pasó la fecha límite, al reabrir se quita; puedes poner otra al editar el evento.",
+      manualTitle: "Inscribir a alguien", manualHint: "Funciona aunque las inscripciones estén cerradas. La persona debe estar en Participantes; búscala por su correo.", manualEmail: "Correo del participante", manualCategory: "Categoría", manualSubmit: "Inscribir",
+      manual: { ok: "Listo: quedó inscrito, con el pago pendiente.", invalid: "Revisa el correo y la categoría.", not_found: "No hay ningún participante con ese correo. Agrégalo primero en Participantes.", already: "Ya estaba inscrito en esa categoría.", full: "El cupo está lleno.", invalid_category: "Esa categoría no es de este evento.", failed: "No se pudo inscribir. Intenta de nuevo." },
+      remove: {
+        button: "Sacar del evento", title: "Sacar del evento", person: "Inscrito:", payment: "Pago:", reasonLabel: "Motivo (lo verá la persona)", reasonPlaceholder: "Escribe el motivo", presets: "Motivo frecuente", other: "Otro (escribe abajo)",
+        presetList: ["No se recibió el pago", "Datos incorrectos o duplicado", "No cumple los requisitos de la categoría", "Conducta contraria al reglamento", "Se inscribió por error"],
+        refundWarning: "Este lazador ya pagó. El reembolso se hace manualmente: quedará marcado como reembolso pendiente.", cancel: "Cancelar", confirm: "Sacar del evento", minChars: "Escribe al menos 3 caracteres.",
+        removedTitle: "Sacados del evento", none: "Nadie ha sido sacado de este evento.", on: "El", by: "Pagó", refundPending: "Reembolso pendiente", refundDone: "Reembolsado", markRefunded: "Marcar reembolso hecho", undoRefund: "Deshacer",
+        allow: "Permitir que vuelva a inscribirse", block: "Volver a bloquear", allowed: "Puede volver a inscribirse", blocked: "No puede inscribirse solo", notPaid: "Sin pago",
+        msg: { ok: "Listo: lo sacaste del evento y se liberó su lugar.", reenroll: "Listo: actualizamos si puede volver a inscribirse.", refund: "Listo: actualizamos el reembolso.", invalid_reason: "Escribe un motivo de al menos 3 caracteres.", has_results: "Ya tiene resultados en este evento: no se puede sacar.", closed: "El evento ya finalizó: no se puede sacar a nadie.", not_found: "No encontramos esa inscripción.", no_payment: "Esa inscripción no tenía pago.", failed: "No se pudo completar. Intenta de nuevo." },
+      },
     },
     dir: { title: "Participantes", blurb: "Directorio global con datos de contacto, visible solo para organizadores. Úsalo para registrar participantes en tus eventos.", name: "Nombre", email: "Correo", rating: "Rating", events: "Eventos", wins: "Victorias", profile: "Perfil", verified: "Verificado", unclaimed: "Sin reclamar",
       addTitle: "Agregar participante", addBlurb: "Regístralo con su correo para que aparezca en el directorio y pueda reclamar su perfil al crear su cuenta.", addName: "Nombre completo", addEmail: "Correo", addEmailHint: "Cuando la persona cree su cuenta con este correo, reclamará su perfil e historial.",
@@ -113,8 +125,9 @@ export const es = {
     },
     form: {
       paymentInfo: "Instrucciones de pago (transferencia o efectivo)", paymentInfoHint: "Solo las ven quienes se inscriben a tu evento. Ej.: CLABE, banco y titular, o «paga en efectivo en la arena».", paymentInfoPlaceholder: "CLABE 0123 4567 8901 2345 67 · Banco · Titular",
+      closes: "Cierre de inscripciones", closesHint: "Opcional. Pasada esta fecha y hora nadie más se puede inscribir (tú sí, a mano). Sin fecha, siguen abiertas hasta que las cierres. No puede ser después del día del evento.", timezone: "Zona horaria del evento",
       save: "Guardar cambios", editTitle: "Editar evento", editBlurb: "Los cambios se ven al momento en la página pública. Lo ya inscrito conserva el precio con el que se apartó.", saved: "Cambios guardados.", edit: "Editar",
-      errors: { capacity: "El cupo no puede ser menor que los inscritos que ya hay.", catInUse: "No puedes quitar una categoría que ya tiene inscritos. Puedes renombrarla o cambiar su costo.", ratingLimit: "El rating máximo debe ser un número entre 0 y 10." },
+      errors: { closeInvalid: "La fecha de cierre o la zona horaria no son válidas.", closeAfterEvent: "El cierre de inscripciones no puede ser después del día del evento.", capacity: "El cupo no puede ser menor que los inscritos que ya hay.", catInUse: "No puedes quitar una categoría que ya tiene inscritos. Puedes renombrarla o cambiar su costo.", ratingLimit: "El rating máximo debe ser un número entre 0 y 10." },
       photosLater: "Después de crear el evento podrás agregar fotos y elegir la portada.", 
       error: "Revisa los campos: faltan datos o hay valores inválidos.", title: "Nuevo evento", blurb: "Al publicarlo aparece en la web y tu app Rope Master lo descarga al sincronizar.", name: "Nombre del evento", date: "Fecha", capacity: "Cupo", venue: "Sede", city: "Ciudad",
       disciplines: "Modalidades", categories: "Categorías y costo de inscripción", categoryName: "Nombre de la categoría", categoryNamePlaceholder: "Ej. Libre, Amateur", cost: "Costo de inscripción", costHint: "Lo que paga cada participante por esta categoría", maxRoperRating: "Rating máximo para inscribirse (opcional)", maxRoperRatingHint: "Quien tenga un rating mayor no podrá inscribirse. Déjalo vacío si no hay límite.", addCategory: "+ Agregar categoría", description: "Descripción", cover: "Foto de portada", saveDraft: "Guardar borrador", publish: "Publicar",

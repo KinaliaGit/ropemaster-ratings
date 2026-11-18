@@ -101,9 +101,11 @@ export type ParticipantRow = {
   claimed: boolean;
   changed_at: string;
   ratings: Record<string, StoredRating> | null;
+  role: "header" | "heeler" | "both" | null;
+  favorite_role: "header" | "heeler" | null;
 };
 
-/** Respuesta de una página. Nunca incluye celular ni ids de cuenta. */
+/** Respuesta de una página. Nunca incluye celular ni ids de cuenta. `role` / `favorite_role` son null en perfiles sin rol (KIN-622). */
 export function buildPage(rows: ParticipantRow[], snapshot: string, activeDisciplines: readonly string[], initialRating: number) {
   const hasMore = rows.length > PAGE_SIZE;
   const page = hasMore ? rows.slice(0, PAGE_SIZE) : rows;
@@ -114,6 +116,8 @@ export function buildPage(rows: ParticipantRow[], snapshot: string, activeDiscip
       name: row.name,
       email: row.email,
       claimed: row.claimed,
+      role: row.role ?? null,
+      favorite_role: row.favorite_role ?? null,
       ratings: buildRatings(row.ratings, activeDisciplines, initialRating),
     })),
     next_cursor: hasMore && last ? encodeCursor({ changedAt: last.changed_at, id: last.global_id, snapshot }) : null,

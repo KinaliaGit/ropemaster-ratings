@@ -1089,5 +1089,160 @@ console.log("- Resultados de un evento (0030)");
   await as("anon", null, `select rounds from event_results where id = '${RS(1)}' and event_id = '${EV(1)}'`, "las rondas se piden aparte, por evento y resultado", "some");
 }
 
+// ---- Cierre de inscripciones (0031, KIN-626) ----
+{
+  console.log("— Cierre de inscripciones (0031)");
+  const EVC = "e0000000-0000-0000-0000-0000000000c1", K1 = "ca000000-0000-0000-0000-0000000000c1", K2 = "ca000000-0000-0000-0000-0000000000c2";
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug, event_date, capacity) values ('${EVC}','Con cierre','${A}','publicado','con-cierre','2099-06-15', 50);
+    insert into event_categories (id, event_id, name, fee_cents) values ('${K1}','${EVC}','Libre',10000), ('${K2}','${EVC}','Amateur',5000);
+    insert into roper_contacts (roper_id, email) values ('22222222-0000-0000-0000-000000000002','p2@x.com');
+  `);
+  const upd = (set) => `update events set ${set} where id = '${EVC}'`;
+  await as("authenticated", A, upd("registration_closes_at = '2099-06-01T18:00:00Z'"), "el organizador pone la fecha límite", "some");
+  await as("authenticated", A, upd("registration_closes_at = '2099-06-15T20:00:00Z'"), "puede cerrar el mismo día del evento (zona del evento)", "some");
+  await as("authenticated", A, upd("registration_closes_at = '2099-06-16T12:00:00Z'"), "NO puede cerrar después del día del evento", "deny");
+  await as("authenticated", A, upd("timezone = 'Marte/Olimpo'"), "una zona horaria inválida se rechaza", "deny");
+  await as("authenticated", A, upd("registration_closes_at = '2099-06-01T18:00:00Z'"), "se vuelve a poner la fecha de junio", "some");
+  await as("authenticated", B, upd("registration_closed = true"), "otro organizador NO cierra las inscripciones de A", "deny");
+  await as("authenticated", C, upd("registration_closed = true"), "un participante NO cierra inscripciones", "deny");
+  await as("authenticated", C, `select public.register_for_event('${EVC}','${K1}')`, "antes de la fecha límite SÍ se inscribe", "some");
+
+  await as("authenticated", A, upd("registration_closes_at = '2000-01-01T00:00:00Z'"), "el organizador mueve la fecha límite al pasado", "some");
+  await as("authenticated", P2, `select public.register_for_event('${EVC}','${K1}')`, "pasada la fecha límite NO se puede inscribir (llamando directo)", "deny");
+  await as("authenticated", A, `select public.organizer_enroll('${EVC}','P2@X.com','${K1}')`, "el organizador SÍ inscribe a alguien después del cierre", "some");
+  await as("authenticated", A, `select public.organizer_enroll('${EVC}','p2@x.com','${K1}')`, "no la inscribe dos veces en la misma categoría", "deny");
+  await as("authenticated", A, `select public.organizer_enroll('${EVC}','nadie@x.com','${K1}')`, "un correo sin participante se rechaza", "deny");
+  await as("authenticated", A, `select public.organizer_enroll('${EVC}','p2@x.com','ca000000-0000-0000-0000-000000000001')`, "una categoría de otro evento se rechaza", "deny");
+  await as("authenticated", B, `select public.organizer_enroll('${EVC}','p2@x.com','${K2}')`, "otro organizador NO inscribe en un evento ajeno", "deny");
+  await as("authenticated", C, `select public.organizer_enroll('${EVC}','p2@x.com','${K2}')`, "un participante NO usa organizer_enroll", "deny");
+  await as("anon", null, `select public.organizer_enroll('${EVC}','p2@x.com','${K2}')`, "anónimo NO usa organizer_enroll", "deny");
+
+  await as("authenticated", A, upd("registration_closes_at = null"), "sin fecha límite", "some");
+  await as("authenticated", A, upd("registration_closed = true"), "el organizador cierra antes de tiempo", "some");
+  await as("authenticated", C, `select public.register_for_event('${EVC}','${K2}')`, "cerrado a mano NO se puede inscribir", "deny");
+  await as("authenticated", A, upd("registration_closed = false"), "el organizador reabre", "some");
+  await as("authenticated", C, `select public.register_for_event('${EVC}','${K2}')`, "reabierto SÍ se puede inscribir", "some");
+}
+
+// ---- Rol del lazador (0032, KIN-622) ----
+{
+  console.log("— Rol del lazador (0032)");
+  const ANA = "11111111-0000-0000-0000-000000000001"; // perfil de C, inscrita en EV
+  const setRole = (id, set) => `update ropers set ${set} where id = '${id}'`;
+  await as("anon", null, "select primary_role, favorite_role from ropers", "el rol es público (se ve en el perfil)", "some");
+  await as("authenticated", C, setRole(ANA, "primary_role = 'header'"), "el dueño elige su rol (cabecero)", "some");
+  await as("authenticated", C, setRole(ANA, "primary_role = 'both'"), "'ambos' SIN favorito se rechaza", "deny");
+  await as("authenticated", C, setRole(ANA, "primary_role = 'both', favorite_role = 'both'"), "el favorito solo puede ser cabecero o pialador", "deny");
+  await as("authenticated", C, setRole(ANA, "primary_role = 'header', favorite_role = 'heeler'"), "un solo rol NO lleva favorito", "deny");
+  await as("authenticated", C, setRole(ANA, "primary_role = 'astronauta'"), "un rol inventado se rechaza", "deny");
+  await as("authenticated", C, setRole(ANA, "primary_role = 'both', favorite_role = 'heeler'"), "'ambos' con favorito (pialador) se guarda", "some");
+  await as("authenticated", P2, setRole(ANA, "primary_role = 'heeler', favorite_role = null"), "otra persona NO cambia el rol de un perfil ajeno", "deny");
+  await as("anon", null, setRole(ANA, "primary_role = 'heeler', favorite_role = null"), "anónimo NO cambia roles", "deny");
+
+  // Perfil nuevo con rol al crear la cuenta
+  const N1 = "aaaa1111-0000-0000-0000-0000000000a1", N2 = "aaaa1111-0000-0000-0000-0000000000a2", N3 = "aaaa1111-0000-0000-0000-0000000000a3";
+  await db.exec(`
+    insert into auth.users (id, email, email_confirmed_at) values ('${N1}','n1@x.com',now()), ('${N2}','n2@x.com',now()), ('${N3}','roles@x.com',now());
+    insert into profiles (user_id, role, display_name) values ('${N1}','participante','N1'), ('${N2}','participante','N2'), ('${N3}','participante','N3');
+  `);
+  await as("authenticated", N1, "select public.claim_my_roper('Nuevo Con Rol', 'both', 'header')", "crear el perfil con rol (ambos, favorito cabecero)", "some");
+  await as("anon", null, "select id from ropers where full_name = 'Nuevo Con Rol' and primary_role = 'both' and favorite_role = 'header'", "quedó guardado en el perfil", "some");
+  await as("authenticated", N2, "select public.claim_my_roper('Mal Rol', 'both', null)", "'ambos' sin favorito se rechaza al crear", "deny");
+  await as("authenticated", N2, "select public.claim_my_roper('Mal Rol', 'header', 'heeler')", "un rol con favorito se rechaza al crear", "deny");
+  await as("authenticated", N2, "select public.claim_my_roper('Mal Rol', 'otro', null)", "un rol inventado se rechaza al crear", "deny");
+  await as("authenticated", N2, "select public.claim_my_roper('Sin Rol')", "sin rol sigue funcionando (perfiles anteriores)", "some");
+  await as("anon", null, "select id from ropers where full_name = 'Sin Rol' and primary_role is null and favorite_role is null", "un perfil sin rol queda 'sin definir'", "some");
+  await as("authenticated", N1, "select public.claim_my_roper('Otro Nombre', 'heeler', null)", "pedirlo otra vez NO cambia el rol ya guardado", "some");
+  await as("anon", null, "select id from ropers where full_name = 'Nuevo Con Rol' and primary_role = 'both'", "el rol sigue siendo el primero", "some");
+
+  // Un organizador ya había registrado a la persona por correo: al reclamar ese perfil se guarda el rol elegido
+  await as("authenticated", A, "select public.create_participant('Creado Por Org', 'roles@x.com')", "un organizador registra a alguien por correo", "some");
+  await as("authenticated", N3, "select public.claim_my_roper('Da igual', 'heeler', null)", "al reclamar ese perfil se guarda su rol", "some");
+  await as("anon", null, "select id from ropers where full_name = 'Creado Por Org' and primary_role = 'heeler'", "el perfil reclamado tiene el rol elegido", "some");
+
+  // API de la app: los participantes del evento traen su rol y su favorito
+  await as("service_role", null, `select role, favorite_role from public.app_event_participants('${EV}', null, now() + interval '1 minute', null, null, 50) where role = 'both' and favorite_role = 'heeler'`, "la app recibe el rol y el favorito", "some");
+  await as("authenticated", C, `select * from public.app_event_participants('${EV}', null, now(), null, null, 50)`, "un participante NO usa la función de la app", "deny");
+}
+
+// ---- Sacar a un inscrito del evento (0033, KIN-621) ----
+{
+  console.log("— Sacar a un inscrito (0033)");
+  const EVR = "e0000000-0000-0000-0000-0000000000d1", EVF = "e0000000-0000-0000-0000-0000000000d2", KR = "ca000000-0000-0000-0000-0000000000d1";
+  const ANA = "11111111-0000-0000-0000-000000000001", PD = "22222222-0000-0000-0000-000000000002"; // perfiles de C y de P2
+  const N1 = "aaaa1111-0000-0000-0000-0000000000a1"; // tiene perfil "Nuevo Con Rol" (sección anterior)
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug, event_date, capacity) values ('${EVR}','Para sacar','${A}','publicado','para-sacar','2099-08-01', 2), ('${EVF}','Ya terminó','${A}','finalizado','ya-termino','2020-01-01', 10);
+    insert into event_categories (id, event_id, name, fee_cents) values ('${KR}','${EVR}','Libre',10000);
+  `);
+  const regOf = (roper, ev = EVR) => `(select id from registrations where event_id = '${ev}' and roper_id = '${roper}' limit 1)`;
+  const rm = (roper, reason = "No cumple los requisitos", ev = EVR) => `select public.remove_registration(${regOf(roper, ev)}, '${reason}')`;
+  await as("authenticated", C, `select public.register_for_event('${EVR}','${KR}')`, "C se inscribe", "some");
+  await as("authenticated", P2, `select public.register_for_event('${EVR}','${KR}')`, "P2 se inscribe", "some");
+  await as("authenticated", A, `select public.set_registration_payment(${regOf(PD)}, 'efectivo')`, "el organizador marca a P2 como pagado en efectivo", "some");
+  await as("authenticated", N1, `select public.register_for_event('${EVR}','${KR}')`, "con el cupo lleno (2/2) un tercero NO se inscribe", "deny");
+
+  await as("authenticated", C, rm(ANA), "un participante NO se saca a sí mismo con esta acción", "deny");
+  await as("authenticated", P2, rm(ANA), "un participante NO saca a otro", "deny");
+  await as("anon", null, rm(ANA), "anónimo NO saca a nadie", "deny");
+  await as("authenticated", B, rm(ANA), "otro organizador NO saca inscritos de un evento ajeno", "deny");
+  await as("authenticated", A, rm(ANA, ""), "sin motivo NO se puede", "deny");
+  await as("authenticated", A, rm(ANA, "  ab "), "un motivo de menos de 3 caracteres NO se puede", "deny");
+  await as("authenticated", A, `select public.remove_registration('${"9e000000-0000-0000-0000-0000000000ff"}', 'No existe')`, "una inscripción inexistente se rechaza", "deny");
+  await as("authenticated", A, rm(ANA, "No se recibió el pago"), "el organizador SÍ saca a C (pendiente) con motivo", "some");
+  await as("authenticated", A, `select id from registrations where event_id = '${EVR}' and roper_id = '${ANA}'`, "C ya no está inscrita", "deny");
+  await as("authenticated", A, `select count(*) from registrations where event_id = '${EVR}' having count(*) = 1`, "el conteo del evento bajó a 1", "some");
+  await as("authenticated", N1, `select public.register_for_event('${EVR}','${KR}')`, "el cupo liberado lo toma otra persona", "some");
+
+  // El registro
+  await as("authenticated", A, `select reason, payment_status, refund_pending from registration_removals where event_id = '${EVR}' and roper_id = '${ANA}' and removed_by = '${A}' and reason = 'No se recibió el pago' and payment_status = 'pendiente' and not refund_pending`, "queda el registro: quién, motivo y estado de pago", "some");
+  await as("authenticated", C, `select reason from registration_removals where roper_id = '${ANA}'`, "el sacado ve el motivo", "some");
+  await as("authenticated", P2, `select id from registration_removals where roper_id = '${ANA}'`, "otro participante NO ve el registro", "deny");
+  await as("authenticated", B, `select id from registration_removals`, "otro organizador NO ve los registros del evento ajeno", "deny");
+  await as("anon", null, "select id from registration_removals", "anónimo NO ve registros", "deny");
+  await as("authenticated", D, "select id from registration_removals", "un admin SÍ los ve", "some");
+  await as("authenticated", A, `update registration_removals set reason = 'cambiado' where event_id = '${EVR}'`, "nadie edita el registro escribiendo la tabla", "deny");
+  await as("authenticated", A, `delete from registration_removals where event_id = '${EVR}'`, "nadie borra el registro escribiendo la tabla", "deny");
+  await as("authenticated", A, `insert into registration_removals (event_id, roper_id, reason, payment_status) values ('${EVR}','${ANA}','falso','pendiente')`, "nadie crea registros escribiendo la tabla", "deny");
+
+  // Volver a inscribirse
+  await as("authenticated", C, `select public.register_for_event('${EVR}','${KR}')`, "quien fue sacado NO se inscribe solo otra vez", "deny");
+  await as("authenticated", C, `select public.set_removal_reenroll((select id from registration_removals where roper_id = '${ANA}' limit 1), true)`, "el sacado NO se da permiso a sí mismo", "deny");
+  await as("authenticated", B, `select public.set_removal_reenroll((select id from registration_removals where roper_id = '${ANA}' limit 1), true)`, "otro organizador NO da permiso", "deny");
+  await as("authenticated", A, `select public.set_removal_reenroll((select id from registration_removals where roper_id = '${ANA}' limit 1), true)`, "el organizador permite que vuelva", "some");
+  await as("authenticated", A, `update events set capacity = 5 where id = '${EVR}'`, "se amplía el cupo", "some");
+  await as("authenticated", C, `select public.register_for_event('${EVR}','${KR}')`, "con permiso, C se inscribe otra vez", "some");
+  await as("authenticated", A, `select public.set_removal_reenroll((select id from registration_removals where roper_id = '${ANA}' limit 1), false)`, "el organizador vuelve a bloquear", "some");
+  await as("authenticated", P2, `select 1 from registration_removals where roper_id = '${PD}'`, "(P2 aún no ha sido sacado)", "deny");
+
+  // Pagos y reembolso
+  await as("authenticated", A, rm(PD, "Datos incorrectos"), "el organizador saca a P2, que ya había pagado", "some");
+  await as("authenticated", A, `select 1 from registration_removals where roper_id = '${PD}' and payment_status = 'pagado' and payment_method = 'efectivo' and amount_cents = 10000 and refund_pending`, "queda 'reembolso pendiente' con lo que había pagado", "some");
+  await as("authenticated", P2, `select 1 from registration_removals where roper_id = '${PD}' and refund_pending`, "P2 ve que su reembolso está pendiente", "some");
+  await as("authenticated", P2, `select public.set_removal_refunded((select id from registration_removals where roper_id = '${PD}' limit 1), true)`, "P2 NO marca su propio reembolso", "deny");
+  await as("authenticated", B, `select public.set_removal_refunded((select id from registration_removals where roper_id = '${PD}' limit 1), true)`, "otro organizador NO marca reembolsos ajenos", "deny");
+  await as("authenticated", A, `select public.set_removal_refunded((select id from registration_removals where roper_id = '${PD}' limit 1), true)`, "el organizador marca el reembolso como hecho", "some");
+  await as("authenticated", A, `select 1 from registration_removals where roper_id = '${PD}' and not refund_pending and refund_done_at is not null`, "ya no está pendiente y queda la fecha", "some");
+  await as("authenticated", A, `select public.set_removal_refunded((select id from registration_removals where roper_id = '${PD}' limit 1), false)`, "puede deshacerlo", "some");
+  await as("authenticated", A, `select public.set_removal_refunded((select id from registration_removals where roper_id = '${ANA}' limit 1), true)`, "un sacado sin pago no tiene reembolso que marcar", "deny");
+
+  // Límites: resultados y evento finalizado
+  const N1ROPER = (await db.query(`select id from ropers where user_id = '${N1}'`)).rows[0].id;
+  await db.exec(`insert into event_results (id, event_id, roper_id, discipline, time_ms) values (gen_random_uuid(), '${EVR}', '${N1ROPER}', 'lazo', 9000)`);
+  await as("authenticated", A, `select public.remove_registration(${regOf(N1ROPER)}, 'Con resultados')`, "quien ya tiene resultados en el evento NO se puede sacar", "deny");
+  await db.exec(`insert into registrations (id, event_id, roper_id, category_id) values ('9e000000-0000-0000-0000-0000000000f1','${EVF}','${PD}', null)`);
+  await as("authenticated", A, `select public.remove_registration('9e000000-0000-0000-0000-0000000000f1', 'Ya terminó')`, "en un evento finalizado NO se saca a nadie", "deny");
+
+  // Admin
+  const ANAREG = (await db.query(`select id from registrations where event_id = '${EVR}' and roper_id = '${ANA}'`)).rows[0].id;
+  await as("authenticated", D, `select public.remove_registration('${ANAREG}', 'Decisión de la plataforma')`, "un admin SÍ puede sacar a alguien", "some");
+  await as("authenticated", D, `select 1 from registration_removals where roper_id = '${ANA}' and removed_by = '${D}'`, "queda registrado que lo hizo el admin", "some");
+
+  // API de la app: el sacado deja de venir en los participantes del evento
+  await as("service_role", null, `select 1 from public.app_event_participants('${EVR}', null, now() + interval '1 minute', null, null, 50) where global_id in ('${ANA}', '${PD}')`, "los sacados NO vienen en la API de participantes de la app", "deny");
+  await as("service_role", null, `select 1 from public.app_event_participants('${EVR}', null, now() + interval '1 minute', null, null, 50)`, "los demás inscritos siguen viniendo", "some");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

@@ -9,6 +9,7 @@ import { ACTIVE_DISCIPLINES, DEFAULT_DISCIPLINE, type DisciplineId } from "@/lib
 import { toResultItem } from "@/lib/event-results-view";
 import { toEnrolledItem } from "@/lib/enrolled-view";
 import { fmtDate, mxn, type Lang } from "@/lib/format";
+import { fmtDeadline, isRegistrationOpen } from "@/lib/event-time";
 import Image from "next/image";
 import { EnrolledList } from "@/components/EnrolledList";
 import { EventResults } from "@/components/EventResults";
@@ -52,7 +53,9 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   const t = getDictionary(lang);
   const e = await getPublicEvent(id);
   if (!e) notFound();
-  const open = e.status === "publicado" && e.enrolled < e.capacity;
+  const regOpen = isRegistrationOpen({ closesAt: e.registrationClosesAt, closed: e.registrationClosed });
+  const open = e.status === "publicado" && e.enrolled < e.capacity && regOpen;
+  const closesLine = e.status === "publicado" && regOpen && e.registrationClosesAt ? `${t.event.closesOn} ${fmtDeadline(e.registrationClosesAt, e.timezone, lang)}` : null;
   const resultDisciplines: DisciplineId[] = ACTIVE_DISCIPLINES.filter((d) => e.disciplines.includes(d.id)).map((d) => d.id);
   if (resultDisciplines.length === 0) resultDisciplines.push(DEFAULT_DISCIPLINE);
   const gallery = e.photos.filter((p) => p.url !== e.cover); // el flyer de portada ya se ve arriba
@@ -90,7 +93,8 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
             {e.maxRoperRating !== null && <p className="mt-3 text-xs text-muted">{t.event.maxRating}: <span className="tabular-nums">{e.maxRoperRating.toFixed(1)}</span></p>}
             {open
               ? <Link href={`/${lang}/eventos/${e.id}/inscribirse`} className="mt-4 block rounded-full bg-ink py-3 text-center text-sm font-medium text-white transition hover:bg-brand-hot">{t.event.enroll}</Link>
-              : <p className="mt-4 rounded-full bg-sand py-3 text-center text-sm text-muted">{e.status === "finalizado" ? t.event.eventFinished : t.event.full}</p>}
+              : <p className="mt-4 rounded-full bg-sand py-3 text-center text-sm text-muted">{e.status === "finalizado" ? t.event.eventFinished : !regOpen ? t.event.registrationClosed : t.event.full}</p>}
+            {closesLine && <p className="mt-2 text-center text-xs font-medium text-muted">{closesLine}</p>}
             <p className="mt-3 text-center text-xs text-muted">{t.event.needAccount}</p>
           </aside>
 

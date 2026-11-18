@@ -91,6 +91,13 @@ inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
 
 Las inscripciones NO llevan correo ni celular: para eso está `GET /api/app/participantes` (que sí exige organizador activo y evento propio).
 
+**Inscritos que el organizador saca del evento (KIN-621).** Sacar a alguien borra su inscripción (el motivo y el pago quedan en un registro de la web
+que la app no recibe). Para la app, esa persona simplemente **deja de venir** en `registrations`, y como la web mueve `updated_at` del evento
+con cualquier alta, cambio o baja de inscripciones, el evento vuelve a descargarse en la siguiente sincronización incremental. La app debe tratar
+`registrations` como la lista completa vigente del evento (reemplazarla, no solo agregar): una inscripción que ya no viene es una baja. Un inscrito
+que ya tiene resultados no se puede sacar desde la web. Si la persona vuelve a inscribirse (con permiso del organizador), llega con una
+inscripción nueva y otro `registrations[].id`. `GET /api/app/participantes` tampoco la trae mientras no tenga ninguna inscripción en ese evento.
+
 Errores (todos con `{ "code": "…", "error": "texto para personas" }`; la app decide con `code` y el HTTP, no con el texto):
 
 | HTTP | `code` | Cuándo | ¿Reintentar? |
@@ -119,11 +126,14 @@ miles de lazadores, bajar todo sería enorme y expondría correos de gente ajena
 - `ratings` trae un rating (escala de 1 a 10, un decimal) POR modalidad **activa** (hoy solo `lazo`). Quien aún no tiene rating en
   una modalidad viene con el rating inicial (1, igual que se muestra en la web), `events: 0`, `wins: 0` y `updated_at: null`. Las
   modalidades que la web no tiene activas no se envían.
-- Cada participante lleva solo `global_id`, `name`, `email`, `claimed` y `ratings`. Nunca celular ni ids de cuenta.
+- Cada participante lleva solo `global_id`, `name`, `email`, `claimed`, `role`, `favorite_role` y `ratings`. Nunca celular ni ids de cuenta.
+- `role` es con qué rol compite (KIN-622): `header` (cabecero), `heeler` (pialador) o `both` (ambos); `favorite_role` es `header` o `heeler` y **solo viene
+  cuando `role` es `both`** (el rol que usa más). Los perfiles que aún no eligen rol traen los dos en `null` ("sin definir"); la app no debe bloquearlos.
+  Son los mismos `header` / `heeler` de `substitution.role`. Cambiar el rol cuenta como cambio del participante para `since`.
 - Un perfil fusionado (`merged_into`) no se incluye.
 
 ```json
-{ "participants": [{ "global_id": "…", "name": "…", "email": "ana@example.com", "claimed": true,
+{ "participants": [{ "global_id": "…", "name": "…", "email": "ana@example.com", "claimed": true, "role": "both", "favorite_role": "heeler",
                      "ratings": { "lazo": { "rating": 9.4, "events": 18, "wins": 6, "updated_at": "2026-11-01T00:00:00Z" } } }],
   "next_cursor": null, "generated_at": "2026-11-05T10:00:00Z" }
 ```

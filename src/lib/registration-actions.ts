@@ -7,7 +7,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
-const KNOWN = ["registration_closed", "full", "closed", "already", "invalid_category", "paid", "not_found"];
+const KNOWN = ["removed", "registration_closed", "full", "closed", "already", "invalid_category", "paid", "not_found"];
 const codeOf = (message: string) => KNOWN.find((k) => message.includes(k)) ?? "failed";
 
 // Inscribirse a un evento. La base valida todo (evento publicado, categoría del evento, no repetir, cupo con bloqueo) y el precio
@@ -56,4 +56,48 @@ export async function enrollByOrganizer(formData: FormData) {
   if (error) return back(`manual=${["not_found", "already", "full", "invalid_category"].find((k) => error.message.includes(k)) ?? "failed"}`);
   updateTag("registrations");
   return back("manual=ok");
+}
+
+// ---- Sacar a un inscrito del evento (KIN-621). La base valida que sea el organizador activo del evento (o un admin), el motivo y que el evento
+// no esté finalizado ni la persona tenga resultados; aquí solo se manda y se vuelve a la página del evento con el resultado.
+const REMOVE_ERRORS = ["invalid_reason", "has_results", "closed", "not_found", "no_payment"];
+const removeCode = (message: string) => REMOVE_ERRORS.find((k) => message.includes(k)) ?? "failed";
+
+async function organizerContext(formData: FormData) {
+  const l = lang(formData.get("lang"));
+  const slug = String(formData.get("slug") ?? "");
+  const s = await getSession();
+  const back = (q: string) => redirect(`/${l}/organizador/eventos/${encodeURIComponent(slug)}?${q}`);
+  if ((s?.role !== "organizador" || !s.verified) && !s?.isAdmin) redirect(`/${l}/organizador`);
+  return { back, supabase: await createServerSupabase() };
+}
+
+export async function removeRegistration(formData: FormData) {
+  const { back, supabase } = await organizerContext(formData);
+  const id = String(formData.get("id") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!UUID.test(id)) return back("sacado=not_found");
+  if (reason.length < 3 || reason.length > 500) return back("sacado=invalid_reason");
+  const { error } = await supabase.rpc("remove_registration", { p_registration: id, p_reason: reason });
+  if (error) return back(`sacado=${removeCode(error.message)}`);
+  updateTag("registrations");
+  return back("sacado=ok");
+}
+
+// Permitir (o volver a bloquear) que la persona sacada se inscriba sola otra vez.
+export async function setRemovalReenroll(formData: FormData) {
+  const { back, supabase } = await organizerContext(formData);
+  const id = String(formData.get("id") ?? "");
+  if (!UUID.test(id)) return back("sacado=not_found");
+  const { error } = await supabase.rpc("set_removal_reenroll", { p_removal: id, p_allow: formData.get("allow") === "true" });
+  return back(error ? `sacado=${removeCode(error.message)}` : "sacado=reenroll");
+}
+
+// Marcar que ya se devolvió el dinero a mano (o deshacerlo).
+export async function setRemovalRefunded(formData: FormData) {
+  const { back, supabase } = await organizerContext(formData);
+  const id = String(formData.get("id") ?? "");
+  if (!UUID.test(id)) return back("sacado=not_found");
+  const { error } = await supabase.rpc("set_removal_refunded", { p_removal: id, p_done: formData.get("done") === "true" });
+  return back(error ? `sacado=${removeCode(error.message)}` : "sacado=refund");
 }

@@ -45,7 +45,7 @@ export const en: Dict = {
   enroll: {
     title: "Registration", category: "Category", discipline: "Discipline", submit: "Register", pendingNote: "Your spot is reserved as pending payment. Afterwards you can pay online or in cash/by transfer with the organizer. You can cancel it while it isn't paid.",
     errors: {
-      forbidden: "Only participants can register.", role: "Choose the role you compete in (and your favorite if both).", invalid_category: "Invalid event or category.", closed: "Registration is closed.", registration_closed: "Registration for this event has closed.", already: "You're already registered in this category.",
+      forbidden: "Only participants can register.", role: "Choose the role you compete in (and your favorite if both).", invalid_category: "Invalid event or category.", closed: "Registration is closed.", registration_closed: "Registration for this event has closed.", removed: "The organizer removed you from this event. Contact them if you think it was a mistake.", already: "You're already registered in this category.",
       full: "The event is full.", paid: "That registration is already paid and can't be canceled here.", not_found: "We couldn't find that registration.", failed: "Couldn't complete that. Please try again.",
     },
   },
@@ -79,7 +79,7 @@ export const en: Dict = {
     photo: { add: "Add photo", change: "Change photo", remove: "Remove", saving: "Saving…", tooBig: `The photo is larger than ${MAX_UPLOAD_MB} MB. Choose a lighter one.`, error: "Couldn't save the photo. Use a JPG, PNG or WebP image." },
     type: "Participant account", roleTitle: "My role", roleUndefined: "You haven't chosen the role you compete in yet. Pick it so organizers can see it; nothing is blocked in the meantime.", roleSave: "Save role", roleSaved: "Done, we saved your role.", myRegistrations: "My registrations",
     noRegistrations: "You haven't registered for any event yet.", available: "Available events", noneAvailable: "No new events right now.",
-    enrolledOk: "Done! Your spot is reserved. Below you can see how to pay.", canceledOk: "Registration canceled.", cancel: "Cancel",
+    enrolledOk: "Done! Your spot is reserved. Below you can see how to pay.", canceledOk: "Registration canceled.", removedTitle: "Events you were removed from", removedOn: "Removed on", removedReason: "Reason:", removedRefund: "You had already paid: the organizer will refund you manually (refund pending).", removedRefundDone: "The organizer marked your refund as done.", removedCanReturn: "The organizer allows you to register again.", removedBlocked: "To register again, ask the organizer.", cancel: "Cancel",
     ranking: "Ranking", seeAll: "See all", publicProfile: "View my public profile and history", paid: "Paid", pending: "Payment pending",
   },
   org: {
@@ -98,6 +98,14 @@ export const en: Dict = {
       registration: "Registration", regOpen: "Open", regClosed: "Closed", closesAt: "Closes on", closesAtPast: "Closed on", noDeadline: "No deadline: open until you close it.", closeNow: "Close registration", reopen: "Reopen registration", reopenHint: "If the deadline has passed, reopening removes it; you can set another by editing the event.",
       manualTitle: "Register someone", manualHint: "Works even when registration is closed. The person must be in Participants; look them up by email.", manualEmail: "Participant email", manualCategory: "Category", manualSubmit: "Register",
       manual: { ok: "Done: they're registered, payment pending.", invalid: "Check the email and the category.", not_found: "No participant has that email. Add them in Participants first.", already: "Already registered in that category.", full: "The event is full.", invalid_category: "That category isn't from this event.", failed: "Couldn't register. Please try again." },
+      remove: {
+        button: "Remove from event", title: "Remove from event", person: "Registrant:", payment: "Payment:", reasonLabel: "Reason (the person will see it)", reasonPlaceholder: "Write the reason", presets: "Common reason", other: "Other (write below)",
+        presetList: ["Payment not received", "Wrong or duplicate details", "Does not meet the category requirements", "Conduct against the rules", "Registered by mistake"],
+        refundWarning: "This roper has already paid. The refund is done manually: it will be marked as refund pending.", cancel: "Cancel", confirm: "Remove from event", minChars: "Write at least 3 characters.",
+        removedTitle: "Removed from the event", none: "Nobody has been removed from this event.", on: "On", by: "Paid", refundPending: "Refund pending", refundDone: "Refunded", markRefunded: "Mark refund done", undoRefund: "Undo",
+        allow: "Allow them to register again", block: "Block again", allowed: "Can register again", blocked: "Cannot register on their own", notPaid: "No payment",
+        msg: { ok: "Done: they were removed and their spot is free.", reenroll: "Done: we updated whether they can register again.", refund: "Done: we updated the refund.", invalid_reason: "Write a reason of at least 3 characters.", has_results: "They already have results in this event: they cannot be removed.", closed: "The event is already finished: nobody can be removed.", not_found: "We could not find that registration.", no_payment: "That registration had no payment.", failed: "Could not complete. Try again." },
+      },
     },
     dir: { title: "Participants", blurb: "Global directory with contact details, visible to organizers only. Use it to register participants in your events.", name: "Name", email: "Email", rating: "Rating", events: "Events", wins: "Wins", profile: "Profile", verified: "Verified", unclaimed: "Unclaimed",
       addTitle: "Add participant", addBlurb: "Register them with their email so they appear in the directory and can claim their profile when they create their account.", addName: "Full name", addEmail: "Email", addEmailHint: "When the person creates their account with this email, they will claim their profile and history.",

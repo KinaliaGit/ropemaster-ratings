@@ -7,7 +7,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
-const KNOWN = ["removed", "registration_closed", "full", "closed", "already", "invalid_category", "paid", "not_found"];
+const KNOWN = ["removed", "registration_closed", "full", "closed", "already", "invalid_category", "rating_limit", "paid", "not_found"];
 const codeOf = (message: string) => KNOWN.find((k) => message.includes(k)) ?? "failed";
 
 // Inscribirse a un evento. La base valida todo (evento publicado, categoría del evento, no repetir, cupo con bloqueo) y el precio

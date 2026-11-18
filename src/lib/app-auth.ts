@@ -2,11 +2,11 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { verifySyncToken } from "@/lib/sync-tokens";
 import { adminClient } from "@/lib/supabase/admin";
 
-// Autentica a la app local por código de conexión (Authorization: Bearer ...).
-// El organizador lo genera en su panel; aquí se compara su hash contra la base (api_tokens), ver sync-tokens.ts.
-// APP_SYNC_TOKEN (opcional) sirve como código fijo SOLO para pruebas locales: en producción se ignora.
+// Autentica a la app local por el token de su sesión (Authorization: Bearer ...).
+// El token lo entrega el login de la app (POST /api/app/login); aquí se compara su hash contra la base (api_tokens), ver sync-tokens.ts.
+// APP_SYNC_TOKEN (opcional) sirve como token fijo SOLO para pruebas locales: en producción se ignora.
 
-const MAX_FAILURES = 20;     // intentos con un código inválido permitidos por IP...
+const MAX_FAILURES = 20;     // intentos con un token inválido permitidos por IP...
 const WINDOW_SECONDS = 300;  // ...dentro de esta ventana (5 minutos)
 
 // IP del cliente. En Vercel x-forwarded-for lo pone la plataforma; en otro hosting hay que confirmar que un cliente no pueda inventarlo.
@@ -30,7 +30,7 @@ async function isBlocked(h: string): Promise<boolean> {
   const db = adminClient();
   if (!db) return recent(h).length >= MAX_FAILURES;
   const { data, error } = await db.rpc("api_auth_is_blocked", { p_ip_hash: h, p_limit: MAX_FAILURES, p_window_seconds: WINDOW_SECONDS });
-  return !error && data === true; // si el conteo falla no se bloquea a nadie; la verificación del código sigue protegida
+  return !error && data === true; // si el conteo falla no se bloquea a nadie; la verificación del token sigue protegida
 }
 
 async function recordFailure(h: string): Promise<void> {
@@ -61,7 +61,7 @@ export async function organizerFromRequest(request: Request): Promise<{ organize
     await recordFailure(h);
     return Response.json({ code: "invalid_token", error: "Token inválido" }, { status: 401 });
   } catch {
-    // Falla de la base: la app debe reintentar luego (5xx), no tratarlo como código inválido. No se registra el código.
+    // Falla de la base: la app debe reintentar luego (5xx), no tratarlo como token inválido. No se registra el token.
     return Response.json({ code: "service_unavailable", error: "Servicio no disponible" }, { status: 503 });
   }
 }

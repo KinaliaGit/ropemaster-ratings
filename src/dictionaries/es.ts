@@ -34,7 +34,7 @@ export const es = {
     from: "Desde", 
     organizedBy: "Organiza", photos: "Fotos", noPhotos: "El organizador aún no ha subido fotos.", enrolled: "Inscritos", noEnrolled: "Aún no hay inscritos.",
     results: "Resultados", resultsClosed: "Resultados cerrados", resultsInReview: "Resultados en corrección", noResults: "Aún no hay resultados.",
-    enrollment: "Inscripción", enroll: "Inscribirme", needAccount: "Necesitas una cuenta de participante.", eventFinished: "Evento finalizado", full: "Cupo lleno", closesOn: "Cierra el", registrationClosed: "Inscripciones cerradas",
+    enrollment: "Inscripción", enroll: "Inscribirme", needAccount: "Necesitas una cuenta de participante.", eventFinished: "Evento finalizado", full: "Cupo lleno", closesOn: "Cierra el", maxRating: "Rating máximo para inscribirse", registrationClosed: "Inscripciones cerradas",
   },
   pay: {
     method: { efectivo: "Efectivo", transferencia: "Transferencia", stripe: "En línea" }, markPaid: "Marcar pagado:", undo: "Deshacer", error: "No se pudo cambiar el pago. Intenta de nuevo.",
@@ -43,10 +43,10 @@ export const es = {
     returned: "¡Gracias! Estamos confirmando tu pago; en unos segundos aparecerá como pagado.", paidWith: "Pagado con", errors: { unauthenticated: "Inicia sesión para pagar.", invalid: "No encontramos esa inscripción.", already: "Esa inscripción ya está pagada.", noPayouts: "El organizador aún no activa los pagos en línea.", generic: "No se pudo iniciar el pago." },
   },
   enroll: {
-    title: "Inscripción", category: "Categoría", discipline: "Modalidad", submit: "Inscribirme", pendingNote: "Tu lugar queda apartado como pendiente de pago. Después podrás pagar en línea o en efectivo/transferencia con el organizador. Puedes cancelarlo mientras no esté pagado.",
+    title: "Inscripción", category: "Categoría", discipline: "Modalidad", submit: "Inscribirme", pendingNote: "Tu lugar queda apartado como pendiente de pago. Después podrás pagar en línea o en efectivo/transferencia con el organizador. Puedes cancelarlo mientras no esté pagado.", pendingNoteOffline: "Tu lugar queda apartado como pendiente de pago. Después pagarás en efectivo o por transferencia con el organizador. Puedes cancelarlo mientras no esté pagado.",
     errors: {
       forbidden: "Solo los participantes pueden inscribirse.", role: "Elige con qué rol compites (y tu favorito si son ambos).", invalid_category: "Evento o categoría inválidos.", closed: "Las inscripciones están cerradas.", registration_closed: "Las inscripciones de este evento ya cerraron.", removed: "El organizador te sacó de este evento. Contáctalo si crees que fue un error.", already: "Ya estás inscrito en esta categoría.",
-      full: "El cupo está lleno.", paid: "Esa inscripción ya está pagada y no se puede cancelar aquí.", not_found: "No encontramos esa inscripción.", failed: "No se pudo completar. Intenta de nuevo.",
+      full: "El cupo está lleno.", rating_limit: "Tu rating supera el máximo individual de este evento.", paid: "Esa inscripción ya está pagada y no se puede cancelar aquí.", not_found: "No encontramos esa inscripción.", failed: "No se pudo completar. Intenta de nuevo.",
     },
   },
   people: {
@@ -127,21 +127,14 @@ export const es = {
       paymentInfo: "Instrucciones de pago (transferencia o efectivo)", paymentInfoHint: "Solo las ven quienes se inscriben a tu evento. Ej.: CLABE, banco y titular, o «paga en efectivo en la arena».", paymentInfoPlaceholder: "CLABE 0123 4567 8901 2345 67 · Banco · Titular",
       closes: "Cierre de inscripciones", closesHint: "Opcional. Pasada esta fecha y hora nadie más se puede inscribir (tú sí, a mano). Sin fecha, siguen abiertas hasta que las cierres. No puede ser después del día del evento.", timezone: "Zona horaria del evento",
       save: "Guardar cambios", editTitle: "Editar evento", editBlurb: "Los cambios se ven al momento en la página pública. Lo ya inscrito conserva el precio con el que se apartó.", saved: "Cambios guardados.", edit: "Editar",
-      errors: { closeInvalid: "La fecha de cierre o la zona horaria no son válidas.", closeAfterEvent: "El cierre de inscripciones no puede ser después del día del evento.", capacity: "El cupo no puede ser menor que los inscritos que ya hay.", catInUse: "No puedes quitar una categoría que ya tiene inscritos. Puedes renombrarla o cambiar su costo." },
+      errors: { closeInvalid: "La fecha de cierre o la zona horaria no son válidas.", closeAfterEvent: "El cierre de inscripciones no puede ser después del día del evento.", capacity: "El cupo no puede ser menor que los inscritos que ya hay.", catInUse: "No puedes quitar una categoría que ya tiene inscritos. Puedes renombrarla o cambiar su costo.", ratingLimit: "El rating máximo debe ser un número entre 0 y 10." },
       photosLater: "Después de crear el evento podrás agregar fotos y elegir la portada.", 
       error: "Revisa los campos: faltan datos o hay valores inválidos.", title: "Nuevo evento", blurb: "Al publicarlo aparece en la web y tu app Rope Master lo descarga al sincronizar.", name: "Nombre del evento", date: "Fecha", capacity: "Cupo", venue: "Sede", city: "Ciudad",
-      disciplines: "Modalidades", categories: "Categorías y costo de inscripción", categoryName: "Nombre de la categoría", categoryNamePlaceholder: "Ej. Libre, Amateur", cost: "Costo de inscripción", costHint: "Lo que paga cada participante por esta categoría", addCategory: "+ Agregar categoría", description: "Descripción", cover: "Foto de portada", saveDraft: "Guardar borrador", publish: "Publicar",
+      disciplines: "Modalidades", categories: "Categorías y costo de inscripción", categoryName: "Nombre de la categoría", categoryNamePlaceholder: "Ej. Libre, Amateur", cost: "Costo de inscripción", costHint: "Lo que paga cada participante por esta categoría", maxRoperRating: "Rating máximo para inscribirse (opcional)", maxRoperRatingHint: "Quien tenga un rating mayor no podrá inscribirse. Déjalo vacío si no hay límite.", addCategory: "+ Agregar categoría", description: "Descripción", cover: "Foto de portada", saveDraft: "Guardar borrador", publish: "Publicar",
     },
     app: {
       title: "Conecta tu app Rope Master", blurb: "Lo que publiques aquí llega solo a tu app: eventos y participantes se descargan cuando tienes internet y después los usas sin conexión.",
       steps: ["En la app, ve a Ajustes → Cuenta web.", "Entra con tu correo y contraseña de esta web.", "Pulsa Sincronizar: tus eventos y participantes se descargan a la app."],
-      code: {
-        title: "Código de conexión (respaldo)", backup: "Solo si no puedes entrar con tu correo y contraseña en la app. Funciona igual, pero se pega a mano.", connected: "Conectada", notConnected: "Sin conectar", since: "Código creado el", none: "Aún no has generado un código.",
-        generate: "Generar código", regenerate: "Generar uno nuevo", copy: "Copiar", copied: "Copiado", shownOnce: "Cópialo ahora: por seguridad no se vuelve a mostrar.",
-        replaceNote: "Si generas uno nuevo, el anterior deja de funcionar y tendrás que pegar el nuevo en la app.", error: "No se pudo generar el código. Intenta de nuevo.",
-        lastUsed: "Último uso", neverUsed: "Aún no se ha usado", revoke: "Revocar código",
-        revokeConfirm: "Si lo revocas, la app conectada deja de funcionar al instante. ¿Revocar el código?", revokeError: "No se pudo revocar el código. Intenta de nuevo.",
-      },
       devices: {
         title: "Equipos conectados", blurb: "Cada computadora donde entras a la app con tu correo y contraseña. Puedes tener hasta 3. Un equipo que no se conecta en 30 días deja de funcionar y vuelve a pedir tu contraseña.",
         none: "Aún no has conectado ningún equipo.", since: "Conectado el", lastUsed: "Último uso", neverUsed: "Aún no se ha usado", expires: "Vence el", expired: "Vencido: vuelve a entrar desde la app",

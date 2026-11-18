@@ -4,11 +4,11 @@ import { createEvent, updateEvent } from "@/lib/event-actions";
 import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/event-time";
 
 type Labels = {
-  name: string; date: string; capacity: string; venue: string; city: string; disciplines: string; categories: string; categoryName: string; categoryNamePlaceholder: string; cost: string; costHint: string; addCategory: string;
+  name: string; date: string; capacity: string; venue: string; city: string; disciplines: string; categories: string; categoryName: string; categoryNamePlaceholder: string; cost: string; costHint: string; maxRoperRating: string; maxRoperRatingHint: string; addCategory: string;
   error: string; description: string; saveDraft: string; publish: string; photosLater: string; save: string; errors: Record<string, string>; paymentInfo: string; paymentInfoHint: string; paymentInfoPlaceholder: string;
   closes: string; closesHint: string; timezone: string;
 };
-export type EventInitial = { slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; paymentInfo: string; closesAt: string; timezone: string; disciplines: string[]; cats: { id: string; name: string; fee: number }[] };
+export type EventInitial = { slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; paymentInfo: string; closesAt: string; timezone: string; disciplines: string[]; maxRoperRating: number | null; cats: { id: string; name: string; fee: number }[] };
 
 const input = "mt-1 w-full rounded-xl border border-line bg-white px-4 py-2.5 outline-none focus:border-ink";
 
@@ -26,6 +26,10 @@ export function EventForm({ lang, labels: l, disciplines, error, initial }: { la
         <label className="block text-sm font-medium">{l.venue}<input required name="venue" maxLength={120} defaultValue={initial?.venue} className={input} /></label>
         <label className="block text-sm font-medium">{l.city}<input required name="city" maxLength={80} defaultValue={initial?.city} className={input} /></label>
       </div>
+      <label className="block text-sm font-medium">{l.maxRoperRating}
+        <input name="maxRoperRating" type="number" min={0} max={10} step={0.1} inputMode="decimal" defaultValue={initial?.maxRoperRating ?? ""} className={input} />
+        <span className="mt-1 block text-xs font-normal text-muted">{l.maxRoperRatingHint}</span>
+      </label>
       <fieldset>
         <legend className="text-sm font-medium">{l.disciplines}</legend>
         {disciplines.map((d) => <label key={d.id} className="mr-4 text-sm"><input type="checkbox" name="discipline" value={d.id} defaultChecked={initial ? initial.disciplines.includes(d.id) : true} className="mr-1 accent-brand" />{d.label}</label>)}

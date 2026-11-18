@@ -10,6 +10,7 @@ export type EventItem = {
   disciplines: string[]; categories: Category[]; capacity: number; enrolled: number;
   organizer: string; uuid?: string; organizerId?: string; tone: number; cover?: string; photos: { id: string; url: string }[];
   timezone: string; registrationClosesAt: string | null; registrationClosed: boolean; updatedAt: string; description: string; status: "publicado" | "borrador" | "finalizado";
+  maxRoperRating: number | null; // rating máximo para inscribirse (null = sin límite)
   resultsClosed: boolean; // los resultados ya están cerrados (candado de la app); un evento finalizado con los resultados abiertos está en corrección
 };
 

@@ -7,7 +7,7 @@ import { MAX_BYTES, buildUploadResponse, parseUploadBody, type UploadRow } from 
 // La app sube los resultados de un evento (KIN-587). Contrato en docs/SYNC_API.md.
 //   POST /api/app/resultados  { contract_version, client_batch_id?, results: [...] }
 //   -> 200 { contract_version, client_batch_id, results: [{ id, status, ... }] }  (una entrada por resultado, en el mismo orden)
-// Orden de las comprobaciones: código de conexión (401/429), tamaño (413), cuerpo y versión (400/426), organizador activo (403).
+// Orden de las comprobaciones: token de la sesión (401/429), tamaño (413), cuerpo y versión (400/426), organizador activo (403).
 // Cada resultado se juzga solo (aceptado, sin cambios, corregido o rechazado con su motivo), así que la app reintenta solo lo que falló.
 // Reenviar el mismo lote no duplica nada. El recálculo de ratings está en pausa (KIN-571 y KIN-583): aquí solo se guarda.
 const headers = { "Cache-Control": "no-store" };

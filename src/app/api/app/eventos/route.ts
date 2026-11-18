@@ -9,7 +9,7 @@ import { PAGE_SIZE, buildEventsPage, checkVersion, parseEventsQuery, type EventR
 //   -> { contract_version, organizer, events: [...], next_cursor: string | null, generated_at: ISO }
 // `since` devuelve solo los eventos que cambiaron desde esa fecha, y un cambio en sus inscripciones o categorías cuenta. Cada evento
 // que cambió llega completo, con la lista vigente de inscritos. Guardar `generated_at` para el siguiente `since`.
-// Orden de las comprobaciones: código de conexión (401/429), versión y parámetros (400/426), organizador activo (403).
+// Orden de las comprobaciones: token de la sesión (401/429), versión y parámetros (400/426), organizador activo (403).
 // Los borradores no se envían. NUNCA se registran los nombres de los inscritos en logs.
 const headers = { "Cache-Control": "no-store" };
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers });

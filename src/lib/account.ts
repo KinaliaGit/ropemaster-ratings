@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { LEGAL } from "@/lib/legal";
+import { refreshOrganizerLicense } from "@/lib/license-link";
 
 export type AccountProfile = { role: "organizador" | "participante"; name: string };
 
@@ -11,6 +12,7 @@ export async function ensureProfile(supabase: SupabaseClient, user: User): Promi
   const { data: existing } = await supabase.from("profiles").select("role, display_name").eq("user_id", user.id).maybeSingle();
   if (existing) {
     if (existing.role === "participante") await supabase.rpc("claim_my_roper", { p_name: existing.display_name });
+    if (existing.role === "organizador") await refreshOrganizerLicense(user).catch(() => "unavailable"); // licencia vigente => activo automático
     return { role: existing.role as AccountProfile["role"], name: existing.display_name };
   }
   const meta = user.user_metadata as { display_name?: string; role?: string; terms_version?: string };
@@ -27,5 +29,6 @@ export async function ensureProfile(supabase: SupabaseClient, user: User): Promi
   ]);
   const { error: claimError } = role === "participante" ? await supabase.rpc("claim_my_roper", { p_name: name }) : { error: null };
   if (consentError || claimError) return null;
+  if (role === "organizador") await refreshOrganizerLicense(user).catch(() => "unavailable");
   return { role, name };
 }

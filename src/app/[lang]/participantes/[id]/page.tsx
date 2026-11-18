@@ -8,6 +8,7 @@ import { HistorySkeleton, ProfileSkeleton } from "@/components/ProfileSkeleton";
 import { getPublicRoper, getRoperHistory, getRoperSummary } from "@/lib/data/ropers";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import type { Lang } from "@/lib/format";
+import { roleText } from "@/lib/roles";
 import { fmtRating, fmtTime, initials, publicAvatarUrl } from "@/lib/people";
 import { toHistoryItem } from "@/lib/results-view";
 import { getDictionary, resolveLang } from "@/lib/i18n";
@@ -59,6 +60,7 @@ async function PerfilInner({ params }: { params: PageProps<"/[lang]/participante
         <Avatar name={r.name} initials={initials(r.name)} url={publicAvatarUrl(r.avatarPath)} className="size-20 text-2xl" />
         <div className="flex-1">
           <h1 className="text-4xl font-semibold">{r.name}</h1>
+          {r.role && <p className="mt-2"><span className="rounded-full bg-sand px-3 py-1 text-sm font-medium">{roleText(r.role, t.roles)}</span></p>}
         </div>
         <div className="flex gap-8 text-right">
           {modes.map((d) => (

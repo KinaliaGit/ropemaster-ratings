@@ -5,6 +5,8 @@
       "name": "Ana Estrada",
       "email": "ana@example.com",
       "claimed": true,
+      "role": "both",
+      "favorite_role": "heeler",
       "ratings": {
         "lazo": { "rating": 9.4, "events": 18, "wins": 6, "updated_at": "2026-11-02T10:00:00Z" }
       }
@@ -14,6 +16,8 @@
       "name": "Mateo Villarreal",
       "email": "mateo@example.com",
       "claimed": false,
+      "role": "header",
+      "favorite_role": null,
       "ratings": {
         "lazo": { "rating": 1, "events": 0, "wins": 0, "updated_at": null }
       }
@@ -23,6 +27,8 @@
       "name": "Chuy",
       "email": null,
       "claimed": false,
+      "role": null,
+      "favorite_role": null,
       "ratings": {
         "lazo": { "rating": 1, "events": 0, "wins": 0, "updated_at": null }
       }

@@ -1,4 +1,5 @@
 import type { DisciplineId } from "@/lib/disciplines";
+import type { RoleChoice } from "@/lib/roles";
 
 // Tipos compartidos de la web. Los datos salen de Supabase (ver src/lib/data/).
 
@@ -16,5 +17,5 @@ export type EventItem = {
 export type Stat = { rating: number; events: number; wins: number; updatedAt?: string; initial?: boolean }; // initial: aún sin eventos, rating de partida
 
 // Participante tal como lo ve el público. El celular NO está aquí: es privado (tabla roper_contacts).
-export type Roper = { id: string; name: string; avatarPath: string | null; stats: Partial<Record<DisciplineId, Stat>> };
+export type Roper = { id: string; name: string; avatarPath: string | null; role?: RoleChoice | null; stats: Partial<Record<DisciplineId, Stat>> };
 

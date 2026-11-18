@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { LEGAL } from "@/lib/legal";
+import { parseRoleChoice } from "@/lib/roles";
 
 export type AccountProfile = { role: "organizador" | "participante"; name: string };
 
@@ -13,7 +14,7 @@ export async function ensureProfile(supabase: SupabaseClient, user: User): Promi
     if (existing.role === "participante") await supabase.rpc("claim_my_roper", { p_name: existing.display_name });
     return { role: existing.role as AccountProfile["role"], name: existing.display_name };
   }
-  const meta = user.user_metadata as { display_name?: string; role?: string; terms_version?: string };
+  const meta = user.user_metadata as { display_name?: string; role?: string; terms_version?: string; roper_role?: string; roper_favorite?: string };
   const name = (meta.display_name ?? "").trim().slice(0, 80);
   const role = meta.role === "participante" || meta.role === "organizador" ? meta.role : null;
   // Sin aceptación de términos registrada en el registro, no se crea el perfil.
@@ -25,7 +26,11 @@ export async function ensureProfile(supabase: SupabaseClient, user: User): Promi
     { user_id: user.id, document: "terms", version: LEGAL.version },
     { user_id: user.id, document: "privacy", version: LEGAL.version },
   ]);
-  const { error: claimError } = role === "participante" ? await supabase.rpc("claim_my_roper", { p_name: name }) : { error: null };
+  // El rol que eligió al registrarse (si lo hay) se guarda con el perfil de lazador; las cuentas anteriores no lo traen y quedan "sin definir".
+  const choice = parseRoleChoice(meta.roper_role, meta.roper_favorite);
+  const { error: claimError } = role === "participante"
+    ? await (choice ? supabase.rpc("claim_my_roper", { p_name: name, p_role: choice.role, p_favorite: choice.favorite }) : supabase.rpc("claim_my_roper", { p_name: name }))
+    : { error: null };
   if (consentError || claimError) return null;
   return { role, name };
 }

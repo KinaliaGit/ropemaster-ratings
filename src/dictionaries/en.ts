@@ -4,6 +4,7 @@ import { MAX_UPLOAD_MB } from "@/lib/limits";
 export const en: Dict = {
   meta: { title: "Rope Master Ratings", description: "The global registry of ropers: rating, history and results from every event." },
   common: { brand: "Rope Master", ratings: "Ratings", loading: "Loading…", back: "Back", of: "of" },
+  roles: { legend: "Which role do you usually compete in?", header: "Header", heeler: "Heeler", both: "Both", favoriteLegend: "Which is your favorite role, the one you use most?", favorite: "favorite", undefined: "Not set" },
   nav: { myLazador: "My roper profile", createLazador: "Create my roper profile", events: "Events", participants: "Participants", signIn: "Sign in", myPanel: "My dashboard", myAccount: "My account", signOut: "Sign out", publicSite: "Public site", language: "Language" },
   promo: {
     label: "Rope Master", title: "The software to run your roping event.",
@@ -44,7 +45,7 @@ export const en: Dict = {
   enroll: {
     title: "Registration", category: "Category", discipline: "Discipline", submit: "Register", pendingNote: "Your spot is reserved as pending payment. Afterwards you can pay online or in cash/by transfer with the organizer. You can cancel it while it isn't paid.",
     errors: {
-      forbidden: "Only participants can register.", invalid_category: "Invalid event or category.", closed: "Registration is closed.", registration_closed: "Registration for this event has closed.", already: "You're already registered in this category.",
+      forbidden: "Only participants can register.", role: "Choose the role you compete in (and your favorite if both).", invalid_category: "Invalid event or category.", closed: "Registration is closed.", registration_closed: "Registration for this event has closed.", removed: "The organizer removed you from this event. Contact them if you think it was a mistake.", already: "You're already registered in this category.",
       full: "The event is full.", paid: "That registration is already paid and can't be canceled here.", not_found: "We couldn't find that registration.", failed: "Couldn't complete that. Please try again.",
     },
   },
@@ -65,7 +66,7 @@ export const en: Dict = {
     errorUnconfirmed: "Confirm your email first: we sent you a link when you signed up.", errorConfirm: "The confirmation link is invalid or has expired. Sign in with your email and password or request another.", resend: "Resend confirmation email", resent: "We sent it again.",
     password: "Password", passwordHint: "At least 8 characters", signInBtn: "Sign in", participantAccess: "Participant access", errorRoleOrganizer: "That account isn't an organizer account. Choose \"Participant\" to sign in.", errorRoleParticipant: "That account isn't a participant account. Choose \"Organizer\" to sign in.", organizerAccess: "Organizer access", or: "or",
     errorInvalid: "Incorrect email or password.", errorExists: "An account with that email already exists.", errorPassword: "The password must be at least 8 characters.",
-    errorGeneric: "Couldn't complete that. Please try again.", checkEmail: "We sent you an email to confirm your account. Open it and sign in again.",
+    errorGeneric: "Couldn't complete that. Please try again.", errorRole: "Choose the role you compete in (and your favorite if both).", checkEmail: "We sent you an email to confirm your account. Open it and sign in again.",
     signInTitle: "Sign in", needAccount: "You need an account to continue.",
     asParticipant: "Sign in as participant", asOrganizer: "Sign in as organizer", firstTime: "First time?", createAccount: "Create account",
     participant: "Participant", organizer: "Organizer",
@@ -76,9 +77,9 @@ export const en: Dict = {
   account: {
     createTitle: "Create your roper profile", createText: "Your account is an organizer account. If you also compete, create your roper profile: you'll get your rating and history and can register for events. If another organizer already registered you with your email, you claim that profile.", createBtn: "Create my roper profile", profileCreated: "Done! Your roper profile is created.", typeOrganizer: "Organizer · roper profile",
     photo: { add: "Add photo", change: "Change photo", remove: "Remove", saving: "Saving…", tooBig: `The photo is larger than ${MAX_UPLOAD_MB} MB. Choose a lighter one.`, error: "Couldn't save the photo. Use a JPG, PNG or WebP image." },
-    type: "Participant account", myRegistrations: "My registrations",
+    type: "Participant account", roleTitle: "My role", roleUndefined: "You haven't chosen the role you compete in yet. Pick it so organizers can see it; nothing is blocked in the meantime.", roleSave: "Save role", roleSaved: "Done, we saved your role.", myRegistrations: "My registrations",
     noRegistrations: "You haven't registered for any event yet.", available: "Available events", noneAvailable: "No new events right now.",
-    enrolledOk: "Done! Your spot is reserved. Below you can see how to pay.", canceledOk: "Registration canceled.", cancel: "Cancel",
+    enrolledOk: "Done! Your spot is reserved. Below you can see how to pay.", canceledOk: "Registration canceled.", removedTitle: "Events you were removed from", removedOn: "Removed on", removedReason: "Reason:", removedRefund: "You had already paid: the organizer will refund you manually (refund pending).", removedRefundDone: "The organizer marked your refund as done.", removedCanReturn: "The organizer allows you to register again.", removedBlocked: "To register again, ask the organizer.", cancel: "Cancel",
     ranking: "Ranking", seeAll: "See all", publicProfile: "View my public profile and history", paid: "Paid", pending: "Payment pending",
   },
   org: {
@@ -97,6 +98,14 @@ export const en: Dict = {
       registration: "Registration", regOpen: "Open", regClosed: "Closed", closesAt: "Closes on", closesAtPast: "Closed on", noDeadline: "No deadline: open until you close it.", closeNow: "Close registration", reopen: "Reopen registration", reopenHint: "If the deadline has passed, reopening removes it; you can set another by editing the event.",
       manualTitle: "Register someone", manualHint: "Works even when registration is closed. The person must be in Participants; look them up by email.", manualEmail: "Participant email", manualCategory: "Category", manualSubmit: "Register",
       manual: { ok: "Done: they're registered, payment pending.", invalid: "Check the email and the category.", not_found: "No participant has that email. Add them in Participants first.", already: "Already registered in that category.", full: "The event is full.", invalid_category: "That category isn't from this event.", failed: "Couldn't register. Please try again." },
+      remove: {
+        button: "Remove from event", title: "Remove from event", person: "Registrant:", payment: "Payment:", reasonLabel: "Reason (the person will see it)", reasonPlaceholder: "Write the reason", presets: "Common reason", other: "Other (write below)",
+        presetList: ["Payment not received", "Wrong or duplicate details", "Does not meet the category requirements", "Conduct against the rules", "Registered by mistake"],
+        refundWarning: "This roper has already paid. The refund is done manually: it will be marked as refund pending.", cancel: "Cancel", confirm: "Remove from event", minChars: "Write at least 3 characters.",
+        removedTitle: "Removed from the event", none: "Nobody has been removed from this event.", on: "On", by: "Paid", refundPending: "Refund pending", refundDone: "Refunded", markRefunded: "Mark refund done", undoRefund: "Undo",
+        allow: "Allow them to register again", block: "Block again", allowed: "Can register again", blocked: "Cannot register on their own", notPaid: "No payment",
+        msg: { ok: "Done: they were removed and their spot is free.", reenroll: "Done: we updated whether they can register again.", refund: "Done: we updated the refund.", invalid_reason: "Write a reason of at least 3 characters.", has_results: "They already have results in this event: they cannot be removed.", closed: "The event is already finished: nobody can be removed.", not_found: "We could not find that registration.", no_payment: "That registration had no payment.", failed: "Could not complete. Try again." },
+      },
     },
     dir: { title: "Participants", blurb: "Global directory with contact details, visible to organizers only. Use it to register participants in your events.", name: "Name", email: "Email", rating: "Rating", events: "Events", wins: "Wins", profile: "Profile", verified: "Verified", unclaimed: "Unclaimed",
       addTitle: "Add participant", addBlurb: "Register them with their email so they appear in the directory and can claim their profile when they create their account.", addName: "Full name", addEmail: "Email", addEmailHint: "When the person creates their account with this email, they will claim their profile and history.",

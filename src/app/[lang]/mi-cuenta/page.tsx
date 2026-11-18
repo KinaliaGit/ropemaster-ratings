@@ -9,9 +9,11 @@ import { RoperCard } from "@/components/RoperCard";
 import { initials, publicAvatarUrl } from "@/lib/people";
 import { listRankingPage } from "@/lib/data/ropers";
 import { rankedToRoper } from "@/lib/ranking";
-import { listMyRegistrations } from "@/lib/data/registrations";
+import { listMyRegistrations, listMyRemovals } from "@/lib/data/registrations";
 import { cancelRegistration } from "@/lib/registration-actions";
-import { createMyRoperProfile } from "@/lib/profile-actions";
+import { createMyRoperProfile, setMyRole } from "@/lib/profile-actions";
+import { RoleFields } from "@/components/RoleFields";
+import { roleText } from "@/lib/roles";
 import { PayButton } from "@/components/PayButton";
 import { listPublicEvents } from "@/lib/data/events";
 import { fmtDeadline } from "@/lib/event-time";
@@ -26,7 +28,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
   const sp = await props.searchParams;
   const t = getDictionary(lang);
   const [events, top] = await Promise.all([listPublicEvents(), listRankingPage("lazo").then((p) => p.rows.slice(0, 4).map((r) => rankedToRoper(r, "lazo")))]);
-  const notice = sp.pago === "ok" ? t.pay.returned : sp.perfil === "ok" ? t.account.profileCreated : sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
+  const notice = sp.pago === "ok" ? t.pay.returned : sp.perfil === "ok" ? t.account.profileCreated : sp.rol === "ok" ? t.account.roleSaved : sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
   return (
     <Gate lang={lang} role="any" next={`/${lang}/mi-cuenta`}>
       {async (s) => {
@@ -38,14 +40,17 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
               <p className="mt-2 text-muted">{t.account.createText}</p>
               <form action={createMyRoperProfile} className="mt-6">
                 <input type="hidden" name="lang" value={lang} />
+                {typeof sp.error === "string" && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{(t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed}</p>}
+                <div className="mb-5 space-y-4"><RoleFields labels={t.roles} /></div>
                 <button className="w-full rounded-full bg-brand py-3 text-sm font-medium text-white hover:bg-brand-hot">{t.account.createBtn}</button>
               </form>
             </div>
           );
         }
-        const mine = await listMyRegistrations();
+        const [mine, removed] = await Promise.all([listMyRegistrations(), listMyRemovals()]);
         const mineSlugs = new Set(mine.map((m) => m.event?.slug));
-        const available = events.filter((e) => e.status === "publicado" && !mineSlugs.has(e.id));
+        const blockedSlugs = new Set(removed.filter((x) => !x.canReenroll).map((x) => x.event?.slug)); // sacado y sin permiso para volver
+        const available = events.filter((e) => e.status === "publicado" && !mineSlugs.has(e.id) && !blockedSlugs.has(e.id));
         return (
           <div className="mx-auto max-w-6xl px-5 pb-10 pt-10">
             <div className="flex flex-wrap items-center gap-5">
@@ -57,6 +62,15 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
             </div>
 
             {notice && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{notice}</p>}
+            <section aria-labelledby="mi-rol" className={`mt-6 rounded-2xl p-5 ${s.roleChoice ? "card" : "bg-brand-soft"}`}>
+              <h2 id="mi-rol" className="text-lg font-semibold">{t.account.roleTitle}{s.roleChoice && <span className="ml-2 text-sm font-normal text-muted">{roleText(s.roleChoice, t.roles)}</span>}</h2>
+              {!s.roleChoice && <p className="mt-1 text-sm">{t.account.roleUndefined}</p>}
+              <form action={setMyRole} className="mt-4 max-w-md space-y-4">
+                <input type="hidden" name="lang" value={lang} />
+                <RoleFields labels={t.roles} initial={s.roleChoice} />
+                <button className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white hover:bg-brand-hot">{t.account.roleSave}</button>
+              </form>
+            </section>
             <h2 className="mt-12 text-xl font-semibold">{t.account.myRegistrations}</h2>
             <div className="mt-3 space-y-3">
               {mine.length === 0 && <p className="text-muted">{t.account.noRegistrations}</p>}
@@ -92,6 +106,22 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                 );
               })}
             </div>
+
+            {removed.length > 0 && (
+              <section aria-labelledby="removed" className="mt-12">
+                <h2 id="removed" className="text-xl font-semibold">{t.account.removedTitle}</h2>
+                <div className="mt-3 space-y-3">
+                  {removed.map((x) => (
+                    <div key={x.id} className="card border-red-200 p-4">
+                      <p className="font-medium">{x.event?.slug ? <Link href={`/${lang}/eventos/${x.event.slug}`} className="hover:text-brand-hot">{x.event.name}</Link> : x.event?.name ?? "—"}<span className="ml-2 text-sm font-normal text-muted">{x.category} · {t.account.removedOn} {fmtDate(x.removedAt, lang)}</span></p>
+                      <p className="mt-1 text-sm"><span className="font-medium">{t.account.removedReason}</span> <span className="whitespace-pre-line">{x.reason}</span></p>
+                      {x.refundPending && <p className="mt-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{t.account.removedRefund}</p>}
+                      <p className="mt-2 text-xs text-muted">{x.canReenroll ? t.account.removedCanReturn : t.account.removedBlocked}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <h2 className="mt-12 text-xl font-semibold">{t.account.available}</h2>
             <div className="mt-4 grid grid-cols-1 gap-x-4 gap-y-8 min-[480px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">

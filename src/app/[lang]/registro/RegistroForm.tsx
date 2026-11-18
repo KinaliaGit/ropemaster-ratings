@@ -1,12 +1,13 @@
 "use client";
 import { useState } from "react";
 import { registerAccount, resendConfirmation } from "@/lib/auth-actions";
+import { RoleFields, type RoleFieldLabels } from "@/components/RoleFields";
 
 type Role = "participante" | "organizador";
 type Labels = {
   title: string; participantBlurb: string; organizerBlurb: string; fullName: string; email: string; password: string; passwordHint: string; create: string;
   acceptPrefix: string; and: string; terms: string; privacy: string; termsHref: string; privacyHref: string;
-  errors: Record<string, string>; checkEmail: string; resend: string; resent: string; roles: { organizador: string; participante: string };
+  roleFields: RoleFieldLabels; errors: Record<string, string>; checkEmail: string; resend: string; resent: string; roles: { organizador: string; participante: string };
 };
 
 const field = "mt-1 w-full rounded-xl border border-line bg-white px-4 py-2.5 outline-none focus:border-ink";
@@ -46,6 +47,7 @@ export function RegistroForm({ lang, l, error, checkEmail, initialRole, email, r
         <label className="block text-sm font-medium">{l.fullName}<input required name="name" autoComplete="name" minLength={2} maxLength={80} className={field} /></label>
         <label className="block text-sm font-medium">{l.email}<input required type="email" name="email" autoComplete="email" className={field} /></label>
         <label className="block text-sm font-medium">{l.password}<input required type="password" name="password" autoComplete="new-password" minLength={8} maxLength={72} className={field} /><span className="mt-1 block text-xs font-normal text-muted">{l.passwordHint}</span></label>
+        {role === "participante" && <RoleFields labels={l.roleFields} />}
         <label className="flex cursor-pointer items-start gap-2.5 text-sm">
           <input type="checkbox" name="accept" required checked={accepted} onChange={(e) => setAccepted(e.target.checked)} className="mt-0.5 size-4 shrink-0 accent-brand" />
           <span>{l.acceptPrefix} <a href={l.termsHref} target="_blank" rel="noopener noreferrer" className={link}>{l.terms}</a> {l.and} <a href={l.privacyHref} target="_blank" rel="noopener noreferrer" className={link}>{l.privacy}</a>.</span>

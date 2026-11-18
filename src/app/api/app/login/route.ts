@@ -11,8 +11,8 @@ import { IDLE_DAYS, createDeviceToken } from "@/lib/sync-tokens";
 //   POST /api/app/login  { contract_version, email, password, device_name? }
 //   -> 200 { contract_version, token, organizer: { id, name }, device_name, max_devices, idle_days }
 // La web entrega un token propio para ESE equipo (se muestra una sola vez; en la base solo queda su hash) y la app lo guarda en el
-// llavero del sistema. La contraseña no se guarda ni se escribe en registros. El resto de endpoints no cambia: usan ese token como
-// el código de conexión de siempre, así que sin internet la app sigue capturando y solo la sincronización lo necesita.
+// llavero del sistema. La contraseña no se guarda ni se escribe en registros. El resto de endpoints usa ese token (Authorization: Bearer),
+// así que sin internet la app sigue capturando y solo la sincronización lo necesita.
 // Orden de las comprobaciones: tamaño (413), cuerpo y versión (400/426), límite de intentos (429), contraseña (401/403/429),
 // organizador activo (403), límite de equipos (409). Cada respuesta de error lleva `code`.
 const headers = { "Cache-Control": "no-store" };
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
 
     const profile = await db.from("profiles").select("display_name").eq("user_id", userId).maybeSingle();
     return json({
-      contract_version: CONTRACT_VERSION, token: created.code, organizer: { id: userId, name: profile.data?.display_name ?? "" },
+      contract_version: CONTRACT_VERSION, token: created.token, organizer: { id: userId, name: profile.data?.display_name ?? "" },
       device_name: parsed.deviceName, max_devices: MAX_DEVICES, idle_days: IDLE_DAYS,
     });
   } catch {

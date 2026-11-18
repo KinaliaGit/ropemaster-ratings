@@ -291,23 +291,20 @@ async function check(label, cond) {
   console.log(`${cond ? "✔" : "✘ FALLO"}  ${label.padEnd(58)} → ${cond ? "ok" : "no se cumple"}`);
 }
 
-console.log("- Códigos de conexión de la app (0011)");
-await as("service_role", null, `select rotate_api_token('${A}', 'hash-uno')`, "el servidor genera un código", "some");
-await as("service_role", null, `select rotate_api_token('${A}', 'hash-dos')`, "el servidor genera otro (revoca el anterior)", "some");
+console.log("- Tokens de la app (0011, 0025)");
+await as("service_role", null, `select create_device_token('${A}', 'hash-uno', 'Equipo uno')`, "el servidor crea el token de un equipo", "some");
+await as("service_role", null, `select create_device_token('${A}', 'hash-dos', 'Equipo dos')`, "el servidor crea el de otro equipo (el primero sigue activo)", "some");
 {
-  const r = await db.query(`select count(*) filter (where revoked_at is null)::int as activos, count(*) filter (where revoked_at is not null)::int as revocados from api_tokens where organizer_id = '${A}'`);
-  await check("queda 1 código activo y 1 revocado", r.rows[0].activos === 1 && r.rows[0].revocados === 1);
-  let dup = false;
-  try { await db.query(`insert into api_tokens (organizer_id, token_hash) values ('${A}', 'hash-tres')`); } catch { dup = true; }
-  await check("la base impide dos códigos activos del mismo organizador", dup);
+  const r = await db.query(`select count(*) filter (where revoked_at is null)::int as activos from api_tokens where organizer_id = '${A}'`);
+  await check("quedan 2 tokens activos (uno por equipo)", r.rows[0].activos === 2);
 }
-await as("authenticated", A, "select id, created_at, last_used_at, revoked_at from api_tokens", "el organizador ve las fechas de SUS códigos", "some");
-await as("authenticated", A, "select token_hash from api_tokens", "NO ve el hash de sus códigos", "deny");
-await as("authenticated", B, "select id from api_tokens", "NO ve códigos de otro organizador", "deny");
-await as("authenticated", A, `update api_tokens set revoked_at = null where organizer_id = '${A}'`, "NO reactiva ni edita códigos directo", "deny");
-await as("authenticated", A, `insert into api_tokens (organizer_id, token_hash) values ('${A}', 'x')`, "NO crea códigos directo", "deny");
-await as("authenticated", A, `select rotate_api_token('${A}', 'x')`, "NO ejecuta la rotación (solo el servidor)", "deny");
-await as("anon", null, "select id from api_tokens", "anónimo NO ve códigos", "deny");
+await as("authenticated", A, "select id, created_at, last_used_at, revoked_at from api_tokens", "el organizador ve las fechas de SUS tokens", "some");
+await as("authenticated", A, "select token_hash from api_tokens", "NO ve el hash de sus tokens", "deny");
+await as("authenticated", B, "select id from api_tokens", "NO ve tokens de otro organizador", "deny");
+await as("authenticated", A, `update api_tokens set revoked_at = null where organizer_id = '${A}'`, "NO reactiva ni edita tokens directo", "deny");
+await as("authenticated", A, `insert into api_tokens (organizer_id, token_hash) values ('${A}', 'x')`, "NO crea tokens directo", "deny");
+await as("authenticated", A, `select create_device_token('${A}', 'x', 'y')`, "NO crea tokens con la función (solo el servidor)", "deny");
+await as("anon", null, "select id from api_tokens", "anónimo NO ve tokens", "deny");
 await as("authenticated", A, "select * from api_auth_failures", "NO ve los intentos fallidos", "deny");
 await as("authenticated", A, "select api_auth_is_blocked('x')", "NO consulta el bloqueo por IP", "deny");
 await as("anon", null, "select api_auth_record_failure('x')", "anónimo NO registra intentos fallidos", "deny");
@@ -606,17 +603,16 @@ console.log("- Un token por equipo y vencimiento por inactividad (0025)");
   await check("otro organizador NO puede revocar un equipo ajeno", (await svc("select public.revoke_api_token($1, $2) as ok", [T2, d1]))[0].ok === false && (await verify("t1-d1")) === T1);
   await check("revocar dos veces el mismo equipo no falla: la segunda devuelve false", (await svc("select public.revoke_api_token($1, $2) as ok", [T1, d2]))[0].ok === false);
 
-  // --- el código manual y los equipos no se pisan
-  await svc("select public.rotate_api_token($1, 'm1')", [T1]);
-  await svc("select public.rotate_api_token($1, 'm2')", [T1]);
-  await check("generar un código manual nuevo revoca solo el manual anterior, no los equipos", (await count(T1, "manual")) === 1 && (await count(T1, "login")) === 3
-    && (await verify("m1")) === null && (await verify("m2")) === T1);
-  await check("el código manual NO cuenta dentro de los 3 equipos", (await device(T1, "t1-d5")) === null);
-  await check("crear equipos no revoca el código manual", (await verify("m2")) === T1);
-  await check("tener varios equipos activos NO rompe la tarjeta del código manual (a lo más un manual activo)", (await count(T1, "manual")) === 1);
-  let dupManual = false;
-  try { await db.query(`insert into api_tokens (organizer_id, token_hash, kind) values ('${T1}', 'manual-dos', 'manual')`); } catch { dupManual = true; }
-  await check("seguir permitido: un solo código manual activo por organizador", dupManual);
+  // --- sin códigos manuales (0037, KIN-631)
+  await check("rotate_api_token ya no existe: ni el servidor puede crear un código manual", await (async () => { try { await svc("select public.rotate_api_token($1, 'm1')", [T1]); return false; } catch { await db.exec("reset role"); return true; } })());
+  // Un código manual que siguiera activo cuando se aplica la migración queda revocado, y los equipos no se tocan.
+  await db.query(`insert into api_tokens (organizer_id, token_hash, kind) values ('${T1}', 'manual-viejo', 'manual')`);
+  await check("antes de la migración, un código manual activo sí servía", (await verify("manual-viejo")) === T1);
+  await db.exec(readFileSync(`${dir}/0037_quitar_codigos_manuales.sql`, "utf8"));
+  await check("la migración 0037 revoca los códigos manuales activos", (await verify("manual-viejo")) === null && (await count(T1, "manual")) === 0);
+  await check("la migración 0037 no toca a los equipos", (await verify("t1-d1")) === T1 && (await count(T1, "login")) === 3);
+  await check("la migración 0037 se puede repetir sin efecto", (await db.exec(readFileSync(`${dir}/0037_quitar_codigos_manuales.sql`, "utf8")), (await verify("t1-d1")) === T1));
+  await check("el cuarto equipo sigue sin crearse (los códigos manuales nunca contaron dentro de los 3)", (await device(T1, "t1-d5")) === null);
 
   // --- nombre del equipo
   await device(T2, "t2-vacio", "   ");

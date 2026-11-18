@@ -66,6 +66,6 @@ export function classifyAuthError(error: { message?: string; status?: number; co
 }
 
 const sha = (value: string) => createHash("sha256").update(value).digest("hex");
-// Las llaves llevan prefijo para no mezclarse con los intentos con un código inválido (api_auth_failures los guarda por llave).
+// Las llaves llevan prefijo para no mezclarse con los intentos con un token inválido (api_auth_failures los guarda por llave).
 export const emailKey = (email: string) => `login:email:${sha(email.trim().toLowerCase())}`;
 export const ipKey = (ip: string) => `login:ip:${sha(ip)}`;

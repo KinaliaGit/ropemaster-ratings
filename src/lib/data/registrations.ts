@@ -45,40 +45,40 @@ export async function getEventRegistrants(eventUuid: string, discipline: string,
 // ---- Con sesión (las reglas de la base deciden qué ve cada quien) ----
 
 export type MyRegistration = {
-  id: string; paymentStatus: string; paymentMethod: string | null; amountCents: number; category: string;
-  event: { slug: string | null; name: string; date: string | null; city: string | null; paymentInfo: string | null; closesAt: string | null; timezone: string } | null;
+  id: string; paymentStatus: string; paymentMethod: string | null; amountCents: number; category: string; role: string | null;
+  event: { slug: string | null; name: string; date: string | null; city: string | null; paymentInfo: string | null; closesAt: string | null; timezone: string; registrationClosed: boolean; status: string } | null;
 };
 
 export async function listMyRegistrations(): Promise<MyRegistration[]> {
   const { data, error } = await (await createServerSupabase()).from("registrations")
-    .select("id, payment_status, payment_method, amount_cents, event_categories(name), events(slug, name, event_date, city, registration_closes_at, timezone, event_payment_info(instructions))")
+    .select("id, payment_status, payment_method, amount_cents, role, event_categories(name), events(slug, name, event_date, city, registration_closes_at, registration_closed, status, timezone, event_payment_info(instructions))")
     .order("created_at", { ascending: false });
   if (error) throw new Error(`No se pudieron leer tus inscripciones: ${error.message}`);
   type Info = { instructions: string } | { instructions: string }[] | null;
-  type Row = { id: string; payment_status: string; payment_method: string | null; amount_cents: number; event_categories: { name: string } | null; events: { slug: string | null; name: string; event_date: string | null; city: string | null; registration_closes_at: string | null; timezone: string; event_payment_info: Info } | null };
+  type Row = { id: string; payment_status: string; payment_method: string | null; amount_cents: number; role: string | null; event_categories: { name: string } | null; events: { slug: string | null; name: string; event_date: string | null; city: string | null; registration_closes_at: string | null; registration_closed: boolean; status: string; timezone: string; event_payment_info: Info } | null };
   const info = (i: Info | undefined) => (Array.isArray(i) ? i[0]?.instructions : i?.instructions) ?? null; // solo lo ven los inscritos (la base lo decide)
   return (data as unknown as Row[]).map((r) => ({
-    id: r.id, paymentStatus: r.payment_status, paymentMethod: r.payment_method, amountCents: r.amount_cents, category: r.event_categories?.name ?? "",
-    event: r.events ? { slug: r.events.slug, name: r.events.name, date: r.events.event_date, city: r.events.city, paymentInfo: info(r.events.event_payment_info), closesAt: r.events.registration_closes_at, timezone: r.events.timezone } : null,
+    id: r.id, paymentStatus: r.payment_status, paymentMethod: r.payment_method, amountCents: r.amount_cents, category: r.event_categories?.name ?? "", role: r.role,
+    event: r.events ? { slug: r.events.slug, name: r.events.name, date: r.events.event_date, city: r.events.city, paymentInfo: info(r.events.event_payment_info), closesAt: r.events.registration_closes_at, timezone: r.events.timezone, registrationClosed: r.events.registration_closed, status: r.events.status } : null,
   }));
 }
 
-export type EventRegistration = { id: string; roperId: string; name: string; category: string; paymentStatus: string; paymentMethod: string | null; amountCents: number; email: string | null };
+export type EventRegistration = { id: string; roperId: string; name: string; category: string; role: string | null; paymentStatus: string; paymentMethod: string | null; amountCents: number; email: string | null };
 
 // Inscritos de un evento del organizador. El correo solo llega si es organizador verificado (la base lo decide).
 export async function listEventRegistrations(eventUuid: string): Promise<EventRegistration[]> {
   const supabase = await createServerSupabase();
   const { data, error } = await supabase.from("registrations")
-    .select("id, roper_id, payment_status, payment_method, amount_cents, event_categories(name), ropers(full_name)")
+    .select("id, roper_id, payment_status, payment_method, amount_cents, role, event_categories(name), ropers(full_name)")
     .eq("event_id", eventUuid).order("created_at", { ascending: true });
   if (error) throw new Error(`No se pudieron leer los inscritos: ${error.message}`);
-  type Row = { id: string; roper_id: string; payment_status: string; payment_method: string | null; amount_cents: number; event_categories: { name: string } | null; ropers: { full_name: string } | null };
+  type Row = { id: string; roper_id: string; payment_status: string; payment_method: string | null; amount_cents: number; role: string | null; event_categories: { name: string } | null; ropers: { full_name: string } | null };
   const rows = data as unknown as Row[];
   const ids = [...new Set(rows.map((r) => r.roper_id))];
   const { data: contacts } = ids.length ? await supabase.from("roper_contacts").select("roper_id, email").in("roper_id", ids) : { data: [] };
   const emails = new Map((contacts ?? []).map((c) => [c.roper_id, c.email]));
   return rows.map((r) => ({
-    id: r.id, roperId: r.roper_id, name: r.ropers?.full_name ?? "—", category: r.event_categories?.name ?? "",
+    id: r.id, roperId: r.roper_id, name: r.ropers?.full_name ?? "—", category: r.event_categories?.name ?? "", role: r.role,
     paymentStatus: r.payment_status, paymentMethod: r.payment_method, amountCents: r.amount_cents, email: emails.get(r.roper_id) ?? null,
   }));
 }

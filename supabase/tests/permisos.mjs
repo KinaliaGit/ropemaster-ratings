@@ -719,7 +719,7 @@ console.log("- Eventos con inscritos y pagos para la app (0024)");
   await check("un inscrito con perfil fusionado apunta al perfil vigente (id y nombre)", regs[2].roper_global_id === R1 && regs[2].name === "Ana Uno");
   await check("solo salen las inscripciones de ESE evento", !JSON.stringify(mine).includes("Eva Ajena"));
   await check("cada inscripción solo lleva los campos del contrato (ni correo ni celular ni cuenta)",
-    JSON.stringify(Object.keys(regs[0]).sort()) === JSON.stringify(["amount_cents", "category", "category_id", "id", "name", "payment_method", "payment_status", "roper_global_id"]));
+    JSON.stringify(Object.keys(regs[0]).sort()) === JSON.stringify(["amount_cents", "category", "category_id", "id", "name", "payment_method", "payment_status", "role", "roper_global_id"]));
   await check("un evento sin inscritos ni categorías devuelve listas vacías, no null", (() => { const e3 = mine.find((e) => e.id === E3); return Array.isArray(e3.registrations) && e3.registrations.length === 0 && Array.isArray(e3.categories); })());
 
   // --- since: pagos, inscripciones, cancelaciones y categorías cuentan como cambio del evento
@@ -1156,7 +1156,7 @@ console.log("- Resultados de un evento (0030)");
   `);
   const regOf = (roper, ev = EVR) => `(select id from registrations where event_id = '${ev}' and roper_id = '${roper}' limit 1)`;
   const rm = (roper, reason = "No cumple los requisitos", ev = EVR) => `select public.remove_registration(${regOf(roper, ev)}, '${reason}')`;
-  await as("authenticated", C, `select public.register_for_event('${EVR}','${KR}')`, "C se inscribe", "some");
+  await as("authenticated", C, `select public.register_for_event('${EVR}','${KR}', 'header')`, "C se inscribe", "some");
   await as("authenticated", P2, `select public.register_for_event('${EVR}','${KR}')`, "P2 se inscribe", "some");
   await as("authenticated", A, `select public.set_registration_payment(${regOf(PD)}, 'efectivo')`, "el organizador marca a P2 como pagado en efectivo", "some");
   await as("authenticated", N1, `select public.register_for_event('${EVR}','${KR}')`, "con el cupo lleno (2/2) un tercero NO se inscribe", "deny");
@@ -1171,7 +1171,7 @@ console.log("- Resultados de un evento (0030)");
   await as("authenticated", A, rm(ANA, "No se recibió el pago"), "el organizador SÍ saca a C (pendiente) con motivo", "some");
   await as("authenticated", A, `select id from registrations where event_id = '${EVR}' and roper_id = '${ANA}'`, "C ya no está inscrita", "deny");
   await as("authenticated", A, `select count(*) from registrations where event_id = '${EVR}' having count(*) = 1`, "el conteo del evento bajó a 1", "some");
-  await as("authenticated", N1, `select public.register_for_event('${EVR}','${KR}')`, "el cupo liberado lo toma otra persona", "some");
+  await as("authenticated", N1, `select public.register_for_event('${EVR}','${KR}', 'header')`, "el cupo liberado lo toma otra persona", "some");
 
   // El registro
   await as("authenticated", A, `select reason, payment_status, refund_pending from registration_removals where event_id = '${EVR}' and roper_id = '${ANA}' and removed_by = '${A}' and reason = 'No se recibió el pago' and payment_status = 'pendiente' and not refund_pending`, "queda el registro: quién, motivo y estado de pago", "some");
@@ -1185,12 +1185,12 @@ console.log("- Resultados de un evento (0030)");
   await as("authenticated", A, `insert into registration_removals (event_id, roper_id, reason, payment_status) values ('${EVR}','${ANA}','falso','pendiente')`, "nadie crea registros escribiendo la tabla", "deny");
 
   // Volver a inscribirse
-  await as("authenticated", C, `select public.register_for_event('${EVR}','${KR}')`, "quien fue sacado NO se inscribe solo otra vez", "deny");
+  await as("authenticated", C, `select public.register_for_event('${EVR}','${KR}', 'header')`, "quien fue sacado NO se inscribe solo otra vez", "deny");
   await as("authenticated", C, `select public.set_removal_reenroll((select id from registration_removals where roper_id = '${ANA}' limit 1), true)`, "el sacado NO se da permiso a sí mismo", "deny");
   await as("authenticated", B, `select public.set_removal_reenroll((select id from registration_removals where roper_id = '${ANA}' limit 1), true)`, "otro organizador NO da permiso", "deny");
   await as("authenticated", A, `select public.set_removal_reenroll((select id from registration_removals where roper_id = '${ANA}' limit 1), true)`, "el organizador permite que vuelva", "some");
   await as("authenticated", A, `update events set capacity = 5 where id = '${EVR}'`, "se amplía el cupo", "some");
-  await as("authenticated", C, `select public.register_for_event('${EVR}','${KR}')`, "con permiso, C se inscribe otra vez", "some");
+  await as("authenticated", C, `select public.register_for_event('${EVR}','${KR}', 'header')`, "con permiso, C se inscribe otra vez", "some");
   await as("authenticated", A, `select public.set_removal_reenroll((select id from registration_removals where roper_id = '${ANA}' limit 1), false)`, "el organizador vuelve a bloquear", "some");
   await as("authenticated", P2, `select 1 from registration_removals where roper_id = '${PD}'`, "(P2 aún no ha sido sacado)", "deny");
 
@@ -1220,6 +1220,96 @@ console.log("- Resultados de un evento (0030)");
   // API de la app: el sacado deja de venir en los participantes del evento
   await as("service_role", null, `select 1 from public.app_event_participants('${EVR}', null, now() + interval '1 minute', null, null, 50) where global_id in ('${ANA}', '${PD}')`, "los sacados NO vienen en la API de participantes de la app", "deny");
   await as("service_role", null, `select 1 from public.app_event_participants('${EVR}', null, now() + interval '1 minute', null, null, 50)`, "los demás inscritos siguen viniendo", "some");
+}
+
+// ---- Rol por inscripción (0034, KIN-623) ----
+{
+  console.log("— Rol por inscripción (0034)");
+  const EVL = "e0000000-0000-0000-0000-0000000000e1", KL = "ca000000-0000-0000-0000-0000000000e1", KL2 = "ca000000-0000-0000-0000-0000000000e2";
+  const mk = (n, role, fav) => ({ uid: `e1e1e1e1-0000-0000-0000-00000000000${n}`, roper: `e2e2e2e2-0000-0000-0000-00000000000${n}`, role, fav, email: `rol${n}@x.com` });
+  const U1 = mk(1, "both", "header"), U2 = mk(2, "header", null), U3 = mk(3, null, null), U4 = mk(4, "both", "heeler"), U5 = mk(5, "both", "heeler"), U6 = mk(6, "both", "heeler"), U7 = mk(7, "both", "header");
+  for (const u of [U1, U2, U3, U4, U5, U6, U7]) {
+    await db.exec(`
+      insert into auth.users (id, email, email_confirmed_at) values ('${u.uid}','${u.email}',now());
+      insert into profiles (user_id, role, display_name) values ('${u.uid}','participante','${u.email}');
+      insert into ropers (id, full_name, user_id, primary_role, favorite_role) values ('${u.roper}','Rol ${u.email}','${u.uid}', ${u.role ? `'${u.role}'` : "null"}, ${u.fav ? `'${u.fav}'` : "null"});
+      insert into roper_contacts (roper_id, email) values ('${u.roper}','${u.email}');
+    `);
+  }
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug, event_date, capacity) values ('${EVL}','Con roles','${A}','publicado','con-roles','2099-09-01', 5);
+    insert into event_categories (id, event_id, name, fee_cents) values ('${KL}','${EVL}','Libre',10000), ('${KL2}','${EVL}','Amateur',7000);
+  `);
+  const reg = (u, k, role) => `select public.register_for_event('${EVL}','${k}', ${role === undefined ? "null" : `'${role}'`})`;
+  const count = async (where = "true") => Number((await db.query(`select count(*) n from registrations where event_id = '${EVL}' and ${where}`)).rows[0].n);
+  const check = (label, ok) => { if (!ok) failures++; console.log(`${ok ? "✔" : "✘ FALLO"}  ${label}`); };
+
+  // Perfil "Ambos": debe elegir
+  await as("authenticated", U1.uid, `select public.register_for_event('${EVL}','${KL}')`, "'Ambos' sin elegir rol se rechaza (versión de 2 argumentos)", "deny");
+  await as("authenticated", U1.uid, reg(U1, KL), "'Ambos' sin elegir rol se rechaza (rol vacío)", "deny");
+  await as("authenticated", U1.uid, reg(U1, KL, "astronauta"), "un rol inventado se rechaza", "deny");
+  await as("authenticated", U1.uid, reg(U1, KL, "header"), "'Ambos' se inscribe como cabecero", "some");
+  check("la inscripción guarda el rol elegido y el costo de la categoría", await count(`roper_id = '${U1.roper}' and role = 'header' and amount_cents = 10000`) === 1);
+  await as("authenticated", U1.uid, reg(U1, KL, "header"), "el mismo rol en la misma categoría NO se repite", "deny");
+  await as("authenticated", U1.uid, reg(U1, KL, "both"), "'los dos' cuando ya está como cabecero se rechaza (ya está)", "deny");
+  await as("authenticated", U1.uid, reg(U1, KL, "heeler"), "SÍ puede sumar el otro rol en la misma categoría", "some");
+  check("el perfil NO cambió al inscribirse", (await db.query(`select 1 from ropers where id = '${U1.roper}' and primary_role = 'both' and favorite_role = 'header'`)).rows.length === 1);
+
+  // Perfil con un solo rol
+  await as("authenticated", U2.uid, `select public.register_for_event('${EVL}','${KL}')`, "perfil cabecero se inscribe sin elegir (rol del perfil)", "some");
+  check("queda con el rol de su perfil", await count(`roper_id = '${U2.roper}' and role = 'header'`) === 1);
+  await as("authenticated", U2.uid, reg(U2, KL2, "heeler"), "perfil cabecero NO se inscribe como pialador", "deny");
+  await as("authenticated", U2.uid, reg(U2, KL2, "both"), "perfil cabecero NO se inscribe como 'los dos'", "deny");
+  await as("authenticated", U2.uid, reg(U2, KL2, "header"), "perfil cabecero con su mismo rol, sí", "some");
+
+  // Perfil sin rol
+  await as("authenticated", U3.uid, `select public.register_for_event('${EVL}','${KL}')`, "perfil sin rol se inscribe (no se le bloquea)", "some");
+  check("queda con rol null", await count(`roper_id = '${U3.roper}' and role is null`) === 1);
+  await as("authenticated", U3.uid, reg(U3, KL2, "header"), "perfil sin rol NO manda un rol inventado por su cuenta", "deny");
+
+  // "Los dos" = dos inscripciones, cupo y costo; todo o nada
+  check("hasta aquí hay 5 inscripciones (cupo 5, lleno)", await count() === 5);
+  await as("authenticated", U4.uid, reg(U4, KL, "both"), "con el cupo lleno 'los dos' NO se inscribe", "deny");
+  await as("authenticated", A, `update events set capacity = 6 where id = '${EVL}'`, "el organizador deja 1 lugar libre", "some");
+  await as("authenticated", U4.uid, reg(U4, KL, "both"), "con 1 lugar libre 'los dos' (2 lugares) NO se inscribe", "deny");
+  check("todo o nada: no quedó ninguna de las dos", await count(`roper_id = '${U4.roper}'`) === 0);
+  await as("authenticated", A, `update events set capacity = 9 where id = '${EVL}'`, "el organizador amplía el cupo", "some");
+  await as("authenticated", U4.uid, reg(U4, KL, "both"), "con lugar, 'los dos' SÍ se inscribe", "some");
+  check("'los dos' creó dos inscripciones (cabecero y pialador), cada una con su costo", await count(`roper_id = '${U4.roper}' and role in ('header','heeler') and amount_cents = 10000`) === 2);
+  check("ocupan 2 lugares del cupo", await count() === 7);
+
+  // Cambiar el rol de una inscripción
+  const regId = async (u, role, k = KL) => (await db.query(`select id from registrations where event_id = '${EVL}' and roper_id = '${u.roper}' and category_id = '${k}' and role ${role ? `= '${role}'` : "is null"} limit 1`)).rows[0]?.id;
+  const U1heeler = await regId(U1, "heeler"), U4header = await regId(U4, "header");
+  await as("authenticated", U1.uid, `select public.change_registration_role('${U1heeler}', 'header')`, "no puede cambiar a un rol que ya tiene en esa categoría", "deny");
+  await as("authenticated", U4.uid, `select public.change_registration_role('${U4header}', 'heeler')`, "tampoco con 'los dos'", "deny");
+  await as("authenticated", U5.uid, reg(U5, KL2, "header"), "U5 ('Ambos') se inscribe como cabecero", "some");
+  const U5reg = await regId(U5, "header", KL2);
+  await as("authenticated", U2.uid, `select public.change_registration_role('${U5reg}', 'heeler')`, "otra persona NO cambia el rol ajeno", "deny");
+  await as("anon", null, `select public.change_registration_role('${U5reg}', 'heeler')`, "anónimo NO cambia roles", "deny");
+  await as("authenticated", U5.uid, `select public.change_registration_role('${U5reg}', 'both')`, "no se puede cambiar a 'los dos' (son dos inscripciones)", "deny");
+  await as("authenticated", U5.uid, `select public.change_registration_role('${U5reg}', 'heeler')`, "con inscripciones abiertas SÍ cambia su rol", "some");
+  check("el rol de la inscripción cambió y el perfil no", await count(`id = '${U5reg}' and role = 'heeler'`) === 1 &&
+    (await db.query(`select 1 from ropers where id = '${U5.roper}' and primary_role = 'both'`)).rows.length === 1);
+  const U2reg = await regId(U2, "header");
+  await as("authenticated", U2.uid, `select public.change_registration_role('${U2reg}', 'heeler')`, "un perfil de un solo rol NO cambia el rol de su inscripción", "deny");
+  await as("authenticated", A, `update events set registration_closed = true where id = '${EVL}'`, "el organizador cierra las inscripciones", "some");
+  await as("authenticated", U5.uid, `select public.change_registration_role('${U5reg}', 'header')`, "con inscripciones cerradas NO se cambia el rol", "deny");
+  await as("authenticated", A, `update events set registration_closed = false where id = '${EVL}'`, "el organizador reabre", "some");
+
+  // El organizador inscribe con rol
+  await as("authenticated", A, `update events set capacity = 20 where id = '${EVL}'`, "el organizador amplía el cupo otra vez", "some");
+  await as("authenticated", A, `select public.organizer_enroll('${EVL}','${U6.email}','${KL}', null)`, "el organizador inscribe a 'Ambos' sin rol: usa su favorito", "some");
+  check("quedó con el rol favorito (pialador)", await count(`roper_id = '${U6.roper}' and role = 'heeler'`) === 1);
+  await as("authenticated", A, `select public.organizer_enroll('${EVL}','${U7.email}','${KL}', 'both')`, "el organizador inscribe a alguien como 'los dos'", "some");
+  check("quedaron las dos inscripciones", await count(`roper_id = '${U7.roper}'`) === 2);
+  await as("authenticated", A, `select public.organizer_enroll('${EVL}','${U2.email}','${KL2}', 'heeler')`, "el organizador NO inscribe a un perfil cabecero como pialador", "deny");
+  await as("authenticated", A, `select public.organizer_enroll('${EVL}','${U6.email}','${KL}')`, "la versión de 3 argumentos sigue funcionando (ya inscrito: se rechaza)", "deny");
+  await as("authenticated", C, `select public.organizer_enroll('${EVL}','${U3.email}','${KL2}', null)`, "un participante NO usa organizer_enroll", "deny");
+
+  // API de la app
+  await as("service_role", null, `select 1 from public.app_organizer_events('${A}', null, now() + interval '1 minute', null, null, 50) e, jsonb_array_elements(e.registrations) r where e.id = '${EVL}' and r->>'role' = 'heeler'`, "la API de eventos de la app trae el rol de cada inscripción", "some");
+  await as("service_role", null, `select 1 from public.app_organizer_events('${A}', null, now() + interval '1 minute', null, null, 50) e, jsonb_array_elements(e.registrations) r where e.id = '${EVL}' and r->>'role' is null`, "y null en las de perfiles sin rol", "some");
 }
 
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");

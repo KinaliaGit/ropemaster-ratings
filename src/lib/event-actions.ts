@@ -8,6 +8,16 @@ import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
 const text = (v: FormDataEntryValue | null, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
+// Rating máximo para inscribirse (opcional). Vacío = sin límite (null). Debe ser un número de 0 a 10; se guarda con un decimal.
+// Devuelve "invalid" si viene algo que no es un número en esa escala.
+function ratingLimit(v: FormDataEntryValue | null): number | null | "invalid" {
+  const raw = typeof v === "string" ? v.trim().replace(",", ".") : "";
+  if (raw === "") return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0 || n > 10) return "invalid";
+  return Math.round(n * 10) / 10;
+}
+
 function slug(name: string) {
   const base = name.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "evento";
   return `${base}-${Math.random().toString(36).slice(2, 6)}`;
@@ -31,6 +41,9 @@ export async function createEvent(formData: FormData) {
   const categories = names.map((n, i) => ({ name: n, fee: fees[i] ?? 0 })).filter((c) => c.name);
   const disciplines = formData.getAll("discipline").map(String).filter((d) => ACTIVE_DISCIPLINES.some((a) => a.id === d));
 
+  const limit = ratingLimit(formData.get("maxRoperRating"));
+  if (limit === "invalid") redirect(`/${l}/organizador/eventos/nuevo?error=ratingLimit`);
+
   if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || !(capacity > 0) || categories.length === 0 || disciplines.length === 0) {
     redirect(`/${l}/organizador/eventos/nuevo?error=1`);
   }
@@ -41,7 +54,7 @@ export async function createEvent(formData: FormData) {
   const eventSlug = slug(name);
 
   const { error } = await supabase.from("events").insert({
-    id, slug: eventSlug, name, event_date: date, city, venue, capacity, disciplines, status,
+    id, slug: eventSlug, name, event_date: date, city, venue, capacity, disciplines, status, max_roper_rating: limit,
     description: text(formData.get("description"), 1000), organizer_id: session.id, organizer_name: session.name,
   });
   if (error) redirect(`/${l}/organizador/eventos/nuevo?error=1`);
@@ -92,6 +105,8 @@ export async function updateEvent(formData: FormData) {
   const fees = formData.getAll("catFee").map((v) => Math.max(0, Math.floor(Number(v)) || 0));
   const rows = names.map((n, i) => ({ id: UUID.test(ids[i] ?? "") ? ids[i] : null, name: n, fee: fees[i] ?? 0 })).filter((c) => c.name);
   const disciplines = formData.getAll("discipline").map(String).filter((d) => ACTIVE_DISCIPLINES.some((a) => a.id === d));
+  const limit = ratingLimit(formData.get("maxRoperRating"));
+  if (limit === "invalid") return back("ratingLimit");
   if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || !(capacity > 0) || rows.length === 0 || disciplines.length === 0) return back("1");
 
   const [{ count: enrolled }, { data: current }, { data: used }] = await Promise.all([
@@ -106,7 +121,7 @@ export async function updateEvent(formData: FormData) {
   if (toDelete.some((id) => usedIds.has(id))) return back("catInUse");
   const owned = new Set((current ?? []).map((c) => c.id));
 
-  const { error } = await supabase.from("events").update({ name, event_date: date, city, venue, capacity, disciplines, description: text(formData.get("description"), 1000) }).eq("id", ev.id);
+  const { error } = await supabase.from("events").update({ name, event_date: date, city, venue, capacity, disciplines, max_roper_rating: limit, description: text(formData.get("description"), 1000) }).eq("id", ev.id);
   if (error) return back("1");
   for (const r of rows) {
     if (r.id && owned.has(r.id)) await supabase.from("event_categories").update({ name: r.name, fee_cents: r.fee * 100 }).eq("id", r.id);

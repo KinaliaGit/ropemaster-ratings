@@ -36,6 +36,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
                 </label>
               ))}
             </fieldset>
+            {e.maxRoperRating !== null && <p className="text-xs text-muted">{t.event.maxRating}: <span className="tabular-nums">{e.maxRoperRating.toFixed(1)}</span></p>}
             <button className="w-full rounded-full bg-brand py-3 font-semibold text-white hover:bg-brand-hot">{t.enroll.submit}</button>
             <p className="text-center text-xs text-muted">{t.enroll.pendingNote}</p>
           </form>

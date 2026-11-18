@@ -179,6 +179,32 @@ await as("authenticated", P2, "select id from registrations", "otro participante
 await as("authenticated", A, "select id from registrations", "el organizador ve las inscripciones de SU evento", "some");
 await as("authenticated", B, "select id from registrations", "otro organizador NO las ve", "deny");
 await as("anon", null, "select n from public.event_registration_counts() where n = 2", "conteo público de inscritos", "some");
+
+console.log("— Límite de rating individual (0036)");
+const RL_EVENT = "e0000000-0000-0000-0000-0000000000a1", RL_CAT = "ca000000-0000-0000-0000-0000000000a1";
+const RL_HIGH = "22222222-0000-0000-0000-0000000000a3", RL_NEW = "22222222-0000-0000-0000-0000000000a4";
+const U_HIGH = "11111111-aaaa-0000-0000-0000000000a3", U_NEW = "11111111-aaaa-0000-0000-0000000000a4";
+await db.exec(`
+  insert into events (id, name, organizer_id, status, slug, capacity, disciplines, max_roper_rating) values ('${RL_EVENT}','Con límite','${A}','publicado','con-limite',10,'{lazo}',6.5);
+  insert into event_categories (id, event_id, name, fee_cents) values ('${RL_CAT}','${RL_EVENT}','Libre',10000);
+  insert into auth.users (id, email, email_confirmed_at) values ('${U_HIGH}','alto@x.com',now()), ('${U_NEW}','nuevo@x.com',now());
+  insert into profiles (user_id, role, display_name) values ('${U_HIGH}','participante','Alto'), ('${U_NEW}','participante','Nuevo');
+  insert into ropers (id, full_name, user_id) values ('${RL_HIGH}','Rating Alto','${U_HIGH}'), ('${RL_NEW}','Rating Nuevo','${U_NEW}');
+  insert into roper_ratings (roper_id, discipline, rating) values ('${RL_HIGH}','lazo',7.2), ('${RL_HIGH}','barriles',3.0), ('11111111-0000-0000-0000-000000000001','lazo',6.5);
+`);
+await as("authenticated", U_HIGH, `select public.register_for_event('${RL_EVENT}','${RL_CAT}')`, "con rating por ENCIMA del límite NO se inscribe", "deny");
+await as("authenticated", C, `select public.register_for_event('${RL_EVENT}','${RL_CAT}')`, "con rating IGUAL al límite sí se inscribe", "some");
+await as("authenticated", U_NEW, `select public.register_for_event('${RL_EVENT}','${RL_CAT}')`, "sin rating todavía (parte de 1) sí se inscribe", "some");
+await db.exec(`update events set max_roper_rating = null where id = '${RL_EVENT}'`);
+await as("authenticated", U_HIGH, `select public.register_for_event('${RL_EVENT}','${RL_CAT}')`, "sin límite se inscribe cualquier rating", "some");
+await db.exec(`update events set max_roper_rating = 6.5, disciplines = '{barriles}' where id = '${RL_EVENT}'`);
+await as("authenticated", P2, `select public.register_for_event('${RL_EVENT}','${RL_CAT}')`, "cuenta el rating de la modalidad del evento (no de otra)", "some");
+await db.exec(`delete from registrations where event_id = '${RL_EVENT}'; update events set disciplines = '{lazo}' where id = '${RL_EVENT}'`);
+await as("authenticated", A, "update events set max_roper_rating = 5 where id = '" + RL_EVENT + "'", "el organizador dueño SÍ cambia el límite", "some");
+await as("authenticated", B, "update events set max_roper_rating = 1 where id = '" + RL_EVENT + "'", "otro organizador NO cambia el límite", "deny");
+await as("authenticated", C, "update events set max_roper_rating = 10 where id = '" + RL_EVENT + "'", "un participante NO cambia el límite", "deny");
+await as("authenticated", A, "update events set max_roper_rating = 11 where id = '" + RL_EVENT + "'", "un límite fuera de 0 a 10 se rechaza", "deny");
+await as("anon", null, "select max_roper_rating from events where max_roper_rating is not null and slug = 'con-limite'", "el límite de un evento publicado es público", "some");
 await as("anon", null, `select roper_id from public.event_registrants('${EV}')`, "lista pública de inscritos (ids)", "some");
 await as("anon", null, "select roper_id from public.event_registrants('e0000000-0000-0000-0000-000000000002')", "la lista de un borrador NO es pública", "deny");
 // cupo: 1 lugar; el segundo falla

@@ -84,6 +84,8 @@ export type EventRow = {
   description: string | null;
   disciplines: string[] | null;
   capacity: number | null;
+  /** Rating máximo para inscribirse (KIN-638). La función SQL no lo trae: la ruta lo agrega. */
+  max_roper_rating?: number | null;
   status: string;
   changed_at: string;
   categories: { id: string; name: string; fee_cents: number }[] | null;
@@ -117,6 +119,7 @@ export function buildEventsPage(rows: EventRow[], organizer: string, snapshot: s
       status: row.status,
       disciplines: row.disciplines ?? [],
       capacity: row.capacity,
+      max_roper_rating: row.max_roper_rating === undefined || row.max_roper_rating === null ? null : Number(row.max_roper_rating),
       description: row.description ?? "",
       updated_at: new Date(row.changed_at).toISOString(),
       categories: (row.categories ?? []).map((c) => ({ id: c.id, name: c.name, fee_cents: c.fee_cents })),

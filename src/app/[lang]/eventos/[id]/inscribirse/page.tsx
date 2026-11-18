@@ -7,6 +7,7 @@ import { getPublicEvent } from "@/lib/data/events";
 import { mxn, type Lang } from "@/lib/format";
 import { Gate } from "@/components/Gate";
 import { enroll } from "@/lib/registration-actions";
+import { STRIPE_ENABLED } from "@/lib/flags";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
 async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/inscribirse"> }) {
@@ -38,7 +39,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
             </fieldset>
             {e.maxRoperRating !== null && <p className="text-xs text-muted">{t.event.maxRating}: <span className="tabular-nums">{e.maxRoperRating.toFixed(1)}</span></p>}
             <button className="w-full rounded-full bg-brand py-3 font-semibold text-white hover:bg-brand-hot">{t.enroll.submit}</button>
-            <p className="text-center text-xs text-muted">{t.enroll.pendingNote}</p>
+            <p className="text-center text-xs text-muted">{STRIPE_ENABLED ? t.enroll.pendingNote : t.enroll.pendingNoteOffline}</p>
           </form>
         </div>
       )}

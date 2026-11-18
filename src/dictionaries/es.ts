@@ -42,7 +42,7 @@ export const es = {
     returned: "¡Gracias! Estamos confirmando tu pago; en unos segundos aparecerá como pagado.", paidWith: "Pagado con", errors: { unauthenticated: "Inicia sesión para pagar.", invalid: "No encontramos esa inscripción.", already: "Esa inscripción ya está pagada.", noPayouts: "El organizador aún no activa los pagos en línea.", generic: "No se pudo iniciar el pago." },
   },
   enroll: {
-    title: "Inscripción", category: "Categoría", discipline: "Modalidad", submit: "Inscribirme", pendingNote: "Tu lugar queda apartado como pendiente de pago. Después podrás pagar en línea o en efectivo/transferencia con el organizador. Puedes cancelarlo mientras no esté pagado.",
+    title: "Inscripción", category: "Categoría", discipline: "Modalidad", submit: "Inscribirme", pendingNote: "Tu lugar queda apartado como pendiente de pago. Después podrás pagar en línea o en efectivo/transferencia con el organizador. Puedes cancelarlo mientras no esté pagado.", pendingNoteOffline: "Tu lugar queda apartado como pendiente de pago. Después pagarás en efectivo o por transferencia con el organizador. Puedes cancelarlo mientras no esté pagado.",
     errors: {
       forbidden: "Solo los participantes pueden inscribirse.", invalid_category: "Evento o categoría inválidos.", closed: "Las inscripciones están cerradas.", already: "Ya estás inscrito en esta categoría.",
       full: "El cupo está lleno.", rating_limit: "Tu rating supera el máximo individual de este evento.", paid: "Esa inscripción ya está pagada y no se puede cancelar aquí.", not_found: "No encontramos esa inscripción.", failed: "No se pudo completar. Intenta de nuevo.",

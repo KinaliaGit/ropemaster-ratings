@@ -379,12 +379,20 @@ Revisado contra el esquema de la web (`supabase/migrations`) y el de la app (`ro
 Los ids de modalidad son `lazo` y `barriles` (los mismos en `events.disciplines`, `event_results.discipline` y `ratings`).
 La app debe mapear cada modo de juego local a su id; los modos que la web aún no activa se ignoran.
 
-## Series de eventos (KIN-625): aún no forman parte del contrato
+## Series de eventos (KIN-625)
 
-La web ya permite armar series (un organizador agrupa hasta 30 eventos de una temporada). Esta versión del contrato (`contract_version` 1) **no las
-incluye**: `GET /api/app/eventos` sigue devolviendo cada evento por separado, y un evento de una serie se ve como cualquier otro evento. Los datos
-quedan listos para exponerlos después sin cambiar el esquema: `event_series` (id, slug, nombre, descripción, `start_date`, `end_date`, `timezone`)
-y `events.series_id`. Cuando se exponga será un cambio aditivo (p. ej. `series: { id, name, start_date, end_date }` en cada evento).
+La web permite armar series (un organizador agrupa hasta 30 eventos de una temporada). Cambio **aditivo** del contrato 1 (una app anterior ignora el campo):
+cada evento de `GET /api/app/eventos` trae `series`:
+
+```json
+"series": { "id": "<uuid>", "slug": "temporada-norte-2026", "name": "Temporada Norte 2026", "start_date": "2026-01-01", "end_date": "2026-12-31" }
+```
+
+- `series` es `null` cuando el evento está suelto. Solo viajan datos públicos de la serie; la plantilla y las instrucciones de pago no salen.
+- No hay un endpoint aparte de series: se descubren por sus eventos (una serie sin eventos publicados no le sirve a la app).
+- Renombrar una serie o cambiar sus fechas NO cambia el `updated_at` de sus eventos, así que no aparece en una descarga con `since`; la app lo
+  recoge en su descarga completa periódica (sin `since`).
+- La app crea la serie local con `series.id` como vínculo estable (`series.remote_id`) y mete ahí a los eventos nuevos de esa serie sin pasar por la bandeja.
 
 `events.registration_opens_at` (apertura programada de inscripciones) tampoco viaja en el contrato: solo afecta a quién puede inscribirse desde la web.
 El organizador sigue pudiendo inscribir a mano antes de la apertura.

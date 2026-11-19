@@ -1,7 +1,7 @@
 import { organizerFromRequest } from "@/lib/app-auth";
 import { adminClient } from "@/lib/supabase/admin";
 import { checkActiveOrganizer } from "@/lib/app-organizer";
-import { PAGE_SIZE, buildEventsPage, checkVersion, parseEventsQuery, type EventRow } from "@/lib/app-events";
+import { PAGE_SIZE, buildEventsPage, checkVersion, parseEventsQuery, type EventRow, type EventSeriesRef } from "@/lib/app-events";
 
 // La app local descarga los eventos publicados y finalizados del organizador, con sus inscritos y el estado de pago (KIN-585).
 // Contrato en docs/SYNC_API.md.
@@ -47,13 +47,20 @@ export async function GET(request: Request) {
     if (error) return unavailable();
 
     const rows = (data ?? []) as EventRow[];
-    // El rating máximo para inscribirse (KIN-638) se lee aparte para no tocar la función SQL de la sincronización.
+    // El rating máximo para inscribirse (KIN-638) y la serie del evento (KIN-625) se leen aparte para no tocar la función SQL de la
+    // sincronización. La serie viaja con datos públicos (id, slug, nombre y fechas); la plantilla y las instrucciones de pago no salen.
     const page = rows.slice(0, PAGE_SIZE);
     if (page.length > 0) {
-      const { data: limits, error: limitsError } = await db.from("events").select("id, max_roper_rating").in("id", page.map((row) => row.id));
-      if (limitsError) return unavailable();
-      const byId = new Map((limits ?? []).map((row) => [row.id as string, row.max_roper_rating as number | null]));
-      for (const row of page) row.max_roper_rating = byId.get(row.id) ?? null;
+      const { data: extras, error: extrasError } = await db
+        .from("events")
+        .select("id, max_roper_rating, series:event_series(id, slug, name, start_date, end_date)")
+        .in("id", page.map((row) => row.id));
+      if (extrasError) return unavailable();
+      const byId = new Map((extras ?? []).map((row) => [row.id as string, row as unknown as { max_roper_rating: number | null; series: EventSeriesRef | null }]));
+      for (const row of page) {
+        row.max_roper_rating = byId.get(row.id)?.max_roper_rating ?? null;
+        row.series = byId.get(row.id)?.series ?? null;
+      }
     }
     return json(buildEventsPage(rows, auth.organizer, snapshot));
   } catch {

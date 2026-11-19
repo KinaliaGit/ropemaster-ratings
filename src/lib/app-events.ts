@@ -74,6 +74,9 @@ export function parseEventsQuery(url: URL): { ok: true; value: EventsQuery } | F
 export type PaymentStatus = "pendiente" | "pagado" | "reembolsado";
 export type PaymentMethod = "efectivo" | "transferencia" | "stripe";
 
+/** Serie de la web a la que pertenece un evento (KIN-625). Datos públicos de la serie; nunca su plantilla ni instrucciones de pago. */
+export type EventSeriesRef = { id: string; slug: string | null; name: string; start_date: string; end_date: string };
+
 export type EventRow = {
   id: string;
   slug: string | null;
@@ -86,6 +89,8 @@ export type EventRow = {
   capacity: number | null;
   /** Rating máximo para inscribirse (KIN-638). La función SQL no lo trae: la ruta lo agrega. */
   max_roper_rating?: number | null;
+  /** Serie del evento (KIN-625). La función SQL no la trae: la ruta la agrega. `null`/ausente = evento suelto. */
+  series?: EventSeriesRef | null;
   status: string;
   changed_at: string;
   categories: { id: string; name: string; fee_cents: number }[] | null;
@@ -121,6 +126,7 @@ export function buildEventsPage(rows: EventRow[], organizer: string, snapshot: s
       disciplines: row.disciplines ?? [],
       capacity: row.capacity,
       max_roper_rating: row.max_roper_rating === undefined || row.max_roper_rating === null ? null : Number(row.max_roper_rating),
+      series: row.series ? { id: row.series.id, slug: row.series.slug ?? "", name: row.series.name, start_date: row.series.start_date, end_date: row.series.end_date } : null,
       description: row.description ?? "",
       updated_at: new Date(row.changed_at).toISOString(),
       categories: (row.categories ?? []).map((c) => ({ id: c.id, name: c.name, fee_cents: c.fee_cents })),

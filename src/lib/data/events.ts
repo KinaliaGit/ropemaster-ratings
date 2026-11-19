@@ -6,12 +6,12 @@ import { EVENT_PHOTOS_BUCKET, publicStorageUrl } from "@/lib/storage";
 import { getEnrollmentCounts, getEventEnrolled } from "@/lib/data/registrations";
 
 // Columnas que se piden (siempre por nombre) y su forma. El evento se identifica en las URLs por su `slug`.
-const COLUMNS = "id, slug, name, event_date, city, venue, description, disciplines, capacity, status, organizer_id, organizer_name, cover_url, updated_at, results_closed_at, max_roper_rating, timezone, registration_opens_at, registration_closes_at, registration_closed, event_series(slug, name), event_categories(id, name, fee_cents), event_photos(id, storage_path, position)";
+const COLUMNS = "id, slug, name, event_date, city, venue, description, disciplines, capacity, status, organizer_id, organizer_name, cover_url, updated_at, results_closed_at, max_roper_rating, draw_type, lazada_shots_per_package, max_team_rating, timezone, registration_opens_at, registration_closes_at, registration_closed, event_series(slug, name), event_categories(id, name, fee_cents), event_photos(id, storage_path, position)";
 
 type Row = {
   id: string; slug: string | null; name: string; event_date: string | null; city: string | null; venue: string | null; description: string | null;
   disciplines: string[] | null; capacity: number | null; status: string; organizer_id: string | null; organizer_name: string | null;
-  cover_url: string | null; updated_at: string; results_closed_at: string | null; max_roper_rating: number | null; timezone: string; registration_opens_at: string | null; registration_closes_at: string | null; registration_closed: boolean; event_series: { slug: string; name: string } | null; event_categories: { id: string; name: string; fee_cents: number }[] | null;
+  cover_url: string | null; updated_at: string; results_closed_at: string | null; max_roper_rating: number | null; draw_type: "round_robin" | "lazada_sorteada"; lazada_shots_per_package: number | null; max_team_rating: number | null; timezone: string; registration_opens_at: string | null; registration_closes_at: string | null; registration_closed: boolean; event_series: { slug: string; name: string } | null; event_categories: { id: string; name: string; fee_cents: number }[] | null;
   event_photos: { id: string; storage_path: string; position: number }[] | null;
 };
 
@@ -24,6 +24,7 @@ function toItem(r: Row, enrolled: number): EventItem {
     disciplines: r.disciplines ?? [], capacity: r.capacity ?? 0, description: r.description ?? "", organizer: r.organizer_name ?? "",
     categories: (r.event_categories ?? []).map((c) => ({ id: c.id, name: c.name, fee: Math.round(c.fee_cents / 100) })),
     status: r.status as EventItem["status"], timezone: r.timezone, registrationOpensAt: r.registration_opens_at, registrationClosesAt: r.registration_closes_at, registrationClosed: r.registration_closed, series: r.event_series, cover: r.cover_url ?? undefined, updatedAt: r.updated_at, resultsClosed: r.results_closed_at !== null, maxRoperRating: r.max_roper_rating === null ? null : Number(r.max_roper_rating),
+    drawType: r.draw_type, lazadaShotsPerPackage: r.lazada_shots_per_package, maxTeamRating: r.max_team_rating === null ? null : Number(r.max_team_rating),
     tone: hash(id) % 3,
     photos: (r.event_photos ?? []).sort((a, b) => a.position - b.position).map((p) => ({ id: p.id, url: publicStorageUrl(EVENT_PHOTOS_BUCKET, p.storage_path) })),
     enrolled,

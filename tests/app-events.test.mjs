@@ -13,7 +13,7 @@ const EVENT = "e0000000-0000-0000-0000-0000000000e1";
 // Las filas tal como las entrega la función de la base (app_organizer_events): de aquí sale el ejemplo del contrato.
 const dbRow = () => ({
   id: EVENT, slug: "rodeo-norte-2026", name: "Rodeo Norte 2026", event_date: "2026-12-06", city: "Monterrey", venue: "Lienzo Charro del Norte",
-  description: "Rodeo de fin de año, lazo en equipo.", disciplines: ["lazo"], capacity: 100, max_roper_rating: 6.5, series: example.events[0].series, status: "publicado", changed_at: "2026-11-05T18:30:00+00:00",
+  description: "Rodeo de fin de año, lazo en equipo.", disciplines: ["lazo"], capacity: 100, max_roper_rating: 6.5, draw_type: "lazada_sorteada", lazada_shots_per_package: 3, max_team_rating: 12.5, series: example.events[0].series, status: "publicado", changed_at: "2026-11-05T18:30:00+00:00",
   categories: example.events[0].categories,
   registrations: example.events[0].registrations,
 });
@@ -29,14 +29,22 @@ test("el ejemplo cumple el contrato: tipos, enums, centavos enteros y fechas ISO
     assert.ok(["publicado", "finalizado"].includes(event.status), "los borradores no se envían");
     assert.match(event.date, /^\d{4}-\d{2}-\d{2}$/);
     assert.match(event.updated_at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    assert.ok(["round_robin", "lazada_sorteada"].includes(event.draw_type), "draw_type es round_robin o lazada_sorteada");
+    assert.ok(event.lazada_shots_per_package === null || (Number.isInteger(event.lazada_shots_per_package) && event.lazada_shots_per_package >= 1));
+    assert.ok(event.lazada_shots_per_package === null || event.draw_type === "lazada_sorteada", "los tiros por paquete solo existen en Lazada Sorteada");
+    assert.ok(event.max_team_rating === null || (event.max_team_rating >= 0 && event.max_team_rating <= 20));
     for (const c of event.categories) assert.ok(Number.isInteger(c.fee_cents) && c.fee_cents >= 0);
     for (const r of event.registrations) {
       assert.ok(["pendiente", "pagado", "reembolsado"].includes(r.payment_status));
       assert.ok(r.payment_method === null || ["efectivo", "transferencia", "stripe"].includes(r.payment_method));
       assert.ok(Number.isInteger(r.amount_cents) && r.amount_cents >= 0);
       assert.ok(r.role === null || ["header", "heeler"].includes(r.role), "role es header, heeler o null");
+      assert.ok(Number.isInteger(r.packages) && r.packages >= 1 && r.packages <= 99, "packages es un entero de 1 a 99");
+      assert.ok(r.packages === 1 || event.draw_type === "lazada_sorteada", "más de un paquete solo en Lazada Sorteada");
+      const fee = event.categories.find((c) => c.id === r.category_id).fee_cents;
+      if (r.payment_status !== "reembolsado") assert.equal(r.amount_cents, fee * r.packages, "el monto es costo * paquetes");
       assert.ok(event.categories.some((c) => c.id === r.category_id && c.name === r.category), "la categoría de la inscripción existe en el evento");
-      assert.deepEqual(Object.keys(r).sort(), ["amount_cents", "category", "category_id", "id", "name", "payment_method", "payment_status", "role", "roper_global_id"],
+      assert.deepEqual(Object.keys(r).sort(), ["amount_cents", "category", "category_id", "id", "name", "packages", "payment_method", "payment_status", "role", "roper_global_id"],
         "ni correo ni celular ni ids de cuenta");
     }
   }
@@ -112,4 +120,15 @@ test("la serie del evento (KIN-625) sale con datos públicos, o null si el event
   }
   const [noSlug] = buildEventsPage([{ ...dbRow(), series: { ...example.events[0].series, slug: null } }], "org", "2026-11-06T09:00:00.000Z").events;
   assert.equal(noSlug.series.slug, "");
+});
+
+test("una fila de una web anterior (sin tipo ni paquetes) se entiende como round_robin y 1 paquete", () => {
+  const row = dbRow();
+  delete row.draw_type; delete row.lazada_shots_per_package; delete row.max_team_rating;
+  row.registrations = row.registrations.map((r) => { const rest = { ...r }; delete rest.packages; return rest; });
+  const [event] = buildEventsPage([row], example.organizer, example.generated_at).events;
+  assert.equal(event.draw_type, "round_robin");
+  assert.equal(event.lazada_shots_per_package, null);
+  assert.equal(event.max_team_rating, null);
+  assert.ok(event.registrations.every((r) => r.packages === 1));
 });

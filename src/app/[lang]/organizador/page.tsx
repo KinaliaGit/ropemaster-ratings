@@ -14,7 +14,7 @@ import type { Lang } from "@/lib/format";
 
 const badge: Record<string, string> = { publicado: "bg-brand-soft text-brand-hot", borrador: "bg-sand text-muted", finalizado: "bg-ink text-white" };
 
-async function Panel({ s, lang, t, welcome }: { s: Session; lang: Lang; t: Dict; welcome: boolean }) {
+async function Panel({ s, lang, t, welcome, deleted }: { s: Session; lang: Lang; t: Dict; welcome: boolean; deleted: boolean }) {
   const mine = await listOrganizerEvents(s.id);
   const stateLabel: Record<string, string> = { publicado: t.status.published, borrador: t.status.draft, finalizado: t.status.finished };
   const stats = [[t.org.events, mine.length], [t.status.published, mine.filter((e) => e.status === "publicado").length], [t.org.collected, mxn(0, lang)]];
@@ -22,6 +22,7 @@ async function Panel({ s, lang, t, welcome }: { s: Session; lang: Lang; t: Dict;
     <>
       <OrgNav lang={lang} t={t} admin={s.isAdmin} />
       <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
+        {deleted && <p role="status" className="mb-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.org.del.deleted}</p>}
         {welcome && s.verified && <p role="status" className="mb-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.org.welcome}</p>}
         {!s.verified && (
           <div role="note" className="mb-6 rounded-2xl border border-line bg-sand p-4 text-sm">
@@ -86,7 +87,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador"> }) {
   const sp = await props.searchParams;
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador`}>
-      {(s) => <Panel s={s} lang={lang} t={t} welcome={sp.bienvenido === "1"} />}
+      {(s) => <Panel s={s} lang={lang} t={t} welcome={sp.bienvenido === "1"} deleted={sp.borrado === "1"} />}
     </Gate>
   );
 }

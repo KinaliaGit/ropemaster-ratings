@@ -50,3 +50,4 @@ Estado al 2026-11-05, rama `feat/organizadores-reales` (PR #1). ✅ hecho y prob
 
 ## Hecho cuando
 Los tres (Ana, Edgar, Neaves) revisan esta lista y están de acuerdo en abrir.
+- 🟡 **Correo de avisos al participante** (KIN-657/660): sacar a un inscrito o borrar un evento manda un correo por la API de Brevo. Hace falta **`BREVO_API_KEY`** (clave de la API v3, secreta) y opcionalmente `MAIL_FROM_EMAIL` en Vercel (Production). Sin la clave NO se manda el correo, pero el aviso dentro de la web (campana y banner) se guarda igual. Migraciones nuevas: 0038 (inscripciones cierran por fecha), 0039 (avisos) y 0040 (borrar eventos y series).

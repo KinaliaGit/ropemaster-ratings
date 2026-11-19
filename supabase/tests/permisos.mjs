@@ -1459,11 +1459,43 @@ console.log("- Resultados de un evento (0030)");
   await as("authenticated", A, `update events set name = 'Fecha 1 editada', capacity = 120 where id = '${E1}'`, "el organizador edita un evento de la serie como cualquier otro", "some");
   await as("authenticated", C, `select public.register_for_event('${E1}', '${await kat(E1)}', 'header')`, "ya inscrito en esa categoría: se rechaza como en cualquier evento", "deny");
 
-  // Borrar la serie deja sus eventos sueltos
-  await as("authenticated", B, `delete from event_series where id = '${S1}'`, "otro organizador NO borra la serie", "deny");
-  await as("authenticated", A, `delete from event_series where id = '${S1}'`, "el dueño SÍ borra la serie", "some");
-  check("sus eventos siguen existiendo, sin serie", await num(`select count(*) n from events where id = '${E1}' and series_id is null`) === 1 && await num(`select count(*) n from events where id = '${E2}' and series_id is null`) === 1);
-  check("la plantilla se borró con la serie", await num(`select count(*) n from event_series_template where series_id = '${S1}'`) === 0);
+  // Borrar la serie (KIN-660): solo con la función, solo el dueño y solo cuando ya no tiene eventos
+  await as("authenticated", A, `delete from event_series where id = '${S1}'`, "NO se borra la serie escribiendo la tabla directo", "deny");
+  await as("authenticated", B, `select public.delete_series('${S1}')`, "otro organizador NO borra la serie", "deny");
+  await as("authenticated", C, `select public.delete_series('${S1}')`, "un participante NO borra la serie", "deny");
+  await as("anon", null, `select public.delete_series('${S1}')`, "anónimo NO borra la serie", "deny");
+  await as("authenticated", A, `select public.delete_series('${S1}')`, "una serie con eventos NO se borra (has_events)", "deny");
+  check("la serie y sus eventos siguen intactos", await num(`select count(*) n from event_series where id = '${S1}'`) === 1 && await num(`select count(*) n from events where series_id = '${S1}'`) >= 1);
+
+  // Borrar un evento (KIN-660): motivo con inscritos, aviso a cada inscrito y constancia
+  const EVB = "e0000000-0000-0000-0000-0000000000b6", KB = "ca000000-0000-0000-0000-0000000000b6", EVE = "e0000000-0000-0000-0000-0000000000b7";
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug, event_date, capacity) values ('${EVB}','Para borrar','${A}','publicado','para-borrar','2099-10-01', 20), ('${EVE}','Vacío para borrar','${A}','borrador','vacio-borrar','2099-10-02', 20);
+    insert into event_categories (id, event_id, name, fee_cents) values ('${KB}','${EVB}','Libre',10000);
+  `);
+  await as("authenticated", C, `select public.register_for_event('${EVB}','${KB}', 'header')`, "C se inscribe al evento que se va a borrar", "some");
+  await as("authenticated", B, `select public.delete_event('${EVB}', 'Se canceló por lluvia')`, "otro organizador NO borra un evento ajeno", "deny");
+  await as("authenticated", C, `select public.delete_event('${EVB}', 'Se canceló por lluvia')`, "un participante NO borra el evento", "deny");
+  await as("anon", null, `select public.delete_event('${EVB}', 'Se canceló por lluvia')`, "anónimo NO borra el evento", "deny");
+  await as("authenticated", D, `select public.delete_event('${EVB}', 'Se canceló por lluvia')`, "ni un admin borra el evento de otro organizador", "deny");
+  await as("authenticated", A, `select public.delete_event('${EVB}', '')`, "con inscritos, sin motivo NO se borra", "deny");
+  await as("authenticated", A, `select public.delete_event('${EVB}', 'lluvia')`, "con inscritos, un motivo de menos de 10 caracteres NO se borra", "deny");
+  await as("authenticated", A, `select public.delete_event('e0000000-0000-0000-0000-0000000000d2', 'Evento ya finalizado')`, "un evento finalizado NO se borra", "deny");
+  check("el evento con inscritos sigue existiendo tras los intentos fallidos", await num(`select count(*) n from events where id = '${EVB}'`) === 1);
+  await as("authenticated", A, `select public.delete_event('${EVB}', 'Se canceló por lluvia')`, "el dueño SÍ borra el evento con inscritos dando motivo", "some");
+  check("el evento y sus inscripciones se borraron", await num(`select count(*) n from events where id = '${EVB}'`) === 0 && await num(`select count(*) n from registrations where event_id = '${EVB}'`) === 0);
+  check("quedó constancia con motivo y número de inscritos", await num(`select count(*) n from deleted_events where event_id = '${EVB}' and enrolled_count = 1 and reason = 'Se canceló por lluvia' and deleted_by = '${A}'`) === 1);
+  await as("authenticated", C, `select reason from notifications where kind = 'event_deleted' and event_name = 'Para borrar' and reason = 'Se canceló por lluvia'`, "el inscrito recibe el aviso del evento borrado con el motivo", "some");
+  await as("authenticated", P2, `select id from notifications where event_name = 'Para borrar'`, "otro participante NO ve ese aviso", "deny");
+  await as("authenticated", A, `select id from deleted_events`, "el organizador ve su constancia", "some");
+  await as("authenticated", B, `select id from deleted_events`, "otro organizador NO ve constancias ajenas", "deny");
+  await as("authenticated", A, `select public.delete_event('${EVE}', '')`, "sin inscritos, el dueño borra sin motivo", "some");
+  check("sin inscritos no se manda ningún aviso", await num(`select count(*) n from notifications where event_name = 'Vacío para borrar'`) === 0);
+
+  // Ya sin eventos, la serie sí se borra
+  await db.exec(`delete from events where series_id = '${S1}'`);
+  await as("authenticated", A, `select public.delete_series('${S1}')`, "el dueño SÍ borra la serie ya sin eventos", "some");
+  check("la serie y su plantilla se borraron", await num(`select count(*) n from event_series where id = '${S1}'`) === 0 && await num(`select count(*) n from event_series_template where series_id = '${S1}'`) === 0);
 }
 
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");

@@ -91,12 +91,19 @@ export async function updateSeries(formData: FormData) {
   redirect(`/${l}/organizador/series/${seriesSlug}?editada=1`);
 }
 
-// Borra la serie. Sus eventos NO se borran: quedan como eventos sueltos.
+// Borra la serie (KIN-660): solo cuando ya no tiene eventos (primero se borran los eventos, como en la app) y escribiendo la palabra de confirmación.
+// La base valida el dueño y que no queden eventos.
 export async function deleteSeries(formData: FormData) {
   const l = lang(formData.get("lang"));
   const seriesSlug = text(formData.get("slug"), 80);
   const session = await organizer(l);
-  await (await createServerSupabase()).from("event_series").delete().eq("slug", seriesSlug).eq("organizer_id", session.id);
+  const back = (code: string) => redirect(`/${l}/organizador/series/${seriesSlug}?borrarError=${code}`);
+  if (!["borrar", "delete"].includes(text(formData.get("confirmWord"), 20).toLowerCase())) return back("confirm");
+  const supabase = await createServerSupabase();
+  const found = await ownSeries(supabase, seriesSlug, session.id);
+  if (!found) return back("not_found");
+  const { error } = await supabase.rpc("delete_series", { p_series: found.id });
+  if (error) return back(["has_events", "not_found"].find((k) => error.message.includes(k)) ?? "failed");
   updateTag("events");
   redirect(`/${l}/organizador/series?borrada=1`);
 }

@@ -94,6 +94,16 @@ export const es = {
     ranking: "Ranking", seeAll: "Ver todos", publicProfile: "Ver mi perfil público e historial", paid: "Pagado", pending: "Pago pendiente",
   },
   org: {
+      del: {
+        zone: "Zona de peligro", eventText: "Borrar el evento es definitivo: se borran también sus inscripciones y se libera el cupo. Lo que pasó queda registrado para auditoría.", seriesText: "Borrar la serie es definitivo. Solo se puede cuando ya no tiene eventos.",
+        eventButton: "Borrar evento", seriesButton: "Borrar serie", eventTitle: "Borrar este evento", seriesTitle: "Borrar esta serie",
+        name: "Nombre", date: "Fecha", enrolled: "Inscritos", word: "borrar", typePrompt: (w: string) => `Escribe «${w}» para confirmar`,
+        reasonLabel: "Motivo (lo verán los inscritos)", reasonPlaceholder: "Ej. Se canceló el evento por lluvia", minChars: "Escribe al menos 10 caracteres.",
+        notify: (n: number) => `Se avisará a los ${n} inscritos, dentro de la web y por correo, con el motivo.`, cancel: "Cancelar", confirm: "Borrar definitivamente",
+        seriesHasEvents: "Borra primero los eventos de la serie.", goToEvents: "Ver los eventos", finishedNote: "Un evento finalizado no se puede borrar.", resultsNote: "Un evento con resultados no se puede borrar.",
+        deleted: "Evento borrado.",
+        errors: { confirm: "Escribe la palabra de confirmación.", invalid_reason: "Escribe un motivo de al menos 10 caracteres.", has_results: "Ese evento ya tiene resultados: no se puede borrar.", closed: "Ese evento ya finalizó: no se puede borrar.", has_events: "Borra primero los eventos de la serie.", not_found: "No encontramos ese evento o serie.", failed: "No se pudo borrar. Intenta de nuevo." },
+      },
     license: {
       noneTitle: "Tu cuenta está en revisión.", noneText: "Para crear eventos y ver participantes necesitas una licencia de Rope Master vigente o la aprobación de un administrador. Mientras tanto no puedes publicar nada.",
       expiredTitle: "Tu licencia venció.", expiredText: "Renuévala para volver a crear y publicar eventos. Venció el", validUntil: "Licencia vigente hasta el",

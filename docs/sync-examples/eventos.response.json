@@ -13,6 +13,7 @@
       "disciplines": ["lazo"],
       "capacity": 100,
       "max_roper_rating": 6.5,
+      "series": { "id": "5e000000-0000-0000-0000-0000000000a1", "slug": "temporada-norte-2026", "name": "Temporada Norte 2026", "start_date": "2026-01-01", "end_date": "2026-12-31" },
       "description": "Rodeo de fin de año, lazo en equipo.",
       "updated_at": "2026-11-05T18:30:00.000Z",
       "categories": [

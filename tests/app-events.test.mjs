@@ -13,7 +13,7 @@ const EVENT = "e0000000-0000-0000-0000-0000000000e1";
 // Las filas tal como las entrega la función de la base (app_organizer_events): de aquí sale el ejemplo del contrato.
 const dbRow = () => ({
   id: EVENT, slug: "rodeo-norte-2026", name: "Rodeo Norte 2026", event_date: "2026-12-06", city: "Monterrey", venue: "Lienzo Charro del Norte",
-  description: "Rodeo de fin de año, lazo en equipo.", disciplines: ["lazo"], capacity: 100, max_roper_rating: 6.5, status: "publicado", changed_at: "2026-11-05T18:30:00+00:00",
+  description: "Rodeo de fin de año, lazo en equipo.", disciplines: ["lazo"], capacity: 100, max_roper_rating: 6.5, series: example.events[0].series, status: "publicado", changed_at: "2026-11-05T18:30:00+00:00",
   categories: example.events[0].categories,
   registrations: example.events[0].registrations,
 });
@@ -100,4 +100,16 @@ test("una página llena avisa que hay más y el cursor apunta al último evento 
   const last = rows[PAGE_SIZE - 1];
   assert.deepEqual(decodeCursor(page.next_cursor), { changedAt: last.changed_at, id: last.id, snapshot: "2026-11-06T09:00:00.000Z" });
   assert.equal(buildEventsPage(rows.slice(0, PAGE_SIZE), "org", "2026-11-06T09:00:00.000Z").next_cursor, null, "justo una página: no hay más");
+});
+
+test("la serie del evento (KIN-625) sale con datos públicos, o null si el evento está suelto o la fila no la trae", () => {
+  const [inSeries] = buildEventsPage([dbRow()], "org", "2026-11-06T09:00:00.000Z").events;
+  assert.deepEqual(Object.keys(inSeries.series).sort(), ["end_date", "id", "name", "slug", "start_date"], "sin plantilla ni instrucciones de pago");
+  const withoutField = dbRow();
+  delete withoutField.series;
+  for (const row of [{ ...dbRow(), series: null }, withoutField]) {
+    assert.equal(buildEventsPage([row], "org", "2026-11-06T09:00:00.000Z").events[0].series, null);
+  }
+  const [noSlug] = buildEventsPage([{ ...dbRow(), series: { ...example.events[0].series, slug: null } }], "org", "2026-11-06T09:00:00.000Z").events;
+  assert.equal(noSlug.series.slug, "");
 });

@@ -79,6 +79,12 @@ export const es = {
     organizerBlurb: "Crea y publica eventos, y recibe las inscripciones y pagos de los participantes.",
     fullName: "Nombre completo", email: "Correo", create: "Crear cuenta",
   },
+  notifications: {
+    title: "Avisos", empty: "No tienes avisos.", markAll: "Marcar todo como leído", markRead: "Marcar como leído", new: "Nuevo", reason: "Motivo:", eventOn: "evento del",
+    removedTitle: (e: string) => `Te sacaron del evento ${e}`, deletedTitle: (e: string) => `Se canceló el evento ${e}`,
+    refund: "Tu pago ya estaba registrado. No hay reembolso automático: contacta al organizador para que te lo devuelva.",
+    bell: "Avisos", bannerOne: "Tienes 1 aviso nuevo", bannerMany: (n: number) => `Tienes ${n} avisos nuevos`, bannerLink: "Verlos",
+  },
   account: {
     createTitle: "Crea tu perfil de lazador", createText: "Tu cuenta es de organizador. Si también compites, crea tu perfil de lazador: tendrás tu rating, tu historial y podrás inscribirte a eventos. Si otro organizador ya te registró con tu correo, reclamas ese perfil.", createBtn: "Crear mi perfil de lazador", profileCreated: "¡Listo! Tu perfil de lazador está creado.", typeOrganizer: "Organizador · perfil de lazador",
     photo: { add: "Agregar foto", change: "Cambiar foto", remove: "Quitar", saving: "Guardando…", tooBig: `La foto pesa más de ${MAX_UPLOAD_MB} MB. Elige una más ligera.`, error: "No se pudo guardar la foto. Usa una imagen JPG, PNG o WebP." },

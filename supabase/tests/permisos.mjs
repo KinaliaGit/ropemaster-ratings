@@ -1206,6 +1206,16 @@ console.log("- Resultados de un evento (0030)");
   await as("authenticated", A, `delete from registration_removals where event_id = '${EVR}'`, "nadie borra el registro escribiendo la tabla", "deny");
   await as("authenticated", A, `insert into registration_removals (event_id, roper_id, reason, payment_status) values ('${EVR}','${ANA}','falso','pendiente')`, "nadie crea registros escribiendo la tabla", "deny");
 
+  // Avisos dentro de la web (KIN-657): al sacar a alguien se le crea un aviso que solo él lee y marca como leído
+  await as("authenticated", C, `select reason from notifications where kind = 'removed' and event_name = 'Para sacar' and reason = 'No se recibió el pago'`, "el sacado recibe un aviso con el motivo", "some");
+  await as("authenticated", P2, `select id from notifications`, "otro participante NO ve avisos ajenos", "deny");
+  await as("authenticated", A, `select id from notifications`, "ni el organizador que lo sacó lee el aviso", "deny");
+  await as("anon", null, `select id from notifications`, "anónimo NO ve avisos", "deny");
+  await as("authenticated", P2, `update notifications set read_at = now()`, "otro participante NO marca avisos ajenos como leídos", "deny");
+  await as("authenticated", C, `update notifications set reason = 'cambiado'`, "el destinatario NO edita el contenido del aviso", "deny");
+  await as("authenticated", C, `insert into notifications (user_id, kind) values ('${C}', 'removed')`, "nadie crea avisos escribiendo la tabla", "deny");
+  await as("authenticated", C, `update notifications set read_at = now() where read_at is null`, "el destinatario SÍ lo marca como leído", "some");
+
   // Volver a inscribirse
   await as("authenticated", C, `select public.register_for_event('${EVR}','${KR}', 'header')`, "quien fue sacado NO se inscribe solo otra vez", "deny");
   await as("authenticated", C, `select public.set_removal_reenroll((select id from registration_removals where roper_id = '${ANA}' limit 1), true)`, "el sacado NO se da permiso a sí mismo", "deny");

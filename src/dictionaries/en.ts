@@ -79,6 +79,12 @@ export const en: Dict = {
     organizerBlurb: "Create and publish events, and receive registrations and payments from participants.",
     fullName: "Full name", email: "Email", create: "Create account",
   },
+  notifications: {
+    title: "Notifications", empty: "You have no notifications.", markAll: "Mark all as read", markRead: "Mark as read", new: "New", reason: "Reason:", eventOn: "event on",
+    removedTitle: (e: string) => `You were removed from ${e}`, deletedTitle: (e: string) => `${e} was canceled`,
+    refund: "Your payment was already recorded. There is no automatic refund: contact the organizer to get it back.",
+    bell: "Notifications", bannerOne: "You have 1 new notification", bannerMany: (n: number) => `You have ${n} new notifications`, bannerLink: "View",
+  },
   account: {
     createTitle: "Create your roper profile", createText: "Your account is an organizer account. If you also compete, create your roper profile: you'll get your rating and history and can register for events. If another organizer already registered you with your email, you claim that profile.", createBtn: "Create my roper profile", profileCreated: "Done! Your roper profile is created.", typeOrganizer: "Organizer · roper profile",
     photo: { add: "Add photo", change: "Change photo", remove: "Remove", saving: "Saving…", tooBig: `The photo is larger than ${MAX_UPLOAD_MB} MB. Choose a lighter one.`, error: "Couldn't save the photo. Use a JPG, PNG or WebP image." },

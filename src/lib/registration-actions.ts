@@ -1,7 +1,9 @@
 "use server";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { updateTag } from "next/cache";
 import { getPublicEvent } from "@/lib/data/events";
+import { emailParticipant } from "@/lib/notify";
 import { statusByDate } from "@/lib/event-time";
 import { getSession } from "@/lib/session";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -97,9 +99,19 @@ export async function removeRegistration(formData: FormData) {
   const reason = String(formData.get("reason") ?? "").trim();
   if (!UUID.test(id)) return back("sacado=not_found");
   if (reason.length < 3 || reason.length > 500) return back("sacado=invalid_reason");
-  const { error } = await supabase.rpc("remove_registration", { p_registration: id, p_reason: reason });
+  const { data: removalId, error } = await supabase.rpc("remove_registration", { p_registration: id, p_reason: reason });
   if (error) return back(`sacado=${removeCode(error.message)}`);
   updateTag("registrations");
+  // KIN-657: la base ya guardó el aviso dentro de la web; el correo sale aparte y, si falla, no deshace nada.
+  type RemovalRow = { roper_id: string; reason: string; payment_status: string; events: { name: string; event_date: string | null; city: string | null; venue: string | null; organizer_name: string | null; organizer_id: string | null } | null };
+  const { data: row } = await supabase.from("registration_removals").select("roper_id, reason, payment_status, events(name, event_date, city, venue, organizer_name, organizer_id)").eq("id", removalId as string).maybeSingle<RemovalRow>();
+  if (row?.events) {
+    const ev = row.events;
+    after(() => emailParticipant({
+      kind: "removed", roperId: row.roper_id, eventName: ev.name, eventDate: ev.event_date, place: [ev.venue, ev.city].filter(Boolean).join(", "),
+      organizerId: ev.organizer_id, organizerName: ev.organizer_name ?? "", reason: row.reason, paid: row.payment_status === "pagado",
+    }));
+  }
   return back("sacado=ok");
 }
 

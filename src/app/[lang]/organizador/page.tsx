@@ -6,7 +6,9 @@ import { OrgNav } from "@/components/OrgNav";
 import { StripeConnectButton } from "@/components/StripeConnectButton";
 import { STRIPE_ENABLED } from "@/lib/flags";
 import { listOrganizerEvents } from "@/lib/data/events";
-import { fmtDate, mxn } from "@/lib/format";
+import { getOrganizerOverview } from "@/lib/data/overview";
+import { OrgOverview } from "@/components/OrgOverview";
+import { fmtDate } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 import type { Session } from "@/lib/session";
 import type { Dict } from "@/dictionaries/es";
@@ -15,9 +17,9 @@ import type { Lang } from "@/lib/format";
 const badge: Record<string, string> = { publicado: "bg-brand-soft text-brand-hot", borrador: "bg-sand text-muted", finalizado: "bg-ink text-white" };
 
 async function Panel({ s, lang, t, welcome, deleted }: { s: Session; lang: Lang; t: Dict; welcome: boolean; deleted: boolean }) {
-  const mine = await listOrganizerEvents(s.id);
+  // Un organizador sin verificar no puede operar (la base lo rechaza): no hay resumen que mostrar, solo su aviso de revisión.
+  const [mine, overview] = await Promise.all([listOrganizerEvents(s.id), s.verified ? getOrganizerOverview() : Promise.resolve(null)]);
   const stateLabel: Record<string, string> = { publicado: t.status.published, borrador: t.status.draft, finalizado: t.status.finished };
-  const stats = [[t.org.events, mine.length], [t.status.published, mine.filter((e) => e.status === "publicado").length], [t.org.collected, mxn(0, lang)]];
   return (
     <>
       <OrgNav lang={lang} t={t} admin={s.isAdmin} />
@@ -38,9 +40,7 @@ async function Panel({ s, lang, t, welcome, deleted }: { s: Session; lang: Lang;
           </div>
           {s.verified ? <Link href={`/${lang}/organizador/eventos/nuevo`} className="rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-hot">{t.org.newEvent}</Link> : <span className="rounded-full bg-sand px-5 py-2.5 text-sm font-medium text-muted">{t.org.newEvent}</span>}
         </div>
-        <dl className="mt-6 grid gap-3 sm:grid-cols-3">
-          {stats.map(([l, v]) => <div key={l} className="card p-4"><dd className="text-3xl font-semibold tabular-nums">{v}</dd><dt className="label mt-1">{l}</dt></div>)}
-        </dl>
+        {s.verified && (overview ? <OrgOverview o={overview} lang={lang} t={t} /> : <p role="alert" className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-800">{t.org.overview.loadError}</p>)}
         {STRIPE_ENABLED && <StripeConnectButton lang={lang} {...t.org.stripe} />}
         <h2 className="mt-10 text-xl font-semibold">{t.org.myEvents}</h2>
         {mine.length === 0 ? <p className="mt-3 rounded-2xl bg-sand p-6 text-center text-muted">{t.org.noEvents}</p> : (

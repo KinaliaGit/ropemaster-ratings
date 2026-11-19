@@ -94,6 +94,17 @@ export const es = {
     ranking: "Ranking", seeAll: "Ver todos", publicProfile: "Ver mi perfil público e historial", paid: "Pagado", pending: "Pago pendiente",
   },
   org: {
+    overview: {
+      title: "Resumen", nextSeries: "Próxima serie", nextEvent: "Siguiente evento", events: "eventos", enrolledInSeries: "inscritos en la serie", inDays: (n: number) => n === 0 ? "es hoy" : n === 1 ? "mañana" : `en ${n} días`,
+      noNextEvent: "No tienes un evento próximo publicado.", enrolled: "Inscritos", capacity: "cupo", spotsLeft: (n: number) => `${n} lugares libres`, full: "Cupo lleno",
+      header: "Cabecero", heeler: "Pialador", both: "Ambos", noRole: "Sin rol", roles: "Por rol",
+      payments: "Pagos", pending: "Pendientes", paid: "Pagados", collected: "Cobrado", toCollect: "Por cobrar",
+      states: "Estado de tus eventos", open: "Inscripciones abiertas", scheduled: "Programados", finished: "Finalizados", draft: "Borradores",
+      activity: "Actividad reciente", noActivity: "Aún no hay actividad.", enrolledAct: "se inscribió a", removedAct: "salió de",
+      todo: "Pendientes", allClear: "Todo al día.", unpaid: (n: number) => `${n} pago(s) por confirmar`, noResults: "Ya pasó y no tiene resultados", noOpening: "Sin fecha de apertura de inscripciones",
+      emptyTitle: "Aún no tienes series ni eventos", emptyText: "Crea tu primera serie para empezar; dentro de ella agregas los eventos.", createSeries: "Crear mi primera serie", createEvent: "Crear un evento suelto",
+      seeSeries: "Ver la serie", manage: "Gestionar", loadError: "No pudimos cargar el resumen. Recarga la página.",
+    },
       del: {
         zone: "Zona de peligro", eventText: "Borrar el evento es definitivo: se borran también sus inscripciones y se libera el cupo. Lo que pasó queda registrado para auditoría.", seriesText: "Borrar la serie es definitivo. Solo se puede cuando ya no tiene eventos.",
         eventButton: "Borrar evento", seriesButton: "Borrar serie", eventTitle: "Borrar este evento", seriesTitle: "Borrar esta serie",

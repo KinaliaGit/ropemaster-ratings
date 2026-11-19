@@ -1498,5 +1498,26 @@ console.log("- Resultados de un evento (0030)");
   check("la serie y su plantilla se borraron", await num(`select count(*) n from event_series where id = '${S1}'`) === 0 && await num(`select count(*) n from event_series_template where series_id = '${S1}'`) === 0);
 }
 
+// Resumen del organizador (KIN-658): solo con organizador activo y solo de lo suyo
+{
+  const n = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const overviewOf = async (who) => {
+    await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${who}', false); set role authenticated`);
+    const o = (await db.query("select public.organizer_overview() as o")).rows[0].o;
+    await db.exec("reset role");
+    return o;
+  };
+  await as("anon", null, `select public.organizer_overview()`, "anónimo NO ve el resumen del organizador", "deny");
+  await as("authenticated", C, `select public.organizer_overview()`, "un participante NO ve el resumen del organizador", "deny");
+  await as("authenticated", A, `select public.organizer_overview()`, "el organizador activo SÍ ve su resumen", "some");
+  const o = await overviewOf(A);
+  check("el resumen trae las secciones esperadas", ["series", "next_event", "payments", "states", "activity", "todo"].every((k) => k in o));
+  check("el resumen no incluye eventos de otros organizadores", !JSON.stringify(o).includes("Evento Ajeno"));
+  const total = await n(`select count(*) n from events where organizer_id = '${A}'`);
+  const s = o.states;
+  check("los estados no cuentan más eventos de los que tiene el organizador", s.open + s.scheduled + s.finished + s.draft <= total + 0 && s.draft >= 1);
+  check("los pagos cuentan solo inscripciones de sus eventos", o.payments.pending + o.payments.paid === await n(`select count(*) n from registrations r join events e on e.id = r.event_id where e.organizer_id = '${A}' and r.payment_status in ('pendiente','pagado')`));
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

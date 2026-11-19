@@ -1409,6 +1409,14 @@ console.log("- Resultados de un evento (0030)");
   await as("authenticated", C, `select public.register_for_event('${E2}', '${await kat(E2)}', 'header')`, "llegada la fecha de apertura SÍ se inscribe, sin que nadie la abra", "some");
   await as("authenticated", A, `update events set registration_opens_at = null where id = '${E2}'`, "quitar la apertura programada (desde que se publica)", "some");
 
+  // KIN-656: un evento con fecha pasada no acepta inscripciones aunque nadie lo haya cerrado (llamando directo)
+  const EVP = "e0000000-0000-0000-0000-0000000000f6", KP = "ca000000-0000-0000-0000-0000000000f6";
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug, event_date, capacity) values ('${EVP}','Fecha pasada','${A}','publicado','fecha-pasada','2020-01-01', 50);
+    insert into event_categories (id, event_id, name, fee_cents) values ('${KP}','${EVP}','Libre',10000);
+  `);
+  await as("authenticated", C, `select public.register_for_event('${EVP}', '${KP}', 'header')`, "un evento con fecha pasada NO acepta inscripciones (llamando directo)", "deny");
+
   // Rango de la serie y límite de eventos
   await as("authenticated", A, `update event_series set end_date = '2099-04-15' where id = '${S1}'`, "NO se acorta la serie dejando fuera un evento (mayo)", "deny");
   await as("authenticated", A, `update event_series set start_date = '2099-03-15' where id = '${S1}'`, "NO se recorta el inicio dejando fuera un evento (marzo)", "deny");

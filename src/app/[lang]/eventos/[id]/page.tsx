@@ -9,7 +9,7 @@ import { ACTIVE_DISCIPLINES, DEFAULT_DISCIPLINE, type DisciplineId } from "@/lib
 import { toResultItem } from "@/lib/event-results-view";
 import { toEnrolledItem } from "@/lib/enrolled-view";
 import { fmtDate, mxn, type Lang } from "@/lib/format";
-import { fmtDeadline, isNotOpenYet, isRegistrationOpen } from "@/lib/event-time";
+import { fmtDeadline, isNotOpenYet, isRegistrationOpen, statusByDate } from "@/lib/event-time";
 import Image from "next/image";
 import { EnrolledList } from "@/components/EnrolledList";
 import { EventResults } from "@/components/EventResults";
@@ -51,8 +51,9 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   const lang = await resolveLang(params);
   const { id } = await params;
   const t = getDictionary(lang);
-  const e = await getPublicEvent(id);
-  if (!e) notFound();
+  const found = await getPublicEvent(id);
+  if (!found) notFound();
+  const e = { ...found, status: statusByDate(found) }; // KIN-656: con la fecha pasada se muestra como finalizado y sin inscripción
   const regOpen = isRegistrationOpen({ opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
   const notYet = e.status === "publicado" && !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt }); // apertura programada: aún no abre
   const open = e.status === "publicado" && e.enrolled < e.capacity && regOpen;

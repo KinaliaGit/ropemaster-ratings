@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { updateTag } from "next/cache";
 import { getPublicEvent } from "@/lib/data/events";
+import { statusByDate } from "@/lib/event-time";
 import { getSession } from "@/lib/session";
 import { createServerSupabase } from "@/lib/supabase/server";
 
@@ -22,6 +23,7 @@ export async function enroll(formData: FormData) {
   if (!s.hasRoper) redirect(`/${l}/mi-cuenta?perfil=1`); // aún no tiene perfil de lazador: lo crea en Mi cuenta
   const event = await getPublicEvent(slug);
   if (!event?.uuid || !UUID.test(category)) return back("invalid_category");
+  if (statusByDate(event) !== "publicado") return back("registration_closed"); // fecha pasada (KIN-656); la base lo vuelve a validar
   // Quien tiene el rol "Ambos" elige con cuál entra a este evento (cabecero, pialador o los dos): son dos inscripciones si elige los dos.
   // Para los demás perfiles el rol sale del perfil y no se manda nada (la base valida contra el perfil, no contra el navegador).
   const picked = String(formData.get("role") ?? "");

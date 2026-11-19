@@ -4,6 +4,7 @@ import { listPublicEvents } from "@/lib/data/events";
 import { EventCard } from "@/components/EventCard";
 import { EventsSkeleton } from "@/components/ListSkeletons";
 import { RopeMasterPromo } from "@/components/RopeMasterPromo";
+import { statusByDate } from "@/lib/event-time";
 import type { Lang } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 import type { Dict } from "@/dictionaries/es";
@@ -13,8 +14,11 @@ async function Events({ lang, t }: { lang: Lang; t: Dict }) {
   // Los datos públicos se leen al atender la visita, no al compilar (así el build no necesita conectarse a la base).
   await connection();
   const all = await listPublicEvents();
-  const open = all.filter((e) => e.status === "publicado");
-  const past = all.filter((e) => e.status === "finalizado");
+  // KIN-656: "Próximos" solo con fecha de hoy o futura y el más cercano primero; los que ya pasaron se van solos a "Finalizados" (los más recientes primero).
+  const byDate = (a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date);
+  const isOpen = (e: (typeof all)[number]) => statusByDate(e) === "publicado";
+  const open = all.filter(isOpen).sort(byDate);
+  const past = all.filter((e) => !isOpen(e)).sort((a, b) => byDate(b, a));
   return (
     <>
       <dl className="mt-8 flex gap-8 border-y border-line py-5">

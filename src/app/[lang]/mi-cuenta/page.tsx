@@ -95,6 +95,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                     <div key={m.id} className="flex flex-wrap items-center justify-between gap-2 p-4 text-sm">
                       <span className="min-w-0 break-words font-medium">{m.event?.slug ? <Link href={`/${lang}/eventos/${m.event.slug}`} className="hover:text-brand-hot">{m.event.name}</Link> : m.event?.name ?? "—"}{m.event?.date ? <span className="font-normal text-muted"> · {fmtDate(m.event.date, lang)}</span> : null}</span>
                       <span className="tabular-nums">{mxn(m.amountCents / 100, lang)}</span>
+                      <span className="basis-full whitespace-pre-line break-words text-xs text-muted">{t.account.payHow}: {m.event?.paymentInfo || t.pay.noInstructions}</span>
                     </div>
                   ))}
                   <p className="p-4 text-sm font-medium">{t.account.pendingTotal} <span className="tabular-nums">{mxn(unpaidCents / 100, lang)}</span></p>

@@ -84,6 +84,10 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
         <div>
           <h1 className="text-3xl font-semibold sm:text-4xl">{e.name}</h1>
           <p className="mt-2 text-muted">{meta.join(" · ")}</p>
+          <p className="mt-1 text-sm font-medium" data-testid="draw-type">
+            {t.event.drawType}: {e.drawType === "lazada_sorteada" ? t.event.lazadaSorteada : t.event.roundRobin}
+            {e.drawType === "lazada_sorteada" && e.lazadaShotsPerPackage !== null && <span className="font-normal text-muted"> · {e.lazadaShotsPerPackage} {t.event.shotsPerPackage.toLowerCase()}</span>}
+          </p>
           <p className="mt-1 text-sm text-muted">{t.event.organizedBy} {e.organizer}</p>
           {e.series && <p className="mt-1 text-sm"><Link href={`/${lang}/series/${e.series.slug}`} className="font-medium text-brand-hot hover:underline">{t.series.partOf}: {e.series.name} →</Link></p>}
 
@@ -93,6 +97,8 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
               {e.categories.map((c) => <li key={c.id} className="flex justify-between border-b border-line py-3 text-sm last:border-0"><span>{c.name}</span><span className="tabular-nums">{mxn(c.fee, lang)}</span></li>)}
             </ul>
             {e.maxRoperRating !== null && <p className="mt-3 text-xs text-muted">{t.event.maxRating}: <span className="tabular-nums">{e.maxRoperRating.toFixed(1)}</span></p>}
+            {e.maxTeamRating !== null && <p className="mt-1 text-xs text-muted">{t.event.maxTeamRating}: <span className="tabular-nums">{e.maxTeamRating.toFixed(1)}</span></p>}
+            {e.drawType === "lazada_sorteada" && <p className="mt-1 text-xs text-muted">{t.event.packageFee}</p>}
             {open
               ? <Link href={`/${lang}/eventos/${e.id}/inscribirse`} className="mt-4 block rounded-full bg-ink py-3 text-center text-sm font-medium text-white transition hover:bg-brand-hot">{t.event.enroll}</Link>
               : <p className="mt-4 rounded-full bg-sand py-3 text-center text-sm text-muted">{e.status === "finalizado" ? t.event.eventFinished : notYet ? t.event.notYetOpen : !regOpen ? t.event.registrationClosed : t.event.full}</p>}

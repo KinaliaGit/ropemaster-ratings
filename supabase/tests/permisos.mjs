@@ -741,7 +741,7 @@ console.log("- Eventos con inscritos y pagos para la app (0024)");
   await check("un inscrito con perfil fusionado apunta al perfil vigente (id y nombre)", regs[2].roper_global_id === R1 && regs[2].name === "Ana Uno");
   await check("solo salen las inscripciones de ESE evento", !JSON.stringify(mine).includes("Eva Ajena"));
   await check("cada inscripción solo lleva los campos del contrato (ni correo ni celular ni cuenta)",
-    JSON.stringify(Object.keys(regs[0]).sort()) === JSON.stringify(["amount_cents", "category", "category_id", "id", "name", "payment_method", "payment_status", "role", "roper_global_id"]));
+    JSON.stringify(Object.keys(regs[0]).sort()) === JSON.stringify(["amount_cents", "category", "category_id", "id", "name", "packages", "payment_method", "payment_status", "role", "roper_global_id"]));
   await check("un evento sin inscritos ni categorías devuelve listas vacías, no null", (() => { const e3 = mine.find((e) => e.id === E3); return Array.isArray(e3.registrations) && e3.registrations.length === 0 && Array.isArray(e3.categories); })());
 
   // --- since: pagos, inscripciones, cancelaciones y categorías cuentan como cambio del evento
@@ -1446,6 +1446,63 @@ console.log("- Resultados de un evento (0030)");
   await as("authenticated", A, `delete from event_series where id = '${S1}'`, "el dueño SÍ borra la serie", "some");
   check("sus eventos siguen existiendo, sin serie", await num(`select count(*) n from events where id = '${E1}' and series_id is null`) === 1 && await num(`select count(*) n from events where id = '${E2}' and series_id is null`) === 1);
   check("la plantilla se borró con la serie", await num(`select count(*) n from event_series_template where series_id = '${S1}'`) === 0);
+}
+
+// ---- Tipo de sorteo y paquetes de tiros (KIN-648, KIN-649)
+{
+  console.log("\n— Tipo de sorteo y paquetes de tiros");
+  const num = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const verify = (label, ok) => { if (!ok) failures++; console.log(`${ok ? "✔" : "✘ FALLO"}  ${label}`); };
+  const EVD = "e9000000-0000-0000-0000-0000000000d1", EVL = "e9000000-0000-0000-0000-0000000000d2", EVN = "e9000000-0000-0000-0000-0000000000d3", EVO = "e9000000-0000-0000-0000-0000000000d4";
+  const KD = "cb000000-0000-0000-0000-0000000000d1", KL = "cb000000-0000-0000-0000-0000000000d2", KN = "cb000000-0000-0000-0000-0000000000d3", KO = "cb000000-0000-0000-0000-0000000000d4";
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug, event_date, capacity, draw_type, lazada_shots_per_package, max_team_rating) values
+      ('${EVD}','Round robin','${A}','publicado','rr-sorteo','2099-09-01',10,'round_robin',null,null),
+      ('${EVL}','Lazada','${A}','publicado','lazada-sorteo','2099-09-02',10,'lazada_sorteada',3,12.5),
+      ('${EVN}','Sin inscritos','${A}','borrador','sin-inscritos-sorteo','2099-09-03',10,'round_robin',null,null),
+      ('${EVO}','Lazada del organizador','${A}','publicado','lazada-org','2099-09-04',10,'lazada_sorteada',2,null);
+    insert into event_categories (id, event_id, name, fee_cents) values ('${KD}','${EVD}','Libre',10000), ('${KL}','${EVL}','Libre',10000), ('${KN}','${EVN}','Libre',10000), ('${KO}','${EVO}','Libre',10000);
+  `);
+
+  verify("los eventos que ya existían quedan en round_robin", await num(`select count(*) n from events where id = '${EV}' and draw_type = 'round_robin'`) === 1);
+  verify("un evento nuevo sin tipo explícito es round_robin", await num(`select count(*) n from events where id = '${EVN}' and draw_type = 'round_robin' and lazada_shots_per_package is null`) === 1);
+  verify("el tipo y los tiros por paquete son públicos en un evento publicado", await num(`select count(*) n from events where slug = 'lazada-sorteo' and draw_type = 'lazada_sorteada' and lazada_shots_per_package = 3`) === 1);
+
+  // Creación y edición por el organizador (permisos por columna)
+  await as("authenticated", A, "update events set draw_type = 'lazada_sorteada', lazada_shots_per_package = 4, max_team_rating = 11.5 where id = '" + EVN + "'", "el organizador SÍ cambia el tipo de un evento sin inscritos", "some");
+  await as("authenticated", A, "update events set draw_type = 'round_robin' where id = '" + EVN + "'", "volver a round_robin con tiros por paquete se rechaza", "deny");
+  await as("authenticated", A, "update events set draw_type = 'round_robin', lazada_shots_per_package = null where id = '" + EVN + "'", "volver a round_robin quitando los tiros por paquete SÍ se puede", "some");
+  await as("authenticated", A, "update events set draw_type = 'draw_pot' where id = '" + EVN + "'", "un tipo que no existe se rechaza", "deny");
+  await as("authenticated", A, "update events set draw_type = 'lazada_sorteada', lazada_shots_per_package = 0 where id = '" + EVN + "'", "tiros por paquete menores a 1 se rechazan", "deny");
+  await as("authenticated", A, "update events set max_team_rating = 21 where id = '" + EVN + "'", "un tope por equipo fuera de 0 a 20 se rechaza", "deny");
+  await as("authenticated", B, "update events set draw_type = 'lazada_sorteada' where id = '" + EVN + "'", "otro organizador NO cambia el tipo", "deny");
+  await as("authenticated", C, "update events set draw_type = 'lazada_sorteada' where id = '" + EVN + "'", "un participante NO cambia el tipo", "deny");
+  await as("anon", null, "update events set draw_type = 'lazada_sorteada' where id = '" + EVN + "'", "anónimo NO cambia el tipo", "deny");
+
+  // Paquetes al inscribirse
+  await as("authenticated", C, `select public.register_for_event('${EVD}','${KD}', 'header', 1)`, "round_robin: inscribirse sin paquetes (1) SÍ", "some");
+  await as("authenticated", P2, `select public.register_for_event('${EVD}','${KD}', null, 3)`, "round_robin: pedir 3 paquetes se rechaza", "deny");
+  await as("authenticated", C, `select public.register_for_event('${EVL}','${KL}', null, 0)`, "lazada: 0 paquetes se rechaza", "deny");
+  await as("authenticated", C, `select public.register_for_event('${EVL}','${KL}', null, 100)`, "lazada: más de 99 paquetes se rechaza", "deny");
+  await as("authenticated", C, `select public.register_for_event('${EVL}','${KL}', 'header', 3)`, "lazada: 3 paquetes SÍ", "some");
+  verify("el monto es costo * paquetes y queda el número de paquetes", await num(`select count(*) n from registrations where event_id = '${EVL}' and packages = 3 and amount_cents = 30000`) === 1);
+  await as("authenticated", P2, `select public.register_for_event('${EVL}','${KL}')`, "lazada: sin indicar paquetes queda en 1", "some");
+  verify("sin indicar paquetes, el monto es el costo de la categoría", await num(`select count(*) n from registrations where event_id = '${EVL}' and packages = 1 and amount_cents = 10000`) === 1);
+  await as("authenticated", A, `select public.organizer_enroll('${EVO}','p2@x.com','${KO}', null, 2)`, "el organizador inscribe con 2 paquetes", "some");
+  verify("lo inscrito por el organizador cobra costo * paquetes", await num(`select count(*) n from registrations where event_id = '${EVO}' and packages = 2 and amount_cents = 20000`) === 1);
+  await as("authenticated", A, `select public.organizer_enroll('${EVD}','p2@x.com','${KD}', null, 2)`, "el organizador NO inscribe con paquetes en round_robin", "deny");
+  await as("authenticated", B, `select public.organizer_enroll('${EVO}','p2@x.com','${KO}', null, 2)`, "otro organizador NO inscribe en un evento ajeno", "deny");
+
+  // Con inscritos, el tipo y los tiros por paquete ya no cambian; el tope por equipo sí
+  await as("authenticated", A, "update events set draw_type = 'lazada_sorteada', lazada_shots_per_package = 2 where id = '" + EVD + "'", "con inscritos NO se cambia el tipo", "deny");
+  await as("authenticated", A, "update events set lazada_shots_per_package = 5 where id = '" + EVL + "'", "con inscritos NO se cambian los tiros por paquete", "deny");
+  await as("authenticated", A, "update events set max_team_rating = 10 where id = '" + EVL + "'", "con inscritos SÍ se puede ajustar el tope por equipo", "some");
+  await as("authenticated", A, "update events set name = 'Lazada renombrada', draw_type = 'lazada_sorteada', lazada_shots_per_package = 3 where id = '" + EVL + "'", "guardar el mismo tipo y tiros (sin cambios) no estorba", "some");
+  await db.exec(`insert into event_results (id, event_id, participant_name, discipline, time_ms, penalty_ms, disqualified) values (gen_random_uuid(), '${EVN}', 'Sin lazador', 'lazo', 9000, 0, false)`);
+  await as("authenticated", A, "update events set draw_type = 'lazada_sorteada' where id = '" + EVN + "'", "con resultados NO se cambia el tipo", "deny");
+
+  // La app recibe los paquetes de cada inscripción
+  verify("app_organizer_events manda packages en cada inscripción", await num(`select count(*) n from public.app_organizer_events('${A}', null, now() + interval '1 minute', null, null, 50) e, jsonb_array_elements(e.registrations) r where e.id = '${EVL}' and (r->>'packages')::int = 3`) === 1);
 }
 
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");

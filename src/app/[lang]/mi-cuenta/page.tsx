@@ -6,14 +6,19 @@ import { Gate } from "@/components/Gate";
 import { AvatarUploader } from "@/components/AvatarUploader";
 import { EventCard } from "@/components/EventCard";
 import { RoperCard } from "@/components/RoperCard";
-import { initials, publicAvatarUrl } from "@/lib/people";
+import { fmtRating, initials, publicAvatarUrl } from "@/lib/people";
 import { listRankingPage } from "@/lib/data/ropers";
 import { rankedToRoper } from "@/lib/ranking";
 import { listMyRegistrations, listMyRemovals } from "@/lib/data/registrations";
 import { cancelRegistration, changeRegistrationRole } from "@/lib/registration-actions";
-import { isRegistrationOpen } from "@/lib/event-time";
+import { hasEventPassed, isRegistrationOpen, statusByDate } from "@/lib/event-time";
+import { RoperHistorySection } from "@/components/RoperHistorySection";
+import { HistorySkeleton } from "@/components/ProfileSkeleton";
+import { getPublicRoper } from "@/lib/data/ropers";
+import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { createMyRoperProfile, setMyRole } from "@/lib/profile-actions";
 import { RoleFields } from "@/components/RoleFields";
+import { RoleBadgeDialog } from "@/components/RoleBadgeDialog";
 import { roleText } from "@/lib/roles";
 import { PayButton } from "@/components/PayButton";
 import { listPublicEvents } from "@/lib/data/events";
@@ -30,7 +35,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
   const sp = await props.searchParams;
   const t = getDictionary(lang);
   const [events, top] = await Promise.all([listPublicEvents(), listRankingPage("lazo").then((p) => p.rows.slice(0, 4).map((r) => rankedToRoper(r, "lazo")))]);
-  const notice = sp.pago === "ok" ? t.pay.returned : sp.perfil === "ok" ? t.account.profileCreated : sp.rol === "ok" ? t.account.roleSaved : sp.rolInscripcion === "ok" ? t.account.roleChanged : sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
+  const notice = sp.yaVerificada === "1" ? t.account.alreadyVerified : sp.pago === "ok" ? t.pay.returned : sp.perfil === "ok" ? t.account.profileCreated : sp.rol === "ok" ? null : sp.rolInscripcion === "ok" ? t.account.roleChanged : sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
   return (
     <Gate lang={lang} role="any" next={`/${lang}/mi-cuenta`}>
       {async (s) => {
@@ -49,34 +54,59 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
             </div>
           );
         }
-        const [mine, removed] = await Promise.all([listMyRegistrations(), listMyRemovals()]);
+        const [mine, removed, me] = await Promise.all([listMyRegistrations(), listMyRemovals(), s.roperId ? getPublicRoper(s.roperId) : Promise.resolve(null)]);
+        // KIN-627: las inscripciones se separan en próximas y pasadas (por fecha en la zona del evento); los pagos pendientes son solo los de eventos próximos.
+        const isPast = (m: (typeof mine)[number]) => !!m.event && (m.event.status === "finalizado" || hasEventPassed({ date: m.event.date ?? "", timezone: m.event.timezone }));
+        const upcoming = mine.filter((m) => !isPast(m));
+        const pastRegs = mine.filter(isPast);
+        const unpaid = upcoming.filter((m) => m.paymentStatus !== "pagado" && m.paymentStatus !== "reembolsado");
+        const unpaidCents = unpaid.reduce((n, m) => n + m.amountCents, 0);
+        const modes = ACTIVE_DISCIPLINES.filter((d) => me?.stats[d.id]);
         const mineSlugs = new Set(mine.map((m) => m.event?.slug));
         const blockedSlugs = new Set(removed.filter((x) => !x.canReenroll).map((x) => x.event?.slug)); // sacado y sin permiso para volver
-        const available = events.filter((e) => e.status === "publicado" && !mineSlugs.has(e.id) && !blockedSlugs.has(e.id));
+        const available = events.filter((e) => statusByDate(e) === "publicado" && !mineSlugs.has(e.id) && !blockedSlugs.has(e.id));
         return (
           <div className="mx-auto max-w-6xl px-5 pb-10 pt-10">
             <div className="flex flex-wrap items-center gap-5">
               <AvatarUploader url={publicAvatarUrl(s.avatarPath)} initials={initials(s.name)} name={s.name} l={t.account.photo} />
               <div className="flex-1">
                 <p className="label">{s.role === "organizador" ? t.account.typeOrganizer : t.account.type}</p>
-                <h1 className="text-3xl font-semibold">{s.name}</h1>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <h1 className="min-w-0 break-words text-3xl font-semibold">{s.name}</h1>
+                  <RoleBadgeDialog action={setMyRole} lang={lang} initial={s.roleChoice ?? null} text={roleText(s.roleChoice ?? null, t.roles)} l={{ fields: t.roles, title: t.account.roleTitle, save: t.account.roleSave, cancel: t.account.roleCancel, choose: t.account.roleChoose, edit: t.account.roleEdit }} />
+                </div>
               </div>
             </div>
 
             {notice && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{notice}</p>}
-            <section aria-labelledby="mi-rol" className={`mt-6 rounded-2xl p-5 ${s.roleChoice ? "card" : "bg-brand-soft"}`}>
-              <h2 id="mi-rol" className="text-lg font-semibold">{t.account.roleTitle}{s.roleChoice && <span className="ml-2 text-sm font-normal text-muted">{roleText(s.roleChoice, t.roles)}</span>}</h2>
-              {!s.roleChoice && <p className="mt-1 text-sm">{t.account.roleUndefined}</p>}
-              <form action={setMyRole} className="mt-4 max-w-md space-y-4">
-                <input type="hidden" name="lang" value={lang} />
-                <RoleFields labels={t.roles} initial={s.roleChoice} />
-                <button className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white hover:bg-brand-hot">{t.account.roleSave}</button>
-              </form>
+            {modes.length > 0 && (
+              <dl className="mt-6 flex flex-wrap gap-8" aria-label={t.account.currentRating}>
+                {modes.map((d) => (
+                  <div key={d.id}><dd className="text-4xl font-semibold tabular-nums">{fmtRating(me!.stats[d.id]!.rating)}<span className="text-lg text-muted">/10</span></dd><dt className="label mt-1">{t.account.currentRating}{modes.length > 1 ? ` · ${t.disc[d.id].label}` : ""}</dt></div>
+                ))}
+              </dl>
+            )}
+
+            <section aria-labelledby="pendientes" className="mt-10">
+              <h2 id="pendientes" className="text-xl font-semibold">{t.account.pendingPayments}</h2>
+              {unpaid.length === 0 ? <p className="mt-3 text-muted">{t.account.noPending}</p> : (
+                <div className="card mt-3 divide-y divide-line">
+                  {unpaid.map((m) => (
+                    <div key={m.id} className="flex flex-wrap items-center justify-between gap-2 p-4 text-sm">
+                      <span className="min-w-0 break-words font-medium">{m.event?.slug ? <Link href={`/${lang}/eventos/${m.event.slug}`} className="hover:text-brand-hot">{m.event.name}</Link> : m.event?.name ?? "—"}{m.event?.date ? <span className="font-normal text-muted"> · {fmtDate(m.event.date, lang)}</span> : null}</span>
+                      <span className="tabular-nums">{mxn(m.amountCents / 100, lang)}</span>
+                      <span className="basis-full whitespace-pre-line break-words text-xs text-muted">{t.account.payHow}: {m.event?.paymentInfo || t.pay.noInstructions}</span>
+                    </div>
+                  ))}
+                  <p className="p-4 text-sm font-medium">{t.account.pendingTotal} <span className="tabular-nums">{mxn(unpaidCents / 100, lang)}</span></p>
+                </div>
+              )}
             </section>
-            <h2 className="mt-12 text-xl font-semibold">{t.account.myRegistrations}</h2>
+
+            <h2 className="mt-12 text-xl font-semibold">{t.account.upcoming}</h2>
             <div className="mt-3 space-y-3">
-              {mine.length === 0 && <p className="text-muted">{t.account.noRegistrations}</p>}
-              {mine.map((m) => {
+              {upcoming.length === 0 && <p className="text-muted">{t.account.noRegistrations}</p>}
+              {upcoming.map((m) => {
                 const paid = m.paymentStatus === "pagado";
                 const inner = (
                   <>
@@ -118,6 +148,24 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                 );
               })}
             </div>
+
+            <section aria-labelledby="pasados" className="mt-12">
+              <h2 id="pasados" className="text-xl font-semibold">{t.account.pastEvents}</h2>
+              {pastRegs.length === 0 ? <p className="mt-3 text-muted">{t.account.noPast}</p> : (
+                <div className="card mt-3 divide-y divide-line">
+                  {pastRegs.map((m) => (
+                    <div key={m.id} className="flex flex-wrap items-center justify-between gap-2 p-4 text-sm">
+                      <span className="min-w-0 break-words font-medium">{m.event?.slug ? <Link href={`/${lang}/eventos/${m.event.slug}`} className="hover:text-brand-hot">{m.event.name}</Link> : m.event?.name ?? "—"}<span className="block font-normal text-muted">{m.category}{m.role ? ` · ${t.roles[m.role as "header" | "heeler"]}` : ""}{m.event?.date ? ` · ${fmtDate(m.event.date, lang)}` : ""}</span></span>
+                      <span className={m.paymentStatus === "pagado" ? "text-emerald-700" : "text-muted"}>{m.paymentStatus === "pagado" ? `${t.account.paid} ✓` : t.account.pending}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <Suspense fallback={<HistorySkeleton />}>
+              <RoperHistorySection id={s.roperId!} lang={lang} t={t} />
+            </Suspense>
 
             {removed.length > 0 && (
               <section aria-labelledby="removed" className="mt-12">

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { closesAfterEvent, eventPhase, fmtDeadline, isNotOpenYet, isoToZonedLocal, isRegistrationOpen, isValidTimezone, zonedDateOf, zonedLocalToIso } from "../src/lib/event-time.ts";
+import { closesAfterEvent, hasEventPassed, statusByDate, eventPhase, fmtDeadline, isNotOpenYet, isoToZonedLocal, isRegistrationOpen, isValidTimezone, zonedDateOf, zonedLocalToIso } from "../src/lib/event-time.ts";
 
 const MX = "America/Mexico_City";
 
@@ -73,4 +73,15 @@ test("la etapa de un evento de la serie: próximo, abiertas, lleno, cerradas, fi
   assert.equal(eventPhase({ ...base, closesAt: "2026-12-01T00:00:00.000Z" }, now), "closed");
   assert.equal(eventPhase({ ...base, status: "borrador" }, now), "draft");
   assert.equal(eventPhase({ ...base, status: "finalizado", closed: true }, now), "finished");
+});
+
+test("KIN-656: la fecha pasada cierra el evento, en la zona del evento y no antes", () => {
+  const ev = { date: "2026-11-03", timezone: MX, status: "publicado" };
+  const at = (iso) => Date.parse(iso);
+  assert.equal(hasEventPassed(ev, at("2026-11-03T20:00:00Z")), false); // el mismo día todavía se puede
+  assert.equal(hasEventPassed(ev, at("2026-11-04T05:59:00Z")), false); // en México aún es 3 de noviembre (23:59)
+  assert.equal(hasEventPassed(ev, at("2026-11-04T06:00:00Z")), true); // medianoche de México
+  assert.equal(statusByDate(ev, at("2026-11-10T00:00:00Z")), "finalizado");
+  assert.equal(statusByDate({ ...ev, status: "borrador" }, at("2026-11-10T00:00:00Z")), "borrador"); // solo cierra los publicados
+  assert.equal(statusByDate({ ...ev, date: "" }, at("2026-11-10T00:00:00Z")), "publicado"); // sin fecha no se cierra
 });

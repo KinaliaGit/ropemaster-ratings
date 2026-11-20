@@ -1206,6 +1206,16 @@ console.log("- Resultados de un evento (0030)");
   await as("authenticated", A, `delete from registration_removals where event_id = '${EVR}'`, "nadie borra el registro escribiendo la tabla", "deny");
   await as("authenticated", A, `insert into registration_removals (event_id, roper_id, reason, payment_status) values ('${EVR}','${ANA}','falso','pendiente')`, "nadie crea registros escribiendo la tabla", "deny");
 
+  // Avisos dentro de la web (KIN-657): al sacar a alguien se le crea un aviso que solo él lee y marca como leído
+  await as("authenticated", C, `select reason from notifications where kind = 'removed' and event_name = 'Para sacar' and reason = 'No se recibió el pago'`, "el sacado recibe un aviso con el motivo", "some");
+  await as("authenticated", P2, `select id from notifications`, "otro participante NO ve avisos ajenos", "deny");
+  await as("authenticated", A, `select id from notifications`, "ni el organizador que lo sacó lee el aviso", "deny");
+  await as("anon", null, `select id from notifications`, "anónimo NO ve avisos", "deny");
+  await as("authenticated", P2, `update notifications set read_at = now()`, "otro participante NO marca avisos ajenos como leídos", "deny");
+  await as("authenticated", C, `update notifications set reason = 'cambiado'`, "el destinatario NO edita el contenido del aviso", "deny");
+  await as("authenticated", C, `insert into notifications (user_id, kind) values ('${C}', 'removed')`, "nadie crea avisos escribiendo la tabla", "deny");
+  await as("authenticated", C, `update notifications set read_at = now() where read_at is null`, "el destinatario SÍ lo marca como leído", "some");
+
   // Volver a inscribirse
   await as("authenticated", C, `select public.register_for_event('${EVR}','${KR}', 'header')`, "quien fue sacado NO se inscribe solo otra vez", "deny");
   await as("authenticated", C, `select public.set_removal_reenroll((select id from registration_removals where roper_id = '${ANA}' limit 1), true)`, "el sacado NO se da permiso a sí mismo", "deny");
@@ -1409,6 +1419,14 @@ console.log("- Resultados de un evento (0030)");
   await as("authenticated", C, `select public.register_for_event('${E2}', '${await kat(E2)}', 'header')`, "llegada la fecha de apertura SÍ se inscribe, sin que nadie la abra", "some");
   await as("authenticated", A, `update events set registration_opens_at = null where id = '${E2}'`, "quitar la apertura programada (desde que se publica)", "some");
 
+  // KIN-656: un evento con fecha pasada no acepta inscripciones aunque nadie lo haya cerrado (llamando directo)
+  const EVP = "e0000000-0000-0000-0000-0000000000f6", KP = "ca000000-0000-0000-0000-0000000000f6";
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug, event_date, capacity) values ('${EVP}','Fecha pasada','${A}','publicado','fecha-pasada','2020-01-01', 50);
+    insert into event_categories (id, event_id, name, fee_cents) values ('${KP}','${EVP}','Libre',10000);
+  `);
+  await as("authenticated", C, `select public.register_for_event('${EVP}', '${KP}', 'header')`, "un evento con fecha pasada NO acepta inscripciones (llamando directo)", "deny");
+
   // Rango de la serie y límite de eventos
   await as("authenticated", A, `update event_series set end_date = '2099-04-15' where id = '${S1}'`, "NO se acorta la serie dejando fuera un evento (mayo)", "deny");
   await as("authenticated", A, `update event_series set start_date = '2099-03-15' where id = '${S1}'`, "NO se recorta el inicio dejando fuera un evento (marzo)", "deny");
@@ -1441,11 +1459,64 @@ console.log("- Resultados de un evento (0030)");
   await as("authenticated", A, `update events set name = 'Fecha 1 editada', capacity = 120 where id = '${E1}'`, "el organizador edita un evento de la serie como cualquier otro", "some");
   await as("authenticated", C, `select public.register_for_event('${E1}', '${await kat(E1)}', 'header')`, "ya inscrito en esa categoría: se rechaza como en cualquier evento", "deny");
 
-  // Borrar la serie deja sus eventos sueltos
-  await as("authenticated", B, `delete from event_series where id = '${S1}'`, "otro organizador NO borra la serie", "deny");
-  await as("authenticated", A, `delete from event_series where id = '${S1}'`, "el dueño SÍ borra la serie", "some");
-  check("sus eventos siguen existiendo, sin serie", await num(`select count(*) n from events where id = '${E1}' and series_id is null`) === 1 && await num(`select count(*) n from events where id = '${E2}' and series_id is null`) === 1);
-  check("la plantilla se borró con la serie", await num(`select count(*) n from event_series_template where series_id = '${S1}'`) === 0);
+  // Borrar la serie (KIN-660): solo con la función, solo el dueño y solo cuando ya no tiene eventos
+  await as("authenticated", A, `delete from event_series where id = '${S1}'`, "NO se borra la serie escribiendo la tabla directo", "deny");
+  await as("authenticated", B, `select public.delete_series('${S1}')`, "otro organizador NO borra la serie", "deny");
+  await as("authenticated", C, `select public.delete_series('${S1}')`, "un participante NO borra la serie", "deny");
+  await as("anon", null, `select public.delete_series('${S1}')`, "anónimo NO borra la serie", "deny");
+  await as("authenticated", A, `select public.delete_series('${S1}')`, "una serie con eventos NO se borra (has_events)", "deny");
+  check("la serie y sus eventos siguen intactos", await num(`select count(*) n from event_series where id = '${S1}'`) === 1 && await num(`select count(*) n from events where series_id = '${S1}'`) >= 1);
+
+  // Borrar un evento (KIN-660): motivo con inscritos, aviso a cada inscrito y constancia
+  const EVB = "e0000000-0000-0000-0000-0000000000b6", KB = "ca000000-0000-0000-0000-0000000000b6", EVE = "e0000000-0000-0000-0000-0000000000b7";
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug, event_date, capacity) values ('${EVB}','Para borrar','${A}','publicado','para-borrar','2099-10-01', 20), ('${EVE}','Vacío para borrar','${A}','borrador','vacio-borrar','2099-10-02', 20);
+    insert into event_categories (id, event_id, name, fee_cents) values ('${KB}','${EVB}','Libre',10000);
+  `);
+  await as("authenticated", C, `select public.register_for_event('${EVB}','${KB}', 'header')`, "C se inscribe al evento que se va a borrar", "some");
+  await as("authenticated", B, `select public.delete_event('${EVB}', 'Se canceló por lluvia')`, "otro organizador NO borra un evento ajeno", "deny");
+  await as("authenticated", C, `select public.delete_event('${EVB}', 'Se canceló por lluvia')`, "un participante NO borra el evento", "deny");
+  await as("anon", null, `select public.delete_event('${EVB}', 'Se canceló por lluvia')`, "anónimo NO borra el evento", "deny");
+  await as("authenticated", D, `select public.delete_event('${EVB}', 'Se canceló por lluvia')`, "ni un admin borra el evento de otro organizador", "deny");
+  await as("authenticated", A, `select public.delete_event('${EVB}', '')`, "con inscritos, sin motivo NO se borra", "deny");
+  await as("authenticated", A, `select public.delete_event('${EVB}', 'lluvia')`, "con inscritos, un motivo de menos de 10 caracteres NO se borra", "deny");
+  await as("authenticated", A, `select public.delete_event('e0000000-0000-0000-0000-0000000000d2', 'Evento ya finalizado')`, "un evento finalizado NO se borra", "deny");
+  check("el evento con inscritos sigue existiendo tras los intentos fallidos", await num(`select count(*) n from events where id = '${EVB}'`) === 1);
+  await as("authenticated", A, `select public.delete_event('${EVB}', 'Se canceló por lluvia')`, "el dueño SÍ borra el evento con inscritos dando motivo", "some");
+  check("el evento y sus inscripciones se borraron", await num(`select count(*) n from events where id = '${EVB}'`) === 0 && await num(`select count(*) n from registrations where event_id = '${EVB}'`) === 0);
+  check("quedó constancia con motivo y número de inscritos", await num(`select count(*) n from deleted_events where event_id = '${EVB}' and enrolled_count = 1 and reason = 'Se canceló por lluvia' and deleted_by = '${A}'`) === 1);
+  await as("authenticated", C, `select reason from notifications where kind = 'event_deleted' and event_name = 'Para borrar' and reason = 'Se canceló por lluvia'`, "el inscrito recibe el aviso del evento borrado con el motivo", "some");
+  await as("authenticated", P2, `select id from notifications where event_name = 'Para borrar'`, "otro participante NO ve ese aviso", "deny");
+  await as("authenticated", A, `select id from deleted_events`, "el organizador ve su constancia", "some");
+  await as("authenticated", B, `select id from deleted_events`, "otro organizador NO ve constancias ajenas", "deny");
+  await as("authenticated", A, `select public.delete_event('${EVE}', '')`, "sin inscritos, el dueño borra sin motivo", "some");
+  check("sin inscritos no se manda ningún aviso", await num(`select count(*) n from notifications where event_name = 'Vacío para borrar'`) === 0);
+
+  // Ya sin eventos, la serie sí se borra
+  await db.exec(`delete from events where series_id = '${S1}'`);
+  await as("authenticated", A, `select public.delete_series('${S1}')`, "el dueño SÍ borra la serie ya sin eventos", "some");
+  check("la serie y su plantilla se borraron", await num(`select count(*) n from event_series where id = '${S1}'`) === 0 && await num(`select count(*) n from event_series_template where series_id = '${S1}'`) === 0);
+}
+
+// Resumen del organizador (KIN-658): solo con organizador activo y solo de lo suyo
+{
+  const n = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const overviewOf = async (who) => {
+    await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${who}', false); set role authenticated`);
+    const o = (await db.query("select public.organizer_overview() as o")).rows[0].o;
+    await db.exec("reset role");
+    return o;
+  };
+  await as("anon", null, `select public.organizer_overview()`, "anónimo NO ve el resumen del organizador", "deny");
+  await as("authenticated", C, `select public.organizer_overview()`, "un participante NO ve el resumen del organizador", "deny");
+  await as("authenticated", A, `select public.organizer_overview()`, "el organizador activo SÍ ve su resumen", "some");
+  const o = await overviewOf(A);
+  check("el resumen trae las secciones esperadas", ["series", "next_event", "payments", "states", "activity", "todo"].every((k) => k in o));
+  check("el resumen no incluye eventos de otros organizadores", !JSON.stringify(o).includes("Evento Ajeno"));
+  const total = await n(`select count(*) n from events where organizer_id = '${A}'`);
+  const s = o.states;
+  check("los estados no cuentan más eventos de los que tiene el organizador", s.open + s.scheduled + s.finished + s.draft <= total + 0 && s.draft >= 1);
+  check("los pagos cuentan solo inscripciones de sus eventos", o.payments.pending + o.payments.paid === await n(`select count(*) n from registrations r join events e on e.id = r.event_id where e.organizer_id = '${A}' and r.payment_status in ('pendiente','pagado')`));
 }
 
 // ---- Tipo de sorteo y paquetes de tiros (KIN-648, KIN-649)

@@ -2,7 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { getSession } from "@/lib/session";
+import { countMyUnread } from "@/lib/data/notifications";
 import { logout } from "@/lib/auth-actions";
+import { NoticeBanner } from "@/components/NoticeBanner";
 import { NavLinks } from "@/components/NavLinks";
 import { AccountMenu } from "@/components/AccountMenu";
 import { initials, publicAvatarUrl } from "@/lib/people";
@@ -13,13 +15,20 @@ async function Account({ lang, t }: { lang: Lang; t: Dict }) {
   const s = await getSession();
   if (!s) return <Link href={`/${lang}/entrar`} className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-hot">{t.nav.signIn}</Link>;
   const org = s.role === "organizador";
+  const unread = await countMyUnread();
   return (
+    <>
+    <Link href={`/${lang}/notificaciones`} aria-label={unread > 0 ? `${t.notifications.bell} (${unread})` : t.notifications.bell} className="relative mr-2 grid size-9 place-items-center rounded-full hover:bg-sand">
+      <svg aria-hidden viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
+      {unread > 0 && <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-brand-hot px-1 text-[10px] font-semibold leading-4 text-white">{unread > 9 ? "9+" : unread}</span>}
+    </Link>
     <AccountMenu
       initials={initials(s.name)} photo={publicAvatarUrl(s.avatarPath)} name={s.name} roleLabel={org ? t.org.accountType : t.account.type} lang={lang}
       dashboardHref={`/${lang}/${org ? "organizador" : "mi-cuenta"}`} dashboardLabel={org ? t.nav.myPanel : t.nav.myAccount}
       extra={org ? { href: `/${lang}/mi-cuenta`, label: s.hasRoper ? t.nav.myLazador : t.nav.createLazador } : undefined}
       signOutLabel={t.nav.signOut} signOut={logout}
     />
+    </>
   );
 }
 
@@ -38,6 +47,7 @@ export function Header({ lang, t }: { lang: Lang; t: Dict }) {
           <Suspense fallback={<span className="size-9" />}><Account lang={lang} t={t} /></Suspense>
         </div>
       </div>
+      <Suspense fallback={null}><NoticeBanner lang={lang} t={t} /></Suspense>
     </header>
   );
 }

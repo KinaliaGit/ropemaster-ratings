@@ -57,6 +57,14 @@ export const zonedDateOf = (iso: string, tz: string) => isoToZonedLocal(iso, tz)
 // ¿La fecha de cierre cae después del día del evento? El evento solo tiene fecha (sin hora), así que se permite cerrar el mismo día.
 export const closesAfterEvent = (closesIso: string, eventDate: string, tz: string) => zonedDateOf(closesIso, tz) > eventDate;
 
+// KIN-656: un evento cuya fecha ya pasó (en SU zona horaria; el mismo día todavía cuenta) se considera finalizado aunque nadie lo haya cerrado.
+// Se calcula al leer, sin tarea programada, para que nunca quede desfasado; los eventos cerrados a mano o con resultados ya vienen "finalizado".
+export const todayIn = (tz: string, now: number = Date.now()) => zonedDateOf(new Date(now).toISOString(), tz);
+export const hasEventPassed = (e: { date: string; timezone: string }, now: number = Date.now()) => !!e.date && e.date < todayIn(e.timezone, now);
+export function statusByDate<S extends string>(e: { status: S; date: string; timezone: string }, now: number = Date.now()): S | "finalizado" {
+  return e.status === "publicado" && hasEventPassed(e, now) ? "finalizado" : e.status;
+}
+
 // Ventana de inscripción: puede abrirse en una fecha programada (KIN-625; vacía = desde que el evento se publica) y cerrarse en otra (KIN-626).
 export type RegistrationWindow = { opensAt?: string | null; closesAt: string | null; closed: boolean };
 

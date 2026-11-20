@@ -10,7 +10,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
-const KNOWN = ["not_open_yet", "role_required", "invalid_role", "removed", "registration_closed", "full", "closed", "already", "invalid_category", "rating_limit", "paid", "not_found"];
+const KNOWN = ["invalid_packages", "not_open_yet", "role_required", "invalid_role", "removed", "registration_closed", "full", "closed", "already", "invalid_category", "rating_limit", "paid", "not_found"];
 const codeOf = (message: string) => KNOWN.find((k) => message.includes(k)) ?? "failed";
 
 // Inscribirse a un evento. La base valida todo (evento publicado, categoría del evento, no repetir, cupo con bloqueo) y el precio
@@ -29,7 +29,13 @@ export async function enroll(formData: FormData) {
   // Quien tiene el rol "Ambos" elige con cuál entra a este evento (cabecero, pialador o los dos): son dos inscripciones si elige los dos.
   // Para los demás perfiles el rol sale del perfil y no se manda nada (la base valida contra el perfil, no contra el navegador).
   const picked = String(formData.get("role") ?? "");
-  const args = s.roleChoice?.role === "both" ? { p_event: event.uuid, p_category: category, p_role: ["header", "heeler", "both"].includes(picked) ? picked : null } : { p_event: event.uuid, p_category: category };
+  const role = s.roleChoice?.role === "both" && ["header", "heeler", "both"].includes(picked) ? picked : null;
+  // Lazada Sorteada (KIN-649): cuántos paquetes de tiros compra en cada rol (1 a 99). La base valida que solo ese tipo acepte más de uno y el monto
+  // sale del costo de la categoría * paquetes, nunca del navegador. Los demás tipos de sorteo siguen con las firmas de siempre.
+  const packages = Math.floor(Number(formData.get("packages") ?? 1));
+  const args = event.drawType === "lazada_sorteada"
+    ? { p_event: event.uuid, p_category: category, p_role: role, p_packages: Number.isFinite(packages) ? packages : 0 }
+    : s.roleChoice?.role === "both" ? { p_event: event.uuid, p_category: category, p_role: role } : { p_event: event.uuid, p_category: category };
   const { error } = await (await createServerSupabase()).rpc("register_for_event", args);
   if (error) return back(codeOf(error.message));
   updateTag("registrations");
@@ -66,6 +72,7 @@ export async function enrollByOrganizer(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const pickedRole = String(formData.get("role") ?? "");
   const role = ["header", "heeler", "both"].includes(pickedRole) ? pickedRole : null; // vacío = según el perfil (con "Ambos", su favorito)
+  const packages = Math.floor(Number(formData.get("packages") || 1)); // solo Lazada Sorteada acepta más de uno (la base lo valida)
   const back = (q: string) => redirect(`/${l}/organizador/eventos/${encodeURIComponent(slug)}?${q}`);
   const s = await getSession();
   if (s?.role !== "organizador" || !s.verified) redirect(`/${l}/organizador`);
@@ -73,8 +80,8 @@ export async function enrollByOrganizer(formData: FormData) {
   const supabase = await createServerSupabase();
   const { data: ev } = await supabase.from("events").select("id").eq("slug", slug).eq("organizer_id", s.id).maybeSingle();
   if (!ev) redirect(`/${l}/organizador`);
-  const { error } = await supabase.rpc("organizer_enroll", { p_event: ev.id, p_email: email, p_category: category, p_role: role });
-  if (error) return back(`manual=${["not_found", "already", "full", "invalid_category", "invalid_role"].find((k) => error.message.includes(k)) ?? "failed"}`);
+  const { error } = await supabase.rpc("organizer_enroll", { p_event: ev.id, p_email: email, p_category: category, p_role: role, p_packages: Number.isFinite(packages) ? packages : 0 });
+  if (error) return back(`manual=${["not_found", "already", "full", "invalid_category", "invalid_role", "invalid_packages"].find((k) => error.message.includes(k)) ?? "failed"}`);
   updateTag("registrations");
   return back("manual=ok");
 }

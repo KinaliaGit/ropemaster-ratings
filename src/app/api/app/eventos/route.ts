@@ -47,18 +47,22 @@ export async function GET(request: Request) {
     if (error) return unavailable();
 
     const rows = (data ?? []) as EventRow[];
-    // El rating máximo para inscribirse (KIN-638) y la serie del evento (KIN-625) se leen aparte para no tocar la función SQL de la
+    // El rating máximo para inscribirse (KIN-638), el tipo de sorteo con sus campos (KIN-649) y la serie del evento (KIN-625) se leen aparte para no tocar la función SQL de la
     // sincronización. La serie viaja con datos públicos (id, slug, nombre y fechas); la plantilla y las instrucciones de pago no salen.
     const page = rows.slice(0, PAGE_SIZE);
     if (page.length > 0) {
       const { data: extras, error: extrasError } = await db
         .from("events")
-        .select("id, max_roper_rating, series:event_series(id, slug, name, start_date, end_date)")
+        .select("id, max_roper_rating, draw_type, lazada_shots_per_package, max_team_rating, series:event_series(id, slug, name, start_date, end_date)")
         .in("id", page.map((row) => row.id));
       if (extrasError) return unavailable();
-      const byId = new Map((extras ?? []).map((row) => [row.id as string, row as unknown as { max_roper_rating: number | null; series: EventSeriesRef | null }]));
+      const byId = new Map((extras ?? []).map((row) => [row.id as string, row as unknown as Pick<EventRow, "max_roper_rating" | "draw_type" | "lazada_shots_per_package" | "max_team_rating"> & { series: EventSeriesRef | null }]));
       for (const row of page) {
-        row.max_roper_rating = byId.get(row.id)?.max_roper_rating ?? null;
+        const extra = byId.get(row.id);
+        row.max_roper_rating = extra?.max_roper_rating ?? null;
+        row.draw_type = extra?.draw_type ?? "round_robin";
+        row.lazada_shots_per_package = extra?.lazada_shots_per_package ?? null;
+        row.max_team_rating = extra?.max_team_rating ?? null;
         row.series = byId.get(row.id)?.series ?? null;
       }
     }

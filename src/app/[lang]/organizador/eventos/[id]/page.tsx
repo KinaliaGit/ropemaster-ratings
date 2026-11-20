@@ -133,6 +133,7 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                         <select required name="category" aria-label={t.org.ev.manualCategory} className={field}>
                           {e.categories.map((c) => <option key={c.id} value={c.id}>{c.name} · {mxn(c.fee, lang)}</option>)}
                         </select>
+                        {e.drawType === "lazada_sorteada" && <input type="number" name="packages" min={1} max={99} step={1} defaultValue={1} aria-label={t.org.ev.manualPackages} title={t.org.ev.manualPackages} className={`${field} w-24 tabular-nums`} />}
                         <select name="role" aria-label={t.org.ev.manualRole} className={field}>
                           <option value="">{t.org.ev.manualRole}: {t.org.ev.manualRoleAuto}</option>
                           <option value="header">{t.roles.header}</option><option value="heeler">{t.roles.heeler}</option><option value="both">{t.org.ev.manualBoth}</option>

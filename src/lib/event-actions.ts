@@ -22,6 +22,26 @@ function ratingLimit(v: FormDataEntryValue | null): number | null | "invalid" {
   return Math.round(n * 10) / 10;
 }
 
+// Tipo de sorteo (KIN-648): hoy solo round_robin y lazada_sorteada. En Lazada Sorteada, los tiros por paquete (entero de 1 a 999) son obligatorios
+// y el tope por equipo (0 a 20, un decimal) es opcional. Devuelve "invalid" si algo no cumple. La base lo vuelve a comprobar y no deja cambiar
+// el tipo ni los tiros con inscritos o resultados.
+type DrawFields = { drawType: "round_robin" | "lazada_sorteada"; shots: number | null; teamLimit: number | null };
+function drawFields(formData: FormData): DrawFields | "invalid" | "invalidShots" | "invalidTeamLimit" {
+  const drawType = formData.get("drawType") === "lazada_sorteada" ? "lazada_sorteada" : formData.get("drawType") === "round_robin" ? "round_robin" : null;
+  if (!drawType) return "invalid";
+  const rawTeam = typeof formData.get("maxTeamRating") === "string" ? String(formData.get("maxTeamRating")).trim().replace(",", ".") : "";
+  let teamLimit: number | null = null;
+  if (rawTeam !== "") {
+    const n = Number(rawTeam);
+    if (!Number.isFinite(n) || n < 0 || n > 20) return "invalidTeamLimit";
+    teamLimit = Math.round(n * 10) / 10;
+  }
+  if (drawType === "round_robin") return { drawType, shots: null, teamLimit };
+  const shots = Number(typeof formData.get("shotsPerPackage") === "string" ? String(formData.get("shotsPerPackage")).trim() : "");
+  if (!Number.isInteger(shots) || shots < 1 || shots > 999) return "invalidShots";
+  return { drawType, shots, teamLimit };
+}
+
 const slug = (name: string) => slugify(name);
 
 type Close = { ok: true; timezone: string; closesAt: string | null; opensAt: string | null } | { ok: false; error: "closeInvalid" | "closeAfterEvent" | "opensInvalid" | "opensAfterEvent" | "opensAfterClose" };
@@ -71,6 +91,8 @@ export async function createEvent(formData: FormData) {
 
   const limit = ratingLimit(formData.get("maxRoperRating"));
   if (limit === "invalid") redirect(`/${l}/organizador/eventos/nuevo?error=ratingLimit`);
+  const draw = drawFields(formData);
+  if (typeof draw === "string") redirect(`/${l}/organizador/eventos/nuevo?error=${draw === "invalid" ? "drawType" : draw}`);
 
   if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || !(capacity > 0) || categories.length === 0 || disciplines.length === 0) {
     redirect(`/${l}/organizador/eventos/nuevo?error=1`);
@@ -86,6 +108,7 @@ export async function createEvent(formData: FormData) {
 
   const { error } = await supabase.from("events").insert({
     id, slug: eventSlug, name, event_date: date, city, venue, capacity, disciplines, status, max_roper_rating: limit,
+    draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit,
     description: text(formData.get("description"), 1000), organizer_id: session.id, organizer_name: session.name,
     timezone: close.timezone, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt,
   });
@@ -139,6 +162,8 @@ export async function updateEvent(formData: FormData) {
   const disciplines = formData.getAll("discipline").map(String).filter((d) => ACTIVE_DISCIPLINES.some((a) => a.id === d));
   const limit = ratingLimit(formData.get("maxRoperRating"));
   if (limit === "invalid") return back("ratingLimit");
+  const draw = drawFields(formData);
+  if (typeof draw === "string") return back(draw === "invalid" ? "drawType" : draw);
   if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || !(capacity > 0) || rows.length === 0 || disciplines.length === 0) return back("1");
   const close = parseClose(formData, date);
   if (!close.ok) return back(close.error);
@@ -155,9 +180,9 @@ export async function updateEvent(formData: FormData) {
   if (toDelete.some((id) => usedIds.has(id))) return back("catInUse");
   const owned = new Set((current ?? []).map((c) => c.id));
 
-  const { error } = await supabase.from("events").update({ name, event_date: date, city, venue, capacity, disciplines, max_roper_rating: limit, description: text(formData.get("description"), 1000), timezone: close.timezone, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt }).eq("id", ev.id);
+  const { error } = await supabase.from("events").update({ name, event_date: date, city, venue, capacity, disciplines, max_roper_rating: limit, draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, description: text(formData.get("description"), 1000), timezone: close.timezone, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt }).eq("id", ev.id);
   // Un evento de una serie debe seguir dentro de las fechas de su serie (la base lo exige).
-  if (error) return back(error.message.includes("outside_series") ? "outsideSeries" : error.message.includes("open_after") ? "opensAfterClose" : "1");
+  if (error) return back(error.message.includes("draw_type_locked") ? "drawLocked" : error.message.includes("outside_series") ? "outsideSeries" : error.message.includes("open_after") ? "opensAfterClose" : "1");
   for (const r of rows) {
     if (r.id && owned.has(r.id)) await supabase.from("event_categories").update({ name: r.name, fee_cents: r.fee * 100 }).eq("id", r.id);
     else await supabase.from("event_categories").insert({ event_id: ev.id, name: r.name, fee_cents: r.fee * 100 });

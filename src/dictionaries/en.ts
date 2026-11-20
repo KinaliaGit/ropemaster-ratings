@@ -115,7 +115,7 @@ export const en: Dict = {
         eventButton: "Delete event", seriesButton: "Delete series", eventTitle: "Delete this event", seriesTitle: "Delete this series",
         name: "Name", date: "Date", enrolled: "Registered", word: "delete", typePrompt: (w: string) => `Type “${w}” to confirm`,
         reasonLabel: "Reason (registered people will see it)", reasonPlaceholder: "E.g. The event was canceled because of rain", minChars: "Write at least 10 characters.",
-        notify: (n: number) => `The ${n} registered people will be notified, on the web and by email, with the reason.`, cancel: "Cancel", confirm: "Delete permanently",
+        notify: (n: number) => n === 1 ? "The registered person will be notified, on the web and by email, with the reason." : `The ${n} registered people will be notified, on the web and by email, with the reason.`, cancel: "Cancel", confirm: "Delete permanently",
         seriesHasEvents: "Delete the series events first.", goToEvents: "See the events", finishedNote: "A finished event can't be deleted.", resultsNote: "An event with results can't be deleted.",
         deleted: "Event deleted.",
         errors: { confirm: "Type the confirmation word.", invalid_reason: "Write a reason of at least 10 characters.", has_results: "That event already has results: it can't be deleted.", closed: "That event already finished: it can't be deleted.", has_events: "Delete the series events first.", not_found: "We couldn't find that event or series.", failed: "Couldn't delete. Try again." },

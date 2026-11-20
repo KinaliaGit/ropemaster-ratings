@@ -1,5 +1,6 @@
 "use server";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
 import { createServerSupabase } from "@/lib/supabase/server";
 
@@ -12,5 +13,7 @@ export async function markNotificationsRead(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const q = (await createServerSupabase()).from("notifications").update({ read_at: new Date().toISOString() }).is("read_at", null);
   await (UUID.test(id) ? q.eq("id", id) : q);
+  // La campana y el banner viven en el encabezado (layout): sin esto se quedaban con el conteo viejo hasta cambiar de página.
+  revalidatePath(`/${l}`, "layout");
   redirect(`/${l}/notificaciones`);
 }

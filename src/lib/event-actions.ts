@@ -23,8 +23,8 @@ function ratingLimit(v: FormDataEntryValue | null): number | null | "invalid" {
 // Tipo de sorteo (KIN-648): hoy solo round_robin y lazada_sorteada. En Lazada Sorteada, los tiros por paquete (entero de 1 a 999) son obligatorios
 // y el tope por equipo (0 a 20, un decimal) es opcional. Devuelve "invalid" si algo no cumple. La base lo vuelve a comprobar y no deja cambiar
 // el tipo ni los tiros con inscritos o resultados.
-type DrawFields = { drawType: "round_robin" | "lazada_sorteada"; shots: number | null; teamLimit: number | null };
-function drawFields(formData: FormData): DrawFields | "invalid" | "invalidShots" | "invalidTeamLimit" {
+type DrawFields = { drawType: "round_robin" | "lazada_sorteada"; shots: number | null; teamLimit: number | null; rounds: number | null };
+function drawFields(formData: FormData): DrawFields | "invalid" | "invalidShots" | "invalidTeamLimit" | "invalidRounds" {
   const drawType = formData.get("drawType") === "lazada_sorteada" ? "lazada_sorteada" : formData.get("drawType") === "round_robin" ? "round_robin" : null;
   if (!drawType) return "invalid";
   const rawTeam = typeof formData.get("maxTeamRating") === "string" ? String(formData.get("maxTeamRating")).trim().replace(",", ".") : "";
@@ -34,10 +34,18 @@ function drawFields(formData: FormData): DrawFields | "invalid" | "invalidShots"
     if (!Number.isFinite(n) || n < 0 || n > 20) return "invalidTeamLimit";
     teamLimit = Math.round(n * 10) / 10;
   }
-  if (drawType === "round_robin") return { drawType, shots: null, teamLimit };
+  // Rondas (KIN-655): opcional; entero de 1 a 20. Vacío = sin definir (la app usa su valor por defecto).
+  const rawRounds = typeof formData.get("rounds") === "string" ? String(formData.get("rounds")).trim() : "";
+  let rounds: number | null = null;
+  if (rawRounds !== "") {
+    const n = Number(rawRounds);
+    if (!Number.isInteger(n) || n < 1 || n > 20) return "invalidRounds";
+    rounds = n;
+  }
+  if (drawType === "round_robin") return { drawType, shots: null, teamLimit, rounds };
   const shots = Number(typeof formData.get("shotsPerPackage") === "string" ? String(formData.get("shotsPerPackage")).trim() : "");
   if (!Number.isInteger(shots) || shots < 1 || shots > 999) return "invalidShots";
-  return { drawType, shots, teamLimit };
+  return { drawType, shots, teamLimit, rounds };
 }
 
 const slug = (name: string) => slugify(name);
@@ -106,7 +114,7 @@ export async function createEvent(formData: FormData) {
 
   const { error } = await supabase.from("events").insert({
     id, slug: eventSlug, name, event_date: date, city, venue, capacity, disciplines, status, max_roper_rating: limit,
-    draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit,
+    draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds,
     description: text(formData.get("description"), 1000), organizer_id: session.id, organizer_name: session.name,
     timezone: close.timezone, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt,
   });
@@ -178,9 +186,9 @@ export async function updateEvent(formData: FormData) {
   if (toDelete.some((id) => usedIds.has(id))) return back("catInUse");
   const owned = new Set((current ?? []).map((c) => c.id));
 
-  const { error } = await supabase.from("events").update({ name, event_date: date, city, venue, capacity, disciplines, max_roper_rating: limit, draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, description: text(formData.get("description"), 1000), timezone: close.timezone, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt }).eq("id", ev.id);
+  const { error } = await supabase.from("events").update({ name, event_date: date, city, venue, capacity, disciplines, max_roper_rating: limit, draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds, description: text(formData.get("description"), 1000), timezone: close.timezone, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt }).eq("id", ev.id);
   // Un evento de una serie debe seguir dentro de las fechas de su serie (la base lo exige).
-  if (error) return back(error.message.includes("draw_type_locked") ? "drawLocked" : error.message.includes("outside_series") ? "outsideSeries" : error.message.includes("open_after") ? "opensAfterClose" : "1");
+  if (error) return back(error.message.includes("draw_type_locked") ? "drawLocked" : error.message.includes("rounds_locked") ? "roundsLocked" : error.message.includes("outside_series") ? "outsideSeries" : error.message.includes("open_after") ? "opensAfterClose" : "1");
   for (const r of rows) {
     if (r.id && owned.has(r.id)) await supabase.from("event_categories").update({ name: r.name, fee_cents: r.fee * 100 }).eq("id", r.id);
     else await supabase.from("event_categories").insert({ event_id: ev.id, name: r.name, fee_cents: r.fee * 100 });

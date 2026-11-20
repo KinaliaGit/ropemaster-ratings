@@ -17,7 +17,7 @@ const fail = (status: Failure["status"], code: string, error: string): Failure =
 export type SeriesInput = { id: string | null; app_id: string; slug: string; name: string; start_date: string; end_date: string };
 export type EventInput = {
   app_id: string; slug: string; name: string; date: string; venue: string; disciplines: string[]; draw_type: DrawType;
-  shots: number | null; max_roper_rating: number | null; max_team_rating: number | null; entry_fee_cents: number;
+  shots: number | null; rounds: number | null; max_roper_rating: number | null; max_team_rating: number | null; entry_fee_cents: number;
 };
 export type UploadEventBody = { ok: true; event: EventInput; series: SeriesInput | null };
 
@@ -77,6 +77,11 @@ export function parseUploadEventBody(text: string, suffix: () => string = random
   } else if (e.lazada_shots_per_package !== undefined && e.lazada_shots_per_package !== null) {
     return fail(400, "invalid_field", "event.lazada_shots_per_package solo existe en lazada_sorteada.");
   }
+  let rounds: number | null = null;
+  if (e.rounds !== undefined && e.rounds !== null) {
+    if (typeof e.rounds !== "number" || !Number.isInteger(e.rounds) || e.rounds < 1 || e.rounds > 20) return fail(400, "invalid_field", "event.rounds debe ser un entero de 1 a 20.");
+    rounds = e.rounds;
+  }
   const roper = ratingOrNull(e.max_roper_rating, 10);
   if (roper === undefined) return fail(400, "invalid_field", "event.max_roper_rating debe estar entre 0 y 10.");
   const team = ratingOrNull(e.max_team_rating, 20);
@@ -103,7 +108,7 @@ export function parseUploadEventBody(text: string, suffix: () => string = random
     series,
     event: {
       app_id: e.app_id.toLowerCase(), slug: slugFrom(name, suffix(), "evento"), name, date: e.date, venue, disciplines: ["lazo"], draw_type: drawType,
-      shots, max_roper_rating: roper, max_team_rating: team, entry_fee_cents: fee,
+      shots, rounds, max_roper_rating: roper, max_team_rating: team, entry_fee_cents: fee,
     },
   };
 }

@@ -82,6 +82,7 @@ inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
 | `max_roper_rating` | número (0 a 10, un decimal) o `null` | Rating máximo individual para inscribirse (KIN-638); `null` = sin límite. La web no deja inscribir a quien lo rebase (rating de la modalidad del evento). La app lo guarda en el evento importado y le pone el mismo tope a su roster. Campo opcional: una web anterior no lo manda. |
 | `draw_type` | `round_robin` \| `lazada_sorteada` | Tipo de sorteo del evento casual (KIN-648/649). Los eventos que ya existían son `round_robin`. Lo fija quien crea el evento y **no cambia** una vez que hay inscritos o resultados. Campo opcional: una web anterior no lo manda y la app entiende `round_robin`. |
 | `lazada_shots_per_package` | entero >= 1 o `null` | Solo en `lazada_sorteada`: tiros que trae un paquete (uno por evento). Tiros de una persona en un rol = `registrations[].packages` * este valor. `null` en `round_robin` o mientras el organizador no lo define. |
+| `rounds` | entero 1 a 20 o `null` | Rondas del evento (KIN-655). `null` = el organizador aún no las define: la app importa su valor por defecto (3). Aplica a los dos tipos de sorteo. No cambia una vez que hay resultados (`rounds_locked`). Campo opcional: una web anterior no lo manda y se entiende `null`. |
 | `max_team_rating` | número (0 a 20, un decimal) o `null` | Rating máximo de la SUMA de un equipo (cabecero + pialador); `null` = sin tope. En Lazada Sorteada la app lo usa como restricción dura al sortear. Distinto de `max_roper_rating`, que es el individual. |
 | `updated_at` | fecha ISO-8601 UTC | Último cambio del evento, sus inscripciones o sus categorías. |
 | `categories[].fee_cents` | entero >= 0 | Montos SIEMPRE en centavos. |
@@ -157,6 +158,7 @@ Cuerpo:
 | `event.venue` | texto o `null` | El «lugar» de la app (hasta 120). La app no separa ciudad: `city` queda vacío en la web. |
 | `event.disciplines` | `["lazo"]` | Solo modalidades activas. |
 | `event.draw_type` | `round_robin` \| `lazada_sorteada` | Ver `GET /api/app/eventos`. |
+| `event.rounds` | entero 1 a 20 o `null` | Rondas del evento en la app. Opcional; la app no sube eventos con más de 20 rondas. |
 | `event.lazada_shots_per_package` | entero 1 a 999 o `null` | Solo con `lazada_sorteada`; es un error mandarlo con `round_robin`. |
 | `event.max_roper_rating` / `event.max_team_rating` | número (0 a 10 / 0 a 20) o `null` | Topes individual y por equipo. |
 | `event.entry_fee_cents` | entero >= 0 | Cuota de la app, en centavos. Se crea una categoría **General** con ese costo; el cupo queda sin límite (`capacity` `null`). |

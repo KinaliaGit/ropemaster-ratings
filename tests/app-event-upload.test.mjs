@@ -7,7 +7,7 @@ const SERIES = "a9000000-0000-0000-0000-0000000000b1";
 const suffix = () => "abcd";
 const base = () => ({
   contract_version: 1,
-  event: { app_id: EVENT, name: "Lazada de Año Nuevo", date: "2026-12-31", venue: "Lienzo Charro", disciplines: ["lazo"], draw_type: "lazada_sorteada", lazada_shots_per_package: 4, max_roper_rating: 6.5, max_team_rating: 12, entry_fee_cents: 50000 },
+  event: { app_id: EVENT, name: "Lazada de Año Nuevo", date: "2026-12-31", venue: "Lienzo Charro", disciplines: ["lazo"], draw_type: "lazada_sorteada", lazada_shots_per_package: 4, rounds: 4, max_roper_rating: 6.5, max_team_rating: 12, entry_fee_cents: 50000 },
   series: { app_id: SERIES, name: "Temporada 2026", start_date: "2026-01-01", end_date: "2026-12-31" },
 });
 const parse = (body) => parseUploadEventBody(JSON.stringify(body), suffix);
@@ -33,6 +33,13 @@ test("round_robin sin topes ni cuota ni tiros", () => {
   assert.equal(r.ok, true);
   assert.equal(r.event.shots, null);
   assert.equal(r.event.entry_fee_cents, 0);
+});
+
+test("rondas: opcionales, entero de 1 a 20", () => {
+  assert.equal(parse(base()).event.rounds, 4);
+  assert.equal(parse(withEvent({ rounds: undefined })).event.rounds, null);
+  assert.equal(parse(withEvent({ rounds: null })).event.rounds, null);
+  for (const bad of [0, 21, 2.5, "3", -1]) fails(withEvent({ rounds: bad }), 400, "invalid_field");
 });
 
 test("los tiros por paquete solo existen en lazada_sorteada", () => {

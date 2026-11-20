@@ -54,16 +54,17 @@ export async function GET(request: Request) {
     if (page.length > 0) {
       const { data: extras, error: extrasError } = await db
         .from("events")
-        .select("id, max_roper_rating, draw_type, lazada_shots_per_package, max_team_rating, series:event_series(id, slug, name, start_date, end_date)")
+        .select("id, max_roper_rating, draw_type, lazada_shots_per_package, max_team_rating, rounds, series:event_series(id, slug, name, start_date, end_date)")
         .in("id", page.map((row) => row.id));
       if (extrasError) return unavailable();
-      const byId = new Map((extras ?? []).map((row) => [row.id as string, row as unknown as Pick<EventRow, "max_roper_rating" | "draw_type" | "lazada_shots_per_package" | "max_team_rating"> & { series: EventSeriesRef | null }]));
+      const byId = new Map((extras ?? []).map((row) => [row.id as string, row as unknown as Pick<EventRow, "max_roper_rating" | "draw_type" | "lazada_shots_per_package" | "max_team_rating" | "rounds"> & { series: EventSeriesRef | null }]));
       for (const row of page) {
         const extra = byId.get(row.id);
         row.max_roper_rating = extra?.max_roper_rating ?? null;
         row.draw_type = extra?.draw_type ?? "round_robin";
         row.lazada_shots_per_package = extra?.lazada_shots_per_package ?? null;
         row.max_team_rating = extra?.max_team_rating ?? null;
+        row.rounds = extra?.rounds ?? null;
         row.series = byId.get(row.id)?.series ?? null;
       }
     }

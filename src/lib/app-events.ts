@@ -97,6 +97,8 @@ export type EventRow = {
   draw_type?: DrawType;
   /** Tiros que trae un paquete en Lazada Sorteada (KIN-649). `null` fuera de ese tipo o mientras no se define. La ruta lo agrega. */
   lazada_shots_per_package?: number | null;
+  /** Rondas del evento (KIN-655), 1 a 20; `null` = el organizador aún no las define. La ruta lo agrega. */
+  rounds?: number | null;
   /** Rating máximo de la SUMA de un equipo (KIN-649); `null` = sin tope. La ruta lo agrega. */
   max_team_rating?: number | null;
   /** Serie del evento (KIN-625). La función SQL no la trae: la ruta la agrega. `null`/ausente = evento suelto. */
@@ -141,6 +143,7 @@ export function buildEventsPage(rows: EventRow[], organizer: string, snapshot: s
       draw_type: row.draw_type ?? "round_robin",
       lazada_shots_per_package: row.lazada_shots_per_package === undefined || row.lazada_shots_per_package === null ? null : Number(row.lazada_shots_per_package),
       max_team_rating: row.max_team_rating === undefined || row.max_team_rating === null ? null : Number(row.max_team_rating),
+      rounds: row.rounds === undefined || row.rounds === null ? null : Number(row.rounds),
       series: row.series ? { id: row.series.id, slug: row.series.slug ?? "", name: row.series.name, start_date: row.series.start_date, end_date: row.series.end_date } : null,
       description: row.description ?? "",
       updated_at: new Date(row.changed_at).toISOString(),

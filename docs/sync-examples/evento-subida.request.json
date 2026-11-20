@@ -8,6 +8,7 @@
     "disciplines": ["lazo"],
     "draw_type": "lazada_sorteada",
     "lazada_shots_per_package": 4,
+    "rounds": 4,
     "max_roper_rating": 6.5,
     "max_team_rating": 12,
     "entry_fee_cents": 50000

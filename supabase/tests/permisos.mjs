@@ -1514,13 +1514,14 @@ console.log("- Resultados de un evento (0030)");
   const upload = (org, series, event) => svc("select * from public.app_upload_event($1::uuid, $2::jsonb, $3::jsonb)", [org, series ? JSON.stringify(series) : null, JSON.stringify(event)]);
   const denied = async (fn) => { try { await fn(); return false; } catch { return true; } };
   const APPEV = "a9000000-0000-0000-0000-0000000000a1", APPEV2 = "a9000000-0000-0000-0000-0000000000a2", APPEV3 = "a9000000-0000-0000-0000-0000000000a3", APPSER = "a9000000-0000-0000-0000-0000000000b1";
-  const event = (id, extra = {}) => ({ app_id: id, slug: `app-${id.slice(-2)}-abcd`, name: "Lazada de la app", date: "2099-10-10", venue: "Lienzo", disciplines: ["lazo"], draw_type: "lazada_sorteada", shots: 4, max_roper_rating: 6.5, max_team_rating: 12, entry_fee_cents: 50000, ...extra });
+  const event = (id, extra = {}) => ({ app_id: id, slug: `app-${id.slice(-2)}-abcd`, name: "Lazada de la app", date: "2099-10-10", venue: "Lienzo", disciplines: ["lazo"], draw_type: "lazada_sorteada", shots: 4, rounds: 5, max_roper_rating: 6.5, max_team_rating: 12, entry_fee_cents: 50000, ...extra });
   const series = { app_id: APPSER, slug: "serie-app-abcd", name: "Temporada de la app", start_date: "2099-01-01", end_date: "2099-12-31" };
 
   const first = (await upload(A, series, event(APPEV)))[0];
   verify("la primera subida crea el evento y la serie", first.r_event_created === true && first.r_series_created === true && !!first.r_event_id && !!first.r_series_id);
   verify("el evento nace como BORRADOR con el tipo de sorteo, tiros y topes de la app", await num(`select count(*) n from events where id = '${first.r_event_id}' and status = 'borrador' and draw_type = 'lazada_sorteada' and lazada_shots_per_package = 4 and max_roper_rating = 6.5 and max_team_rating = 12 and organizer_id = '${A}'`) === 1);
   verify("lo que la app no tiene queda vacío (ciudad '', sede de la app, sin cupo) y entra en la serie", await num(`select count(*) n from events where id = '${first.r_event_id}' and city = '' and venue = 'Lienzo' and capacity is null and series_id = '${first.r_series_id}' and disciplines = array['lazo']`) === 1);
+  verify("las rondas de la app se guardan en el evento", await num(`select count(*) n from events where id = '${first.r_event_id}' and rounds = 5`) === 1);
   verify("trae una categoría General con la cuota de la app", await num(`select count(*) n from event_categories where event_id = '${first.r_event_id}' and name = 'General' and fee_cents = 50000`) === 1);
   verify("la serie nace con plantilla vacía y el nombre del organizador", await num(`select count(*) n from event_series s join event_series_template t on t.series_id = s.id where s.id = '${first.r_series_id}' and t.city = '' and t.capacity is null and s.organizer_name is not null`) === 1);
 
@@ -1529,8 +1530,9 @@ console.log("- Resultados de un evento (0030)");
   verify("reenviar NO modifica el evento (la web manda después de crearse)", await num(`select count(*) n from events where id = '${first.r_event_id}' and name = 'Lazada de la app' and lazada_shots_per_package = 4`) === 1);
   verify("no se duplicó el evento, la serie ni la categoría", await num(`select count(*) n from events where app_event_id = '${APPEV}'`) === 1 && await num(`select count(*) n from event_series where app_series_id = '${APPSER}'`) === 1 && await num(`select count(*) n from event_categories where event_id = '${first.r_event_id}'`) === 1);
 
-  const second = (await upload(A, series, event(APPEV2, { draw_type: "round_robin", shots: null, max_team_rating: null, max_roper_rating: null, entry_fee_cents: 0 })))[0];
+  const second = (await upload(A, series, event(APPEV2, { rounds: null, draw_type: "round_robin", shots: null, max_team_rating: null, max_roper_rating: null, entry_fee_cents: 0 })))[0];
   verify("otro evento de la misma serie reutiliza la serie (vinculada por id, no por nombre)", second.r_event_created === true && second.r_series_created === false && second.r_series_id === first.r_series_id);
+  verify("sin rondas en la subida, el evento queda con rondas nulas", await num(`select count(*) n from events where id = '${second.r_event_id}' and rounds is null`) === 1);
   verify("un evento round_robin sin topes ni cuota se guarda tal cual", await num(`select count(*) n from events where id = '${second.r_event_id}' and draw_type = 'round_robin' and lazada_shots_per_package is null and max_roper_rating is null and max_team_rating is null`) === 1);
 
   const byId = (await upload(A, { ...series, id: first.r_series_id, app_id: "a9000000-0000-0000-0000-0000000000b9", slug: "no-se-usa-abcd" }, event("a9000000-0000-0000-0000-0000000000a5")))[0];
@@ -1544,6 +1546,14 @@ console.log("- Resultados de un evento (0030)");
   verify("el mismo uuid de la app en OTRO organizador es otro evento (no se pisan)", (await upload(B, null, event(APPEV, { slug: "app-b-abcd" })))[0].r_event_id !== first.r_event_id);
   verify("el borrador de la app NO es visible para el público", await num(`select count(*) n from events where id = '${first.r_event_id}' and status = 'borrador'`) === 1);
 
+  // Rondas del evento (KIN-655)
+  await as("authenticated", A, "update events set rounds = 3 where id = '" + first.r_event_id + "'", "el organizador SÍ cambia las rondas de su evento", "some");
+  await as("authenticated", A, "update events set rounds = 21 where id = '" + first.r_event_id + "'", "rondas fuera de 1 a 20 se rechazan", "deny");
+  await as("authenticated", A, "update events set rounds = 0 where id = '" + first.r_event_id + "'", "0 rondas se rechaza", "deny");
+  await as("authenticated", B, "update events set rounds = 2 where id = '" + first.r_event_id + "'", "otro organizador NO cambia las rondas ajenas", "deny");
+  await db.exec(`insert into event_results (id, event_id, participant_name, discipline, time_ms, penalty_ms, disqualified) values (gen_random_uuid(), '${first.r_event_id}', 'Sin lazador', 'lazo', 9000, 0, false)`);
+  await as("authenticated", A, "update events set rounds = 6 where id = '" + first.r_event_id + "'", "con resultados NO se cambian las rondas", "deny");
+  await as("authenticated", A, "update events set rounds = 3 where id = '" + first.r_event_id + "'", "guardar las mismas rondas (sin cambio) no estorba", "some");
   await as("authenticated", A, "select public.app_upload_event('" + A + "', null, '{}'::jsonb)", "un organizador NO llama la función desde el navegador", "deny");
   await as("anon", null, "select public.app_upload_event('" + A + "', null, '{}'::jsonb)", "anónimo NO llama la función", "deny");
   await as("authenticated", A, "update events set app_event_id = gen_random_uuid() where id = '" + first.r_event_id + "'", "nadie reescribe app_event_id desde el navegador", "deny");

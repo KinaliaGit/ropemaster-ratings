@@ -7,9 +7,9 @@ type Labels = {
   name: string; date: string; capacity: string; venue: string; city: string; disciplines: string; categories: string; categoryName: string; categoryNamePlaceholder: string; cost: string; costHint: string; maxRoperRating: string; maxRoperRatingHint: string; addCategory: string;
   error: string; description: string; saveDraft: string; publish: string; photosLater: string; save: string; errors: Record<string, string>; paymentInfo: string; paymentInfoHint: string; paymentInfoPlaceholder: string;
   opens: string; opensHint: string; closes: string; closesHint: string; timezone: string;
-  drawType: string; drawTypeHint: string; drawLocked: string; roundRobin: string; lazadaSorteada: string; shotsPerPackage: string; shotsPerPackageHint: string; maxTeamRating: string; maxTeamRatingHint: string;
+  drawType: string; drawTypeHint: string; drawLocked: string; roundRobin: string; lazadaSorteada: string; shotsPerPackage: string; shotsPerPackageHint: string; maxTeamRating: string; maxTeamRatingHint: string; rounds: string; roundsHint: string;
 };
-export type EventInitial = { slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; paymentInfo: string; opensAt: string; closesAt: string; timezone: string; disciplines: string[]; maxRoperRating: number | null; drawType: "round_robin" | "lazada_sorteada"; shotsPerPackage: number | null; maxTeamRating: number | null; drawLocked: boolean; cats: { id: string; name: string; fee: number }[] };
+export type EventInitial = { slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; paymentInfo: string; opensAt: string; closesAt: string; timezone: string; disciplines: string[]; maxRoperRating: number | null; drawType: "round_robin" | "lazada_sorteada"; shotsPerPackage: number | null; maxTeamRating: number | null; rounds: number | null; drawLocked: boolean; cats: { id: string; name: string; fee: number }[] };
 
 const input = "mt-1 w-full rounded-xl border border-line bg-white px-4 py-2.5 outline-none focus:border-ink";
 
@@ -32,6 +32,10 @@ export function EventForm({ lang, labels: l, disciplines, error, initial }: { la
       <label className="block text-sm font-medium">{l.maxRoperRating}
         <input name="maxRoperRating" type="number" min={0} max={10} step={0.1} inputMode="decimal" defaultValue={initial?.maxRoperRating ?? ""} className={input} />
         <span className="mt-1 block text-xs font-normal text-muted">{l.maxRoperRatingHint}</span>
+      </label>
+      <label className="block text-sm font-medium">{l.rounds}
+        <input name="rounds" type="number" min={1} max={20} step={1} inputMode="numeric" defaultValue={initial?.rounds ?? ""} className={input} />
+        <span className="mt-1 block text-xs font-normal text-muted">{l.roundsHint}</span>
       </label>
       <fieldset>
         <legend className="text-sm font-medium">{l.drawType}</legend>

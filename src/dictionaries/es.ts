@@ -105,6 +105,11 @@ export const es = {
       emptyTitle: "Aún no tienes series ni eventos", emptyText: "Crea tu primera serie para empezar; dentro de ella agregas los eventos.", createSeries: "Crear mi primera serie", createEvent: "Crear un evento suelto",
       seePending: "Ver los pagos pendientes", seeEvents: "Ver mis eventos", seeSeries: "Ver la serie", manage: "Gestionar", loadError: "No pudimos cargar el resumen. Recarga la página.",
     },
+      res: {
+        title: "Resultados", fromApp: "Se envían desde la app al terminar el evento.", count: (n: number) => `${n} resultado(s) recibidos`, lastSync: "Último envío desde la app", never: "Todavía no se ha recibido nada.",
+        closed: "Resultados cerrados el", open: "Resultados abiertos: la app todavía puede enviar correcciones.", rating: "Recálculo de ratings: pendiente (la fórmula aún no está activa); los ratings que se ven son los que ya existían.",
+        empty: "Aún no hay resultados. Se envían desde la app de escritorio cuando el evento termina.", notPublic: "Los resultados se ven aquí cuando el evento está publicado.",
+      },
       del: {
         zone: "Zona de peligro", eventText: "Borrar el evento es definitivo: se borran también sus inscripciones y se libera el cupo. Lo que pasó queda registrado para auditoría.", seriesText: "Borrar la serie es definitivo. Solo se puede cuando ya no tiene eventos.",
         eventButton: "Borrar evento", seriesButton: "Borrar serie", eventTitle: "Borrar este evento", seriesTitle: "Borrar esta serie",

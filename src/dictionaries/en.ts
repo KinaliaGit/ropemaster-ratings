@@ -105,6 +105,11 @@ export const en: Dict = {
       emptyTitle: "You have no series or events yet", emptyText: "Create your first series to get started; you add the events inside it.", createSeries: "Create my first series", createEvent: "Create a single event",
       seePending: "See pending payments", seeEvents: "See my events", seeSeries: "See series", manage: "Manage", loadError: "We couldn't load the overview. Reload the page.",
     },
+      res: {
+        title: "Results", fromApp: "They are sent from the app when the event ends.", count: (n: number) => `${n} result(s) received`, lastSync: "Last upload from the app", never: "Nothing received yet.",
+        closed: "Results closed on", open: "Results open: the app can still send corrections.", rating: "Rating recalculation: pending (the formula is not active yet); the ratings shown are the ones that already existed.",
+        empty: "No results yet. They are sent from the desktop app when the event ends.", notPublic: "Results show up here once the event is published.",
+      },
       del: {
         zone: "Danger zone", eventText: "Deleting the event is permanent: its registrations are deleted too and the spots are released. A record is kept for auditing.", seriesText: "Deleting the series is permanent. It is only possible once it has no events.",
         eventButton: "Delete event", seriesButton: "Delete series", eventTitle: "Delete this event", seriesTitle: "Delete this series",

@@ -15,6 +15,10 @@ import { listEventRegistrations, listEventRemovals } from "@/lib/data/registrati
 import { setRegistrationPayment } from "@/lib/payment-actions";
 import { EventPhotos } from "@/components/EventPhotos";
 import { getOrganizerEvent } from "@/lib/data/events";
+import { getResultsSyncInfo } from "@/lib/data/event-results";
+import { EventResultsSection } from "@/components/EventResultsSection";
+import { EnrolledSkeleton } from "@/components/EventSkeleton";
+import { ACTIVE_DISCIPLINES, DEFAULT_DISCIPLINE, type DisciplineId } from "@/lib/disciplines";
 import type { Session } from "@/lib/session";
 import type { Dict } from "@/dictionaries/es";
 import type { Lang } from "@/lib/format";
@@ -64,6 +68,9 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
     <RemoveRegistrationDialog action={removeRegistration} lang={lang} slug={e.id} id={r.id} name={r.name} category={r.category} paymentLabel={payLabel(r)} paid={r.paymentStatus === "pagado"}
       l={{ button: rm.button, title: rm.title, person: rm.person, payment: rm.payment, reasonLabel: rm.reasonLabel, reasonPlaceholder: rm.reasonPlaceholder, presets: rm.presets, other: rm.other, presetList: rm.presetList, refundWarning: rm.refundWarning, cancel: rm.cancel, confirm: rm.confirm, minChars: rm.minChars }} />
   ));
+  const sync = e.uuid ? await getResultsSyncInfo(e.uuid) : { count: 0, lastSyncAt: null, closedAt: null };
+  const resultDisciplines: DisciplineId[] = ACTIVE_DISCIPLINES.filter((d) => e.disciplines.includes(d.id)).map((d) => d.id);
+  if (resultDisciplines.length === 0) resultDisciplines.push(DEFAULT_DISCIPLINE);
   const regOpen = isRegistrationOpen({ opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
   const notYet = !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt }); // apertura programada: se abre sola, no hay nada que cerrar ni reabrir
   const manualMsg = manual ? (t.org.ev.manual as Record<string, string>)[manual] ?? t.org.ev.manual.failed : null;
@@ -211,6 +218,20 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                     </div>
                   ))}
                 </div>
+              </section>
+              <section aria-labelledby="results" className="mt-14">
+                <h2 id="results" className="text-xl font-semibold">{t.org.res.title}</h2>
+                <div className="card mt-3 p-4 text-sm">
+                  <p className="text-muted">{t.org.res.fromApp}</p>
+                  <p className="mt-2">{t.org.res.lastSync}: <span className="font-medium">{sync.lastSyncAt ? fmtDeadline(sync.lastSyncAt, e.timezone, lang) : t.org.res.never}</span>{sync.count > 0 && <span className="text-muted"> · {t.org.res.count(sync.count)}</span>}</p>
+                  {sync.count > 0 && <p className="mt-1">{sync.closedAt ? `${t.org.res.closed} ${fmtDeadline(sync.closedAt, e.timezone, lang)}` : t.org.res.open}</p>}
+                  <p className="mt-1 text-xs text-muted">{t.org.res.rating}</p>
+                </div>
+                {e.uuid && e.status !== "borrador" && sync.count > 0 ? (
+                  <Suspense fallback={<EnrolledSkeleton />}>
+                    <EventResultsSection slug={e.id} uuid={e.uuid} disciplines={resultDisciplines} lang={lang} t={t} />
+                  </Suspense>
+                ) : <p className="mt-3 text-muted">{e.status === "borrador" ? t.org.res.notPublic : t.org.res.empty}</p>}
               </section>
               <section aria-labelledby="danger" className="mt-14 rounded-2xl border border-red-200 p-5">
                 <h2 id="danger" className="text-lg font-semibold text-red-800">{t.org.del.zone}</h2>

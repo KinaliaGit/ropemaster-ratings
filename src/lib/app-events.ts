@@ -89,6 +89,8 @@ export type EventRow = {
   capacity: number | null;
   /** Rating máximo para inscribirse (KIN-638). La función SQL no lo trae: la ruta lo agrega. */
   max_roper_rating?: number | null;
+  /** Tipo de sorteo del evento (KIN-652): `round_robin` o `lazada_sorteada`. Hasta que exista la columna (KIN-649) no viene y sale `null`. */
+  draw_type?: "round_robin" | "lazada_sorteada" | null;
   /** Serie del evento (KIN-625). La función SQL no la trae: la ruta la agrega. `null`/ausente = evento suelto. */
   series?: EventSeriesRef | null;
   status: string;
@@ -126,6 +128,7 @@ export function buildEventsPage(rows: EventRow[], organizer: string, snapshot: s
       disciplines: row.disciplines ?? [],
       capacity: row.capacity,
       max_roper_rating: row.max_roper_rating === undefined || row.max_roper_rating === null ? null : Number(row.max_roper_rating),
+      draw_type: row.draw_type === "round_robin" || row.draw_type === "lazada_sorteada" ? row.draw_type : null,
       series: row.series ? { id: row.series.id, slug: row.series.slug ?? "", name: row.series.name, start_date: row.series.start_date, end_date: row.series.end_date } : null,
       description: row.description ?? "",
       updated_at: new Date(row.changed_at).toISOString(),

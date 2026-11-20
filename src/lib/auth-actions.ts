@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { LEGAL } from "@/lib/legal";
 import { ensureProfile } from "@/lib/account";
+import { parseRatingInput } from "@/lib/rating-input";
 import { parseRoleChoice } from "@/lib/roles";
 
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
@@ -59,11 +60,14 @@ export async function registerAccount(formData: FormData) {
   // Un participante dice con qué rol compite (cabecero, pialador o ambos y su favorito). Viaja en los metadatos del registro y se guarda al crear su perfil.
   const roleChoice = role === "participante" ? parseRoleChoice(formData.get("roperRole"), formData.get("roperFavorite")) : null;
   if (role === "participante" && !roleChoice) return fail("role");
+  // Y con qué rating arranca (1 a 10, un decimal). Obligatorio para participantes; se valida aquí, en el servidor, no solo en el formulario.
+  const rating = role === "participante" ? parseRatingInput(formData.get("roperRating")) : null;
+  if (role === "participante" && rating === null) return fail("rating");
 
   const supabase = await createServerSupabase();
   const { data, error } = await supabase.auth.signUp({
     email, password,
-    options: { emailRedirectTo: `${await siteOrigin()}/auth/confirm?lang=${l}`, data: { display_name: name, role, terms_version: LEGAL.version, ...(roleChoice ? { roper_role: roleChoice.role, roper_favorite: roleChoice.favorite } : {}) } },
+    options: { emailRedirectTo: `${await siteOrigin()}/auth/confirm?lang=${l}`, data: { display_name: name, role, terms_version: LEGAL.version, ...(roleChoice ? { roper_role: roleChoice.role, roper_favorite: roleChoice.favorite } : {}), ...(rating !== null ? { roper_rating: rating } : {}) } },
   });
   if (error) return fail(/registered|exists/i.test(error.message) ? "exists" : /password/i.test(error.message) ? "password" : "generic");
   if (!data.session || !data.user) redirect(`/${l}/registro?role=${role}&check=email&email=${encodeURIComponent(email)}`);

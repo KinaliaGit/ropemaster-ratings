@@ -64,7 +64,7 @@ inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
 ```json
 { "contract_version": 1, "organizer": "<id del organizador>", "events": [{
   "id": "…", "slug": "rodeo-norte-2026", "name": "…", "date": "2026-12-06", "city": "…", "venue": "…", "status": "publicado",
-  "disciplines": ["lazo"], "capacity": 100, "max_roper_rating": 6.5, "description": "…", "updated_at": "2026-11-05T18:30:00.000Z",
+  "disciplines": ["lazo"], "capacity": 100, "max_roper_rating": 6.5, "draw_type": null, "description": "…", "updated_at": "2026-11-05T18:30:00.000Z",
   "categories": [{ "id": "…", "name": "Libre", "fee_cents": 80000 }],
   "registrations": [{ "id": "…", "roper_global_id": "…", "name": "…", "category_id": "…", "category": "Libre",
                       "payment_status": "pagado", "amount_cents": 80000, "payment_method": "efectivo" }]
@@ -80,6 +80,7 @@ inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
 | `disciplines` | lista de ids de modalidad | `lazo`, `barriles` (ver *Modalidades*). |
 | `capacity` | entero o `null` | `null` = sin límite. |
 | `max_roper_rating` | número (0 a 10, un decimal) o `null` | Rating máximo individual para inscribirse (KIN-638); `null` = sin límite. La web no deja inscribir a quien lo rebase (rating de la modalidad del evento). La app lo guarda en el evento importado y le pone el mismo tope a su roster. Campo opcional: una web anterior no lo manda. |
+| `draw_type` | `round_robin` \| `lazada_sorteada` o `null` | Tipo de sorteo del evento (KIN-652). Campo opcional: una web anterior no lo manda, y mientras no exista la columna del tipo (KIN-649) sale `null`. La app que no lo conoce lo ignora; con `null` no cambia nada. Los valores son los mismos `draw_order_format` de la app. |
 | `updated_at` | fecha ISO-8601 UTC | Último cambio del evento, sus inscripciones o sus categorías. |
 | `categories[].fee_cents` | entero >= 0 | Montos SIEMPRE en centavos. |
 | `registrations[].id` | UUID | Id de la inscripción. Una persona puede tener una por categoría y rol (ver `role`). |
@@ -132,7 +133,10 @@ miles de lazadores, bajar todo sería enorme y expondría correos de gente ajena
   consulta; la app lo guarda como el próximo `since` solo si recibió todas las páginas.
 - `ratings` trae un rating (escala de 1 a 10, un decimal) POR modalidad **activa** (hoy solo `lazo`). Quien aún no tiene rating en
   una modalidad viene con el rating inicial (1, igual que se muestra en la web), `events: 0`, `wins: 0` y `updated_at: null`. Las
-  modalidades que la web no tiene activas no se envían.
+  modalidades que la web no tiene activas no se envían. **El rating de partida lo declara el lazador al crear su cuenta** (KIN-663, migración 0038):
+  se guarda como su rating en `lazo` con `events: 0` y `wins: 0`, así que llega aquí sin ningún campo nuevo. Si un organizador ya le había puesto un
+  rating a ese perfil antes de que reclamara su cuenta, ese gana. La web no deja editarlo desde la cuenta; la fórmula que lo recalcula con
+  resultados sigue en pausa (KIN-571 y KIN-583).
 - Cada participante lleva solo `global_id`, `name`, `email`, `claimed`, `role`, `favorite_role` y `ratings`. Nunca celular ni ids de cuenta.
 - `role` es con qué rol compite (KIN-622): `header` (cabecero), `heeler` (pialador) o `both` (ambos); `favorite_role` es `header` o `heeler` y **solo viene
   cuando `role` es `both`** (el rol que usa más). Los perfiles que aún no eligen rol traen los dos en `null` ("sin definir"); la app no debe bloquearlos.

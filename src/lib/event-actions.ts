@@ -1,4 +1,5 @@
 "use server";
+import { missingForPublish } from "@/lib/event-publish";
 import { redirect } from "next/navigation";
 import { updateTag } from "next/cache";
 import { getSession } from "@/lib/session";
@@ -209,10 +210,16 @@ export async function setEventStatus(formData: FormData) {
   if (session?.role !== "organizador" || !eventSlug) redirect(`/${l}/organizador`);
 
   const supabase = await createServerSupabase();
-  const { data: current } = await supabase.from("events").select("id, status").eq("slug", eventSlug).eq("organizer_id", session.id).maybeSingle();
+  const { data: current } = await supabase.from("events").select("id, status, city, venue, capacity").eq("slug", eventSlug).eq("organizer_id", session.id).maybeSingle();
   if (!current || current.status === "finalizado") redirect(`/${l}/organizador`);
 
   const next = current.status === "borrador" ? "publicado" : "borrador";
+  if (next === "publicado") {
+    // Un borrador subido desde la app llega sin ciudad ni cupo: no se publica hasta completarlo (KIN-659).
+    const { count } = await supabase.from("event_categories").select("id", { count: "exact", head: true }).eq("event_id", current.id);
+    const missing = missingForPublish({ city: current.city, venue: current.venue, capacity: current.capacity, categories: count ?? 0 });
+    if (missing.length) redirect(`/${l}/organizador/eventos/${eventSlug}?faltan=${missing.join(",")}`);
+  }
   await supabase.from("events").update({ status: next }).eq("id", current.id);
   updateTag("events");
   redirect(`/${l}/organizador/eventos/${eventSlug}${next === "publicado" ? "?nuevo=publicado" : ""}`);

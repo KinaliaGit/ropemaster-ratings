@@ -4,6 +4,7 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { CopyLink } from "@/components/CopyLink";
+import { parseMissing, type MissingField } from "@/lib/event-publish";
 import { setEventStatus, setRegistrationOpen } from "@/lib/event-actions";
 import { enrollByOrganizer, removeRegistration, setRemovalReenroll, setRemovalRefunded } from "@/lib/registration-actions";
 import { RemoveRegistrationDialog } from "@/components/RemoveRegistrationDialog";
@@ -20,7 +21,7 @@ import type { Lang } from "@/lib/format";
 import { fmtDate, mxn } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
-type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justEdited: boolean; pagoError: boolean; manual: string | null; sacado: string | null; shareUrl: string; stateLabel: Record<string, string> };
+type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justEdited: boolean; pagoError: boolean; manual: string | null; sacado: string | null; missing: MissingField[]; shareUrl: string; stateLabel: Record<string, string> };
 
 type Reg = Awaited<ReturnType<typeof listEventRegistrations>>[number];
 
@@ -51,7 +52,7 @@ function PayForm({ lang, slug, id, method, label, tone }: { lang: Lang; slug: st
   );
 }
 
-async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manual, sacado, shareUrl, stateLabel }: ManageProps) {
+async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manual, sacado, missing, shareUrl, stateLabel }: ManageProps) {
   // Un organizador solo gestiona sus propios eventos (la base además lo impone).
   const e = await getOrganizerEvent(s.id, id);
   if (!e) notFound();
@@ -76,6 +77,11 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                 <div>
                   <h1 className="text-3xl font-semibold">{e.name}</h1>
                   <p className="text-muted">{e.date ? fmtDate(e.date, lang) : "–"} · {e.venue}, {e.city}</p>
+                  <p className="mt-1 text-sm text-muted" data-testid="org-draw-type">
+                    {t.event.drawType}: {e.drawType === "lazada_sorteada" ? t.event.lazadaSorteada : t.event.roundRobin}
+                    {e.rounds !== null && ` · ${e.rounds} ${t.event.roundsWord}`}
+                    {e.drawType === "lazada_sorteada" && e.lazadaShotsPerPackage !== null && ` · ${e.lazadaShotsPerPackage} ${t.event.shotsPerPackage.toLowerCase()}`}
+                  </p>
                   {e.series && <p className="mt-1 text-sm"><Link href={`/${lang}/organizador/series/${e.series.slug}`} className="font-medium text-brand-hot hover:underline">{t.org.ev.partOfSeries}: {e.series.name} →</Link></p>}
                 </div>
                 <div className="flex gap-2">
@@ -89,6 +95,13 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                   )}
                 </div>
               </div>
+              {missing.length > 0 && (
+                <div role="alert" data-testid="publish-missing" className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-800">
+                  <p className="font-medium">{t.org.ev.publishMissing}</p>
+                  <ul className="mt-1 list-disc pl-5">{missing.map((m) => <li key={m}>{t.org.ev.missingField[m]}</li>)}</ul>
+                  <Link href={`/${lang}/organizador/eventos/${e.id}/editar`} className="mt-2 inline-block font-medium underline">{t.org.form.edit} →</Link>
+                </div>
+              )}
               {pagoError && <p role="alert" className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-800">{t.pay.error}</p>}
               {sacadoMsg && <p role="status" className={`mt-6 rounded-2xl p-4 text-sm ${["ok", "reenroll", "refund"].includes(sacado!) ? "bg-brand-soft font-medium" : "bg-red-50 text-red-800"}`}>{sacadoMsg}</p>}
               {justEdited && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.org.form.saved}</p>}
@@ -224,6 +237,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
   const pagoError = sp.pagoError === "1";
   const manual = typeof sp.manual === "string" ? sp.manual : null;
   const sacado = typeof sp.sacado === "string" ? sp.sacado : null;
+  const missing = parseMissing(sp.faltan);
   const justCreated = sp.nuevo === "publicado" ? "publicado" : sp.nuevo === "borrador" ? "borrador" : null;
   // Enlace sin idioma: cada persona que lo abra llega a su idioma (el proxy elige es/en por su navegador).
   const h = await headers();
@@ -234,7 +248,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
   const stateLabel: Record<string, string> = { publicado: t.status.published, borrador: t.status.draft, finalizado: t.status.finished };
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador/eventos/${id}`}>
-      {(s) => <Manage s={s} id={id} lang={lang} t={t} justCreated={justCreated} justEdited={justEdited} pagoError={pagoError} manual={manual} sacado={sacado} shareUrl={shareUrl} stateLabel={stateLabel} />}
+      {(s) => <Manage s={s} id={id} lang={lang} t={t} justCreated={justCreated} justEdited={justEdited} pagoError={pagoError} manual={manual} sacado={sacado} missing={missing} shareUrl={shareUrl} stateLabel={stateLabel} />}
     </Gate>
   );
 }

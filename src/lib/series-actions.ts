@@ -6,6 +6,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { DEFAULT_TIMEZONE, isValidTimezone, zonedLocalToIso } from "@/lib/event-time";
 import { slugify } from "@/lib/slug";
+import { missingForPublish } from "@/lib/event-publish";
 
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
 const text = (v: FormDataEntryValue | null, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -159,7 +160,11 @@ export async function publishSeriesDrafts(formData: FormData) {
   const supabase = await createServerSupabase();
   const s = await ownSeries(supabase, seriesSlug, session.id);
   if (!s) redirect(`/${l}/organizador/series`);
-  await supabase.from("events").update({ status: "publicado" }).eq("series_id", s.id).eq("status", "borrador").eq("organizer_id", session.id);
+  // Solo se publican los borradores completos (KIN-659): los subidos desde la app llegan sin ciudad ni cupo y se completan a mano.
+  const { data: drafts } = await supabase.from("events").select("id, city, venue, capacity, event_categories(id)").eq("series_id", s.id).eq("status", "borrador").eq("organizer_id", session.id);
+  const ready = (drafts ?? []).filter((d) => missingForPublish({ city: d.city, venue: d.venue, capacity: d.capacity, categories: d.event_categories?.length ?? 0 }).length === 0);
+  const incomplete = (drafts ?? []).length - ready.length;
+  if (ready.length) await supabase.from("events").update({ status: "publicado" }).in("id", ready.map((d) => d.id)).eq("organizer_id", session.id);
   updateTag("events");
-  redirect(`/${l}/organizador/series/${seriesSlug}?publicados=1#eventos`);
+  redirect(`/${l}/organizador/series/${seriesSlug}?${ready.length ? "publicados=1" : "publicados=0"}${incomplete ? `&incompletos=${incomplete}` : ""}#eventos`);
 }

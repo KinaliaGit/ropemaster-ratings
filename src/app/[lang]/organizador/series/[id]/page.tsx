@@ -17,13 +17,13 @@ import type { Session } from "@/lib/session";
 import type { Dict } from "@/dictionaries/es";
 import type { Lang } from "@/lib/format";
 
-type Flags = { nueva: boolean; editada: boolean; agregados: number; borrado: boolean; publicados: boolean; error: string | null };
+type Flags = { nueva: boolean; editada: boolean; agregados: number; borrado: boolean; publicados: boolean; incompletos: number; error: string | null };
 
 async function Manage({ s, id, lang, t, flags, shareUrl }: { s: Session; id: string; lang: Lang; t: Dict; flags: Flags; shareUrl: string }) {
   // Un organizador solo gestiona sus propias series (la base además lo impone).
   const found = await getOrganizerSeries(s.id, id);
   if (!found) notFound();
-  const { series: x, events } = found;
+  const { series: x, template, events } = found;
   const m = t.org.series, ev = m.ev;
   const phases = events.map((e) => eventPhase({ status: e.status, enrolled: e.enrolled, capacity: e.capacity, opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed }));
   const drafts = phases.filter((p) => p === "draft").length;
@@ -53,6 +53,8 @@ async function Manage({ s, id, lang, t, flags, shareUrl }: { s: Session; id: str
         {flags.agregados > 0 && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{ev.msg.agregados} {flags.agregados} {ev.msg.agregadosEnd}</p>}
         {flags.borrado && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{ev.msg.borrado}</p>}
         {flags.publicados && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{ev.msg.publicados}</p>}
+        {flags.incompletos > 0 && <p role="alert" className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-800">{flags.incompletos} {ev.msg.incompletos}</p>}
+        {!template.city.trim() && <p role="status" data-testid="empty-template" className="mt-6 rounded-2xl bg-sand p-4 text-sm">{m.emptyTemplate} <Link href={`/${lang}/organizador/series/${x.id}/editar`} className="font-medium underline">{m.edit} →</Link></p>}
         {delError && <p role="alert" className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-800">{delError}</p>}
 
         <section aria-labelledby="share" className="card mt-6 p-5">
@@ -134,7 +136,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/serie
   const sp = await props.searchParams;
   const flags: Flags = {
     nueva: sp.nueva === "1", editada: sp.editada === "1", agregados: Math.max(0, Math.floor(Number(sp.agregados)) || 0),
-    borrado: sp.borrado === "1", publicados: sp.publicados === "1", error: typeof sp.error === "string" ? sp.error : null,
+    borrado: sp.borrado === "1", publicados: sp.publicados === "1", incompletos: Math.max(0, Math.floor(Number(sp.incompletos)) || 0), error: typeof sp.error === "string" ? sp.error : null,
   };
   // Enlace sin idioma: cada persona que lo abra llega a su idioma (el proxy elige es/en por su navegador).
   const h = await headers();

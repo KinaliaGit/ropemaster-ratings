@@ -40,6 +40,12 @@ begin
   ser_ev as (
     select ev.*, coalesce(reg.n, 0) as n from ev join ser on ser.id = ev.series_id left join reg on reg.event_id = ev.id
   ),
+  ser_roles as (  -- personas distintas de toda la serie, por rol
+    select count(*) as people, count(*) filter (where p.header and not p.heeler) as only_header, count(*) filter (where p.heeler and not p.header) as only_heeler,
+           count(*) filter (where p.header and p.heeler) as both_roles, count(*) filter (where not p.header and not p.heeler) as no_role
+    from (select r.roper_id, bool_or(r.role = 'header') as header, bool_or(r.role = 'heeler') as heeler
+          from public.registrations r join ser_ev on ser_ev.id = r.event_id group by r.roper_id) p
+  ),
   ser_next as (
     select * from ser_ev where status <> 'finalizado' and event_date >= today order by event_date, id limit 1
   ),
@@ -56,6 +62,8 @@ begin
     'series', (select jsonb_build_object(
         'slug', ser.slug, 'name', ser.name, 'start_date', ser.start_date, 'end_date', ser.end_date,
         'events', (select count(*) from ser_ev), 'enrolled', (select coalesce(sum(n), 0) from ser_ev),
+        'people', (select people from ser_roles), 'only_header', (select only_header from ser_roles), 'only_heeler', (select only_heeler from ser_roles),
+        'both_roles', (select both_roles from ser_roles), 'no_role', (select no_role from ser_roles),
         'next_event', (select jsonb_build_object('slug', slug, 'name', name, 'date', event_date, 'days', event_date - today) from ser_next))
       from ser),
     'next_event', (select jsonb_build_object(
@@ -82,7 +90,7 @@ begin
           order by ev.event_date desc limit 5) t), '[]'::jsonb),
       'no_opening', coalesce((select jsonb_agg(jsonb_build_object('slug', t.slug, 'name', t.name, 'date', t.event_date)) from (
           select ev.slug, ev.name, ev.event_date from ev
-          where ev.status <> 'finalizado' and ev.event_date >= ev.today and ev.registration_opens_at is null and ev.series_id is not null
+          where ev.status = 'borrador' and ev.event_date >= ev.today and ev.registration_opens_at is null
           order by ev.event_date limit 5) t), '[]'::jsonb))
   ) into res;
   return res;

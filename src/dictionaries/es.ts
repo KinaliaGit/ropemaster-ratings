@@ -103,7 +103,7 @@ export const es = {
       activity: "Actividad reciente", noActivity: "Aún no hay actividad.", enrolledAct: "se inscribió a", removedAct: "salió de",
       todo: "Pendientes", allClear: "Todo al día.", unpaid: (n: number) => `${n} pago(s) por confirmar`, noResults: "Ya pasó y no tiene resultados", noOpening: "Sin fecha de apertura de inscripciones",
       emptyTitle: "Aún no tienes series ni eventos", emptyText: "Crea tu primera serie para empezar; dentro de ella agregas los eventos.", createSeries: "Crear mi primera serie", createEvent: "Crear un evento suelto",
-      seeSeries: "Ver la serie", manage: "Gestionar", loadError: "No pudimos cargar el resumen. Recarga la página.",
+      seePending: "Ver los pagos pendientes", seeEvents: "Ver mis eventos", seeSeries: "Ver la serie", manage: "Gestionar", loadError: "No pudimos cargar el resumen. Recarga la página.",
     },
       del: {
         zone: "Zona de peligro", eventText: "Borrar el evento es definitivo: se borran también sus inscripciones y se libera el cupo. Lo que pasó queda registrado para auditoría.", seriesText: "Borrar la serie es definitivo. Solo se puede cuando ya no tiene eventos.",

@@ -103,7 +103,7 @@ export const en: Dict = {
       activity: "Recent activity", noActivity: "No activity yet.", enrolledAct: "registered for", removedAct: "left",
       todo: "To do", allClear: "All caught up.", unpaid: (n: number) => `${n} payment(s) to confirm`, noResults: "It already happened and has no results", noOpening: "No registration opening date",
       emptyTitle: "You have no series or events yet", emptyText: "Create your first series to get started; you add the events inside it.", createSeries: "Create my first series", createEvent: "Create a single event",
-      seeSeries: "See series", manage: "Manage", loadError: "We couldn't load the overview. Reload the page.",
+      seePending: "See pending payments", seeEvents: "See my events", seeSeries: "See series", manage: "Manage", loadError: "We couldn't load the overview. Reload the page.",
     },
       del: {
         zone: "Danger zone", eventText: "Deleting the event is permanent: its registrations are deleted too and the spots are released. A record is kept for auditing.", seriesText: "Deleting the series is permanent. It is only possible once it has no events.",

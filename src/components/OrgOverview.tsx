@@ -22,6 +22,8 @@ export function OrgOverview({ o, lang, t }: { o: Overview; lang: Lang; t: Dict }
   }
   const ne = o.next_event;
   const left = ne && ne.capacity ? Math.max(0, ne.capacity - ne.enrolled) : null;
+  const sr = o.series;
+  const seriesRoles: [string, number][] = sr ? [[v.header, sr.only_header], [v.heeler, sr.only_heeler], [v.both, sr.both_roles], [v.noRole, sr.no_role]] : [];
   const roles: [string, number][] = ne ? [[v.header, ne.only_header], [v.heeler, ne.only_heeler], [v.both, ne.both_roles], [v.noRole, ne.no_role]] : [];
   const states: [string, number][] = [[v.open, o.states.open], [v.scheduled, o.states.scheduled], [v.finished, o.states.finished], [v.draft, o.states.draft]];
   const todoCount = o.todo.unpaid.length + o.todo.no_results.length + o.todo.no_opening.length;
@@ -34,7 +36,10 @@ export function OrgOverview({ o, lang, t }: { o: Overview; lang: Lang; t: Dict }
           <>
             <p className="mt-1 break-words text-xl font-semibold">{o.series.name}</p>
             <p className="text-sm text-muted">{fmtDate(o.series.start_date, lang)} – {fmtDate(o.series.end_date, lang)}</p>
-            <p className="mt-2 text-sm"><span className="tabular-nums font-medium">{o.series.events}</span> {v.events} · <span className="tabular-nums font-medium">{o.series.enrolled}</span> {v.enrolledInSeries}</p>
+            <p className="mt-2 text-sm"><span className="tabular-nums font-medium">{o.series.events}</span> {v.events} · <span className="tabular-nums font-medium">{o.series.people}</span> {v.enrolledInSeries}</p>
+            <dl className="mt-2 grid grid-cols-4 gap-2 text-center" aria-label={v.roles}>
+              {seriesRoles.map(([l, n]) => <div key={l} className="rounded-xl bg-sand p-2"><dd className="text-lg font-semibold tabular-nums">{n}</dd><dt className="text-[11px] text-muted">{l}</dt></div>)}
+            </dl>
             {o.series.next_event && <p className="mt-2 text-sm">{v.nextEvent}: <Link href={`/${lang}/organizador/eventos/${o.series.next_event.slug}`} className={link}>{o.series.next_event.name}</Link> · {fmtDate(o.series.next_event.date, lang)} ({v.inDays(o.series.next_event.days)})</p>}
             <Link href={`/${lang}/organizador/series/${o.series.slug}`} className={`mt-3 inline-block text-sm ${link}`}>{v.seeSeries} →</Link>
           </>
@@ -64,6 +69,7 @@ export function OrgOverview({ o, lang, t }: { o: Overview; lang: Lang; t: Dict }
           <div><dd className="text-lg font-semibold tabular-nums">{mxn(o.payments.collected_cents / 100, lang)}</dd><dt className="text-sm text-muted">{v.collected}</dt></div>
           <div><dd className="text-lg font-semibold tabular-nums">{mxn(o.payments.pending_cents / 100, lang)}</dd><dt className="text-sm text-muted">{v.toCollect}</dt></div>
         </dl>
+        {o.todo.unpaid[0] && <Link href={`/${lang}/organizador/eventos/${o.todo.unpaid[0].slug}`} className={`mt-3 inline-block text-sm ${link}`}>{v.seePending} →</Link>}
       </section>
 
       <section aria-labelledby="ov-states" className="card p-5">
@@ -71,6 +77,7 @@ export function OrgOverview({ o, lang, t }: { o: Overview; lang: Lang; t: Dict }
         <dl className="mt-2 grid grid-cols-2 gap-3">
           {states.map(([l, n]) => <div key={l}><dd className="text-2xl font-semibold tabular-nums">{n}</dd><dt className="text-sm text-muted">{l}</dt></div>)}
         </dl>
+        <a href="#mis-eventos" className={`mt-3 inline-block text-sm ${link}`}>{v.seeEvents} →</a>
       </section>
 
       <section aria-labelledby="ov-todo" className="card p-5">

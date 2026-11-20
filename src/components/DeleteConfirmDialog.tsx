@@ -20,7 +20,7 @@ export function DeleteConfirmDialog({ action, lang, fields, id, summary, needRea
   return (
     <>
       <button type="button" onClick={() => ref.current?.showModal()} className="rounded-full bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800">{l.button}</button>
-      <dialog ref={ref} aria-labelledby={`del-${id}`} className="m-auto w-[min(92vw,30rem)] rounded-2xl p-0 backdrop:bg-black/40" onClose={() => setTyped("")}>
+      <dialog ref={ref} onClick={(e) => { if (e.target === ref.current) ref.current?.close(); }} aria-labelledby={`del-${id}`} className="m-auto w-[min(92vw,30rem)] rounded-2xl p-0 backdrop:bg-black/40" onClose={() => setTyped("")}>
         <form action={action} className="p-6">
           <h3 id={`del-${id}`} className="text-lg font-semibold text-red-800">{l.title}</h3>
           <input type="hidden" name="lang" value={lang} />

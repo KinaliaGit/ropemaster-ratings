@@ -4,7 +4,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 // eventos y series; las listas vienen cortas (máx. 8). Sin caché: es personal.
 export type OverviewEvent = { slug: string; name: string; date: string; days: number };
 export type Overview = {
-  series: { slug: string; name: string; start_date: string; end_date: string; events: number; enrolled: number; next_event: OverviewEvent | null } | null;
+  series: { slug: string; name: string; start_date: string; end_date: string; events: number; enrolled: number; people: number; only_header: number; only_heeler: number; both_roles: number; no_role: number; next_event: OverviewEvent | null } | null;
   next_event: (OverviewEvent & { capacity: number | null; enrolled: number; only_header: number; only_heeler: number; both_roles: number; no_role: number }) | null;
   payments: { pending: number; paid: number; pending_cents: number; collected_cents: number };
   states: { open: number; scheduled: number; finished: number; draft: number };

@@ -17,7 +17,7 @@ export function RoleBadgeDialog({ action, lang, initial, text, l }: {
         className={`inline-flex max-w-full items-center rounded-full px-3 py-1 text-sm font-medium ${initial ? "bg-sand text-ink hover:bg-line" : "bg-brand-soft text-brand-hot hover:bg-line"}`}>
         <span className="break-words text-left">{initial ? text : l.choose}</span>
       </button>
-      <dialog ref={ref} aria-labelledby="rol-dialogo" className="m-auto w-[min(92vw,28rem)] rounded-2xl p-0 backdrop:bg-black/40">
+      <dialog ref={ref} onClick={(e) => { if (e.target === ref.current) ref.current?.close(); }} aria-labelledby="rol-dialogo" className="m-auto w-[min(92vw,28rem)] rounded-2xl p-0 backdrop:bg-black/40">
         <form action={action} onSubmit={() => ref.current?.close()} className="p-6">
           <h3 id="rol-dialogo" className="text-lg font-semibold">{l.title}</h3>
           <input type="hidden" name="lang" value={lang} />

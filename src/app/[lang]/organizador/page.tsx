@@ -42,7 +42,7 @@ async function Panel({ s, lang, t, welcome, deleted }: { s: Session; lang: Lang;
         </div>
         {s.verified && (overview ? <OrgOverview o={overview} lang={lang} t={t} /> : <p role="alert" className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-800">{t.org.overview.loadError}</p>)}
         {STRIPE_ENABLED && <StripeConnectButton lang={lang} {...t.org.stripe} />}
-        <h2 className="mt-10 text-xl font-semibold">{t.org.myEvents}</h2>
+        <h2 id="mis-eventos" className="mt-10 scroll-mt-24 text-xl font-semibold">{t.org.myEvents}</h2>
         {mine.length === 0 ? <p className="mt-3 rounded-2xl bg-sand p-6 text-center text-muted">{t.org.noEvents}</p> : (
           <>
           {/* Celular: una tarjeta por evento (la tabla obligaría a deslizar de lado). */}

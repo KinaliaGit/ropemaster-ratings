@@ -7,7 +7,7 @@ export type Role = "participante" | "organizador";
 // `verified` = organizador ACTIVO: licencia vigente o aprobado a mano por un admin. Solo así puede operar (la base lo impone igual).
 // `license`: "valid" (licencia vigente), "expired" (tuvo licencia y venció), "none" (nunca la vinculó). `licenseUntil`: vencimiento (null = sin vencimiento / sin licencia).
 export type LicenseState = "valid" | "expired" | "none";
-export type Session = { role: Role; id: string; name: string; verified: boolean; manual: boolean; license: LicenseState; hasRoper: boolean; licenseUntil: string | null; isAdmin: boolean; avatarPath?: string | null; roleChoice?: RoleChoice | null };
+export type Session = { role: Role; id: string; name: string; verified: boolean; manual: boolean; license: LicenseState; hasRoper: boolean; roperId?: string; licenseUntil: string | null; isAdmin: boolean; avatarPath?: string | null; roleChoice?: RoleChoice | null };
 
 // Quién es la persona que visita. La sesión de Supabase + su perfil.
 // El rol de organizador NUNCA viene de una cookie editable: sale de la base de datos.
@@ -35,6 +35,7 @@ export const getSession = cache(async (): Promise<Session | null> => {
       const { data: roperId } = await supabase.rpc("my_roper_id");
       if (roperId) {
         session.hasRoper = true;
+        session.roperId = roperId as string;
         const mine = (await supabase.from("ropers").select("avatar_path, primary_role, favorite_role").eq("id", roperId).maybeSingle()).data;
         session.avatarPath = mine?.avatar_path ?? null;
         session.roleChoice = roleFromRow(mine?.primary_role ?? null, mine?.favorite_role ?? null); // null = sin definir

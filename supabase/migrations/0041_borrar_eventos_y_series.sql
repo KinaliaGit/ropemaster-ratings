@@ -11,7 +11,7 @@
 --    No se eligió borrado lógico porque obligaría a filtrar `deleted_at` en cada consulta de la web y de la API de la app; la constancia
 --    cubre la auditoría sin ese riesgo.
 --  * Motivo: obligatorio (10 a 500 caracteres) SOLO si el evento tiene inscritos. Sin inscritos no se pide motivo ni se avisa a nadie.
---  * Aviso a los inscritos: la función crea el aviso dentro de la web (kind = 'event_deleted', tabla de la 0039) para cada persona con cuenta y
+--  * Aviso a los inscritos: la función crea el aviso dentro de la web (kind = 'event_deleted', tabla de la 0040) para cada persona con cuenta y
 --    devuelve a quién avisar por correo (el correo sale desde el servidor, después; si falla, el borrado y los avisos ya quedaron).
 -- Se puede ejecutar más de una vez sin efecto extra.
 

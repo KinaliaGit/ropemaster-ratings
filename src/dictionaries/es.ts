@@ -65,7 +65,7 @@ export const es = {
     ratingsByMode: "Rating por modalidad",
     loadMore: "Ver más", loadError: "No se pudo cargar. Intenta de nuevo.", retry: "Reintentar",
     round: "Ronda", run: "Corrida", roundFinal: "Final", roundTiebreak: "Desempate", extra: "Corrida extra", extraHint: "Corrida extra suelta, sin una corrida regular en esa ronda. No es una penalización y no cuenta para el tiempo total ni el lugar.", help: "Ayuda", helpHint: "Corrida de ayuda para cubrir una vacante del sorteo. No cuenta para el tiempo total ni el lugar.", noTime: "No time", substitute: "Sustituto", header: "cabecero", heeler: "pialador", countsForSubstitute: "también cuenta para el sustituto",
-    unknownName: "Participante", viewRounds: "Ver rondas", hideRounds: "Ocultar rondas", noRounds: "Sin detalle de rondas.", bestPlace: "Mejor lugar", bestRun: "Mejor corrida", runsCount: "rondas",
+    unknownName: "Participante", viewRounds: "Ver rondas", hideRounds: "Ocultar rondas", noRounds: "Sin detalle de rondas.", bestPlace: "Mejor lugar", bestRun: "Mejor corrida", runsCount: "rondas", packageOne: "paquete", packageMany: "paquetes", shotOne: "tiro", shotMany: "tiros",
   },
   auth: {
     errorUnconfirmed: "Primero confirma tu correo: te enviamos un enlace al registrarte.", errorConfirm: "El enlace de confirmación no es válido o ya venció. Entra con tu correo y contraseña o pide otro.", resend: "Reenviar correo de confirmación", resent: "Te lo enviamos de nuevo.",

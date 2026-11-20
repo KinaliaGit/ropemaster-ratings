@@ -65,7 +65,7 @@ export const en: Dict = {
     ratingsByMode: "Rating by discipline",
     loadMore: "Load more", loadError: "Couldn't load. Please try again.", retry: "Try again",
     round: "Round", run: "Run", roundFinal: "Final", roundTiebreak: "Tiebreak", extra: "Extra run", extraHint: "A standalone extra run, with no regular run in that round. It is not a penalty and does not count toward the total time or place.", help: "Assist", helpHint: "An assist run that covers an open spot in the draw. It does not count toward the total time or place.", noTime: "No time", substitute: "Substitute", header: "header", heeler: "heeler", countsForSubstitute: "also counts for the substitute",
-    unknownName: "Participant", viewRounds: "View rounds", hideRounds: "Hide rounds", noRounds: "No round detail.", bestPlace: "Best place", bestRun: "Best run", runsCount: "rounds",
+    unknownName: "Participant", viewRounds: "View rounds", hideRounds: "Hide rounds", noRounds: "No round detail.", bestPlace: "Best place", bestRun: "Best run", runsCount: "rounds", packageOne: "package", packageMany: "packages", shotOne: "shot", shotMany: "shots",
   },
   auth: {
     errorUnconfirmed: "Confirm your email first: we sent you a link when you signed up.", errorConfirm: "The confirmation link is invalid or has expired. Sign in with your email and password or request another.", resend: "Resend confirmation email", resent: "We sent it again.",

@@ -35,11 +35,11 @@ test("round_robin sin topes ni cuota ni tiros", () => {
   assert.equal(r.event.entry_fee_cents, 0);
 });
 
-test("rondas: opcionales, entero de 1 a 20", () => {
+test("rondas: opcionales, entero de 1 a 10", () => {
   assert.equal(parse(base()).event.rounds, 4);
   assert.equal(parse(withEvent({ rounds: undefined })).event.rounds, null);
   assert.equal(parse(withEvent({ rounds: null })).event.rounds, null);
-  for (const bad of [0, 21, 2.5, "3", -1]) fails(withEvent({ rounds: bad }), 400, "invalid_field");
+  for (const bad of [0, 11, 2.5, "3", -1]) fails(withEvent({ rounds: bad }), 400, "invalid_field");
 });
 
 test("los tiros por paquete solo existen en lazada_sorteada", () => {

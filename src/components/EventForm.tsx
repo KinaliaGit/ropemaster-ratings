@@ -34,7 +34,7 @@ export function EventForm({ lang, labels: l, disciplines, error, initial }: { la
         <span className="mt-1 block text-xs font-normal text-muted">{l.maxRoperRatingHint}</span>
       </label>
       <label className="block text-sm font-medium">{l.rounds}
-        <input name="rounds" type="number" min={1} max={20} step={1} inputMode="numeric" defaultValue={initial?.rounds ?? ""} className={input} />
+        <input name="rounds" type="number" min={1} max={10} step={1} inputMode="numeric" defaultValue={initial?.rounds ?? ""} className={input} />
         <span className="mt-1 block text-xs font-normal text-muted">{l.roundsHint}</span>
       </label>
       <fieldset>

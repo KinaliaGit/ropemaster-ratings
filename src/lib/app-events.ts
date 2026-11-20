@@ -97,7 +97,7 @@ export type EventRow = {
   draw_type?: DrawType;
   /** Tiros que trae un paquete en Lazada Sorteada (KIN-649). `null` fuera de ese tipo o mientras no se define. La ruta lo agrega. */
   lazada_shots_per_package?: number | null;
-  /** Rondas del evento (KIN-655), 1 a 20; `null` = el organizador aún no las define. La ruta lo agrega. */
+  /** Rondas del evento (KIN-655), 1 a 10; `null` = el organizador aún no las define. La ruta lo agrega. */
   rounds?: number | null;
   /** Rating máximo de la SUMA de un equipo (KIN-649); `null` = sin tope. La ruta lo agrega. */
   max_team_rating?: number | null;

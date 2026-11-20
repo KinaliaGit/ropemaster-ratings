@@ -13,7 +13,7 @@ export type EventItem = {
   maxRoperRating: number | null; // rating máximo para inscribirse (null = sin límite)
   drawType: "round_robin" | "lazada_sorteada"; // tipo de sorteo (KIN-649); no cambia con inscritos o resultados
   lazadaShotsPerPackage: number | null; // solo Lazada Sorteada: tiros que trae un paquete
-  rounds: number | null; // rondas del evento, 1 a 20 (null = aún sin definir)
+  rounds: number | null; // rondas del evento, 1 a 10 (null = aún sin definir)
   maxTeamRating: number | null; // rating máximo de la suma de un equipo (null = sin tope)
   resultsClosed: boolean; // los resultados ya están cerrados (candado de la app); un evento finalizado con los resultados abiertos está en corrección
 };

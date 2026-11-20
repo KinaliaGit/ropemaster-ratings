@@ -1548,7 +1548,7 @@ console.log("- Resultados de un evento (0030)");
 
   // Rondas del evento (KIN-655)
   await as("authenticated", A, "update events set rounds = 3 where id = '" + first.r_event_id + "'", "el organizador SÍ cambia las rondas de su evento", "some");
-  await as("authenticated", A, "update events set rounds = 21 where id = '" + first.r_event_id + "'", "rondas fuera de 1 a 20 se rechazan", "deny");
+  await as("authenticated", A, "update events set rounds = 11 where id = '" + first.r_event_id + "'", "rondas fuera de 1 a 10 se rechazan", "deny");
   await as("authenticated", A, "update events set rounds = 0 where id = '" + first.r_event_id + "'", "0 rondas se rechaza", "deny");
   await as("authenticated", B, "update events set rounds = 2 where id = '" + first.r_event_id + "'", "otro organizador NO cambia las rondas ajenas", "deny");
   await db.exec(`insert into event_results (id, event_id, participant_name, discipline, time_ms, penalty_ms, disqualified) values (gen_random_uuid(), '${first.r_event_id}', 'Sin lazador', 'lazo', 9000, 0, false)`);

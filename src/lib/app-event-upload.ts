@@ -79,7 +79,7 @@ export function parseUploadEventBody(text: string, suffix: () => string = random
   }
   let rounds: number | null = null;
   if (e.rounds !== undefined && e.rounds !== null) {
-    if (typeof e.rounds !== "number" || !Number.isInteger(e.rounds) || e.rounds < 1 || e.rounds > 20) return fail(400, "invalid_field", "event.rounds debe ser un entero de 1 a 20.");
+    if (typeof e.rounds !== "number" || !Number.isInteger(e.rounds) || e.rounds < 1 || e.rounds > 10) return fail(400, "invalid_field", "event.rounds debe ser un entero de 1 a 10.");
     rounds = e.rounds;
   }
   const roper = ratingOrNull(e.max_roper_rating, 10);

@@ -34,12 +34,12 @@ function drawFields(formData: FormData): DrawFields | "invalid" | "invalidShots"
     if (!Number.isFinite(n) || n < 0 || n > 20) return "invalidTeamLimit";
     teamLimit = Math.round(n * 10) / 10;
   }
-  // Rondas (KIN-655): opcional; entero de 1 a 20. Vacío = sin definir (la app usa su valor por defecto).
+  // Rondas (KIN-655): opcional; entero de 1 a 10. Vacío = sin definir (la app usa su valor por defecto).
   const rawRounds = typeof formData.get("rounds") === "string" ? String(formData.get("rounds")).trim() : "";
   let rounds: number | null = null;
   if (rawRounds !== "") {
     const n = Number(rawRounds);
-    if (!Number.isInteger(n) || n < 1 || n > 20) return "invalidRounds";
+    if (!Number.isInteger(n) || n < 1 || n > 10) return "invalidRounds";
     rounds = n;
   }
   if (drawType === "round_robin") return { drawType, shots: null, teamLimit, rounds };

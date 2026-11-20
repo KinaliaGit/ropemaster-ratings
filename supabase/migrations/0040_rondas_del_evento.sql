@@ -2,14 +2,14 @@
 --
 -- Decisiones (2026-11-20):
 --  * La app pide el número de rondas al crear cualquier evento casual (por defecto 3) y lo usa para sortear y capturar. La web lo guarda como
---    `events.rounds` (1 a 20, el mismo máximo de rondas por resultado del contrato de subida). `null` = el organizador aún no lo define: la app
+--    `events.rounds` (1 a 10, el mismo rango que valida la base de la app: CHECK rounds >= 1 AND rounds <= 10). `null` = el organizador aún no lo define: la app
 --    importa su valor por defecto (3), como hasta ahora. Los eventos que ya existían quedan en `null`.
 --  * Aplica a los dos tipos de sorteo (round_robin y lazada_sorteada), igual que en la app.
 --  * Con resultados ya subidos no se puede cambiar (`rounds_locked`): cambiaría lo que significa cada ronda ya capturada. Con inscritos sí.
 --  * Lo que sigue solo en la app (premios, reparto del pozo, reglas de No Time y pantallas): la web no lo consume, así que no se pide.
 
 alter table public.events add column if not exists rounds integer
-  check (rounds is null or (rounds >= 1 and rounds <= 20));
+  check (rounds is null or (rounds >= 1 and rounds <= 10));
 grant insert (rounds) on public.events to authenticated;
 grant update (rounds) on public.events to authenticated;
 
@@ -25,7 +25,7 @@ drop trigger if exists events_lock_rounds on public.events;
 create trigger events_lock_rounds before update on public.events
   for each row execute function private.lock_rounds();
 
--- app_upload_event ahora también guarda `rounds` (p_event.rounds: entero 1 a 20 o null). El resto es idéntico a la 0039.
+-- app_upload_event ahora también guarda `rounds` (p_event.rounds: entero 1 a 10 o null). El resto es idéntico a la 0039.
 create or replace function public.app_upload_event(p_organizer uuid, p_series jsonb, p_event jsonb)
 returns table (r_event_id uuid, r_event_slug text, r_event_created boolean, r_series_id uuid, r_series_slug text, r_series_created boolean)
 language plpgsql security definer set search_path = '' as $$

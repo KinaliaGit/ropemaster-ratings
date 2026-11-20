@@ -80,6 +80,9 @@ inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
 | `disciplines` | lista de ids de modalidad | `lazo`, `barriles` (ver *Modalidades*). |
 | `capacity` | entero o `null` | `null` = sin límite. |
 | `max_roper_rating` | número (0 a 10, un decimal) o `null` | Rating máximo individual para inscribirse (KIN-638); `null` = sin límite. La web no deja inscribir a quien lo rebase (rating de la modalidad del evento). La app lo guarda en el evento importado y le pone el mismo tope a su roster. Campo opcional: una web anterior no lo manda. |
+| `draw_type` | `round_robin` \| `lazada_sorteada` | Tipo de sorteo del evento casual (KIN-648/649). Los eventos que ya existían son `round_robin`. Lo fija quien crea el evento y **no cambia** una vez que hay inscritos o resultados. Campo opcional: una web anterior no lo manda y la app entiende `round_robin`. |
+| `lazada_shots_per_package` | entero >= 1 o `null` | Solo en `lazada_sorteada`: tiros que trae un paquete (uno por evento). Tiros de una persona en un rol = `registrations[].packages` * este valor. `null` en `round_robin` o mientras el organizador no lo define. |
+| `max_team_rating` | número (0 a 20, un decimal) o `null` | Rating máximo de la SUMA de un equipo (cabecero + pialador); `null` = sin tope. En Lazada Sorteada la app lo usa como restricción dura al sortear. Distinto de `max_roper_rating`, que es el individual. |
 | `updated_at` | fecha ISO-8601 UTC | Último cambio del evento, sus inscripciones o sus categorías. |
 | `categories[].fee_cents` | entero >= 0 | Montos SIEMPRE en centavos. |
 | `registrations[].id` | UUID | Id de la inscripción. Una persona puede tener una por categoría y rol (ver `role`). |
@@ -88,9 +91,15 @@ inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
 | `registrations[].payment_status` | `pendiente` \| `pagado` \| `reembolsado` | Una inscripción `pendiente` también ocupa lugar. |
 | `registrations[].amount_cents` | entero >= 0 | Lo que se cobró por esa inscripción, en centavos. |
 | `registrations[].payment_method` | `efectivo` \| `transferencia` \| `stripe` o `null` | `null` mientras esté pendiente. |
+| `registrations[].packages` | entero de 1 a 99 | Paquetes de tiros que compró en ESE rol (KIN-649). Siempre 1 fuera de `lazada_sorteada`. El `amount_cents` de la inscripción es el costo de la categoría * `packages`. Campo opcional: una web anterior no lo manda y se entiende 1. |
 | `registrations[].role` | `header` \| `heeler` o `null` | Rol con el que entra a ESTE evento (KIN-623). Es por inscripción y no cambia el perfil. `null` si la persona aún no definió su rol. |
 
 Las inscripciones NO llevan correo ni celular: para eso está `GET /api/app/participantes` (que sí exige organizador activo y evento propio).
+
+**Tipo de sorteo y paquetes (KIN-648/649, 2026-11-19).** Hoy hay dos tipos, ambos de eventos casuales: `round_robin` y `lazada_sorteada`. Quien crea el evento (la web o la
+app, que lo sube) fija el tipo; la web no deja cambiarlo ni cambiar los tiros por paquete con inscritos o resultados (`draw_type_locked`). En Lazada Sorteada cada
+inscripción lleva los paquetes que compró en ese rol; con "los dos" roles son dos inscripciones, cada una con sus paquetes y su monto. Los paquetes no ocupan más
+lugares del cupo: el cupo cuenta inscripciones. Son campos nuevos opcionales: no suben `contract_version`.
 
 **Rol por inscripción (KIN-623).** Quien tiene el rol "Ambos" en su perfil elige, al inscribirse, cabecero, pialador o los dos. "Los dos" son
 **dos inscripciones** de la misma persona y categoría, una con `role: "header"` y otra con `role: "heeler"`, cada una con su `id`, su lugar en el cupo

@@ -11,6 +11,9 @@ export type EventItem = {
   organizer: string; uuid?: string; organizerId?: string; tone: number; cover?: string; photos: { id: string; url: string }[];
   timezone: string; registrationOpensAt: string | null; registrationClosesAt: string | null; registrationClosed: boolean; series: { slug: string; name: string } | null; updatedAt: string; description: string; status: "publicado" | "borrador" | "finalizado";
   maxRoperRating: number | null; // rating máximo para inscribirse (null = sin límite)
+  drawType: "round_robin" | "lazada_sorteada"; // tipo de sorteo (KIN-649); no cambia con inscritos o resultados
+  lazadaShotsPerPackage: number | null; // solo Lazada Sorteada: tiros que trae un paquete
+  maxTeamRating: number | null; // rating máximo de la suma de un equipo (null = sin tope)
   resultsClosed: boolean; // los resultados ya están cerrados (candado de la app); un evento finalizado con los resultados abiertos está en corrección
 };
 

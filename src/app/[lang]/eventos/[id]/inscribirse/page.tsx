@@ -55,6 +55,12 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
                 <p className="mt-2 text-xs text-muted">{t.enroll.roleHint}</p>
               </fieldset>
             )}
+            {e.drawType === "lazada_sorteada" && (
+              <label className="block text-sm font-medium">{t.enroll.packages}
+                <input name="packages" type="number" required min={1} max={99} step={1} defaultValue={1} inputMode="numeric" className="mt-1 w-28 rounded-xl border border-line bg-white px-3 py-2 tabular-nums outline-none focus:border-ink" />
+                <span className="mt-1 block text-xs font-normal text-muted">{t.enroll.packagesHint.replace("{shots}", e.lazadaShotsPerPackage === null ? "—" : String(e.lazadaShotsPerPackage))}</span>
+              </label>
+            )}
             {e.maxRoperRating !== null && <p className="text-xs text-muted">{t.event.maxRating}: <span className="tabular-nums">{e.maxRoperRating.toFixed(1)}</span></p>}
             <button className="w-full rounded-full bg-brand py-3 font-semibold text-white hover:bg-brand-hot">{t.enroll.submit}</button>
             <p className="text-center text-xs text-muted">{STRIPE_ENABLED ? t.enroll.pendingNote : t.enroll.pendingNoteOffline}</p>

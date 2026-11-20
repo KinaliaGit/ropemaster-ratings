@@ -82,6 +82,7 @@ inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
 | `max_roper_rating` | número (0 a 10, un decimal) o `null` | Rating máximo individual para inscribirse (KIN-638); `null` = sin límite. La web no deja inscribir a quien lo rebase (rating de la modalidad del evento). La app lo guarda en el evento importado y le pone el mismo tope a su roster. Campo opcional: una web anterior no lo manda. |
 | `draw_type` | `round_robin` \| `lazada_sorteada` | Tipo de sorteo del evento casual (KIN-648/649). Los eventos que ya existían son `round_robin`. Lo fija quien crea el evento y **no cambia** una vez que hay inscritos o resultados. Campo opcional: una web anterior no lo manda y la app entiende `round_robin`. |
 | `lazada_shots_per_package` | entero >= 1 o `null` | Solo en `lazada_sorteada`: tiros que trae un paquete (uno por evento). Tiros de una persona en un rol = `registrations[].packages` * este valor. `null` en `round_robin` o mientras el organizador no lo define. |
+| `rounds` | entero 1 a 10 o `null` | Rondas del evento (KIN-655). `null` = el organizador aún no las define: la app importa su valor por defecto (3). Aplica a los dos tipos de sorteo. No cambia una vez que hay resultados (`rounds_locked`). Campo opcional: una web anterior no lo manda y se entiende `null`. |
 | `max_team_rating` | número (0 a 20, un decimal) o `null` | Rating máximo de la SUMA de un equipo (cabecero + pialador); `null` = sin tope. En Lazada Sorteada la app lo usa como restricción dura al sortear. Distinto de `max_roper_rating`, que es el individual. |
 | `updated_at` | fecha ISO-8601 UTC | Último cambio del evento, sus inscripciones o sus categorías. |
 | `categories[].fee_cents` | entero >= 0 | Montos SIEMPRE en centavos. |
@@ -126,6 +127,59 @@ Errores (todos con `{ "code": "…", "error": "texto para personas" }`; la app d
 | `503` | `service_unavailable` | falla temporal de la web o de la base | sí, con espera creciente |
 
 Orden de las comprobaciones: token de la sesión (`401`/`429`/`503`), versión y parámetros (`400`/`426`), organizador activo (`403`).
+
+## Subir un evento creado en la app: `POST /api/app/eventos` (KIN-648, entrega 2)
+
+La app (donde se creó el evento, con su serie) lo sube a la web para que el organizador lo revise, lo complete y lo publique. Ejemplos versionados:
+[`sync-examples/evento-subida.request.json`](sync-examples/evento-subida.request.json) y [`sync-examples/evento-subida.response.json`](sync-examples/evento-subida.response.json).
+
+- **Solo eventos casuales** (hoy `round_robin` y `lazada_sorteada`) y solo modalidad `lazo`. Los profesionales llegan después.
+- **El evento nace SIEMPRE como `borrador`.** La app nunca publica: el organizador completa en la web lo que la app no sabe y lo publica. Un borrador no aparece
+  en `GET /api/app/eventos` ni en el sitio público; cuando el organizador lo publica, llega a la app con el mismo `id` que la respuesta de esta subida, así que la app
+  lo reconoce (`event.remote_id`) y no lo trata como evento nuevo.
+- **Serie y evento van juntos.** `series` es OBLIGATORIA (KIN-659: un evento vive siempre dentro de una serie; sin ella, `400 series_required`). La serie se vincula por `series.app_id` (el uuid de la serie en la app), nunca por
+  nombre: si ya existe una serie de este organizador con ese `app_id` se reutiliza (y NO se modifica); si no, se crea con la plantilla vacía (ciudad, sede, cupo,
+  modalidades y categorías las completa el organizador en la web antes de agregar eventos desde allá). La fecha del evento debe caer dentro de las fechas de la serie.
+- **Idempotente.** `event.app_id` (el uuid del evento en la app) es único por organizador. Reenviar el mismo evento (por ejemplo tras un corte) responde `200` con el
+  mismo `id` y `slug` y **no modifica nada**: después de crearse, la web es la fuente de verdad (inscritos, pagos, ediciones del organizador). La app no actualiza
+  eventos ya subidos por este endpoint.
+- **Serie ya conocida.** Si la app ya sabe cuál es la serie en la web (porque vino de ella o porque una subida anterior la creó), manda también `series.id` (el id de la
+  web). Entonces se usa esa serie —debe ser de este organizador, si no `422 series_not_found`— y no se crea ni se modifica nada de ella.
+- La web asigna `id` y `slug`; la app los guarda como `event.remote_id` y `event.remote_slug` (y los de la serie como `series.remote_id` y `series.remote_slug`).
+
+Cuerpo:
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `contract_version` | entero | Hoy `1`. |
+| `event.app_id` | UUID | `event.uuid` de la app. |
+| `event.name` | texto | 1 a 120 caracteres. |
+| `event.date` | `AAAA-MM-DD` | Fecha real. |
+| `event.venue` | texto o `null` | El «lugar» de la app (hasta 120). La app no separa ciudad: `city` queda vacío en la web. |
+| `event.disciplines` | `["lazo"]` | Solo modalidades activas. |
+| `event.draw_type` | `round_robin` \| `lazada_sorteada` | Ver `GET /api/app/eventos`. |
+| `event.rounds` | entero 1 a 10 o `null` | Rondas del evento en la app (su base solo admite de 1 a 10). Opcional. |
+| `event.lazada_shots_per_package` | entero 1 a 999 o `null` | Solo con `lazada_sorteada`; es un error mandarlo con `round_robin`. |
+| `event.max_roper_rating` / `event.max_team_rating` | número (0 a 10 / 0 a 20) o `null` | Topes individual y por equipo. |
+| `event.entry_fee_cents` | entero >= 0 | Cuota de la app, en centavos. Se crea una categoría **General** con ese costo; el cupo queda sin límite (`capacity` `null`). |
+| `series.app_id` / `name` / `start_date` / `end_date` | UUID / texto (2 a 120) / fechas | `end_date` no antes que `start_date`. |
+| `series.id` | UUID, opcional | Id de la serie en la web, si la app ya lo conoce. |
+
+Respuesta `201` (se creó) o `200` (ya existía): `{ contract_version, created, event: { id, slug, status: "borrador" }, series: { id, slug, created } }`.
+
+| HTTP | `code` | Cuándo | ¿Reintentar? |
+|---|---|---|---|
+| `400` | `invalid_json`, `invalid_body`, `invalid_field` | Cuerpo mal formado o un campo fuera de rango | no, es un error de la app |
+| `401` | `invalid_token` | Token inválido, revocado o vencido | no, pide reconectar |
+| `403` | `organizer_not_active` | La cuenta no es de organizador activo | no |
+| `413` | `payload_too_large` | Más de 8 KB | no |
+| `400` | `series_required` | Falta `series` (evento suelto) | no |
+| `422` | `outside_series` | La fecha del evento cae fuera de las fechas de su serie | no, la app avisa |
+| `422` | `series_not_found` | `series.id` no existe o es de otro organizador | no |
+| `422` | `series_full` | La serie ya tiene 30 eventos en la web | no |
+| `409` | `slug_taken` | Choque raro de enlaces | sí, de inmediato (la web genera otro) |
+| `426` | `version_unsupported` | La web ya no habla esa versión | no, pide actualizar |
+| `429` / `503` | `rate_limited` / `service_unavailable` | Igual que el resto de la API | sí, con espera |
 
 ## `GET /api/app/participantes?event_id=<uuid>&since=<ISO-8601>&cursor=<texto>`
 

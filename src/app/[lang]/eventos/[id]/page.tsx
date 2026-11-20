@@ -86,6 +86,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
           <p className="mt-2 text-muted">{meta.join(" · ")}</p>
           <p className="mt-1 text-sm font-medium" data-testid="draw-type">
             {t.event.drawType}: {e.drawType === "lazada_sorteada" ? t.event.lazadaSorteada : t.event.roundRobin}
+            {e.rounds !== null && <span className="font-normal text-muted"> · {e.rounds} {t.event.roundsWord}</span>}
             {e.drawType === "lazada_sorteada" && e.lazadaShotsPerPackage !== null && <span className="font-normal text-muted"> · {e.lazadaShotsPerPackage} {t.event.shotsPerPackage.toLowerCase()}</span>}
           </p>
           <p className="mt-1 text-sm text-muted">{t.event.organizedBy} {e.organizer}</p>

@@ -1,0 +1,21 @@
+{
+  "contract_version": 1,
+  "event": {
+    "app_id": "a9000000-0000-0000-0000-0000000000a1",
+    "name": "Lazada de Año Nuevo",
+    "date": "2026-12-31",
+    "venue": "Lienzo Charro del Norte",
+    "disciplines": ["lazo"],
+    "draw_type": "lazada_sorteada",
+    "lazada_shots_per_package": 4,
+    "max_roper_rating": 6.5,
+    "max_team_rating": 12,
+    "entry_fee_cents": 50000
+  },
+  "series": {
+    "app_id": "a9000000-0000-0000-0000-0000000000b1",
+    "name": "Temporada Norte 2026",
+    "start_date": "2026-01-01",
+    "end_date": "2026-12-31"
+  }
+}

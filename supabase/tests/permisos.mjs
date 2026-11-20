@@ -1505,5 +1505,49 @@ console.log("- Resultados de un evento (0030)");
   verify("app_organizer_events manda packages en cada inscripción", await num(`select count(*) n from public.app_organizer_events('${A}', null, now() + interval '1 minute', null, null, 50) e, jsonb_array_elements(e.registrations) r where e.id = '${EVL}' and (r->>'packages')::int = 3`) === 1);
 }
 
+// ---- Eventos que la app sube a la web (KIN-648, entrega 2)
+{
+  console.log("\n— Eventos subidos desde la app");
+  const num = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const verify = (label, ok) => { if (!ok) failures++; console.log(`${ok ? "✔" : "✘ FALLO"}  ${label}`); };
+  const svc = async (sql, params = []) => { await db.exec("reset role; set role service_role"); try { return (await db.query(sql, params)).rows; } finally { await db.exec("reset role"); } };
+  const upload = (org, series, event) => svc("select * from public.app_upload_event($1::uuid, $2::jsonb, $3::jsonb)", [org, series ? JSON.stringify(series) : null, JSON.stringify(event)]);
+  const denied = async (fn) => { try { await fn(); return false; } catch { return true; } };
+  const APPEV = "a9000000-0000-0000-0000-0000000000a1", APPEV2 = "a9000000-0000-0000-0000-0000000000a2", APPEV3 = "a9000000-0000-0000-0000-0000000000a3", APPSER = "a9000000-0000-0000-0000-0000000000b1";
+  const event = (id, extra = {}) => ({ app_id: id, slug: `app-${id.slice(-2)}-abcd`, name: "Lazada de la app", date: "2099-10-10", venue: "Lienzo", disciplines: ["lazo"], draw_type: "lazada_sorteada", shots: 4, max_roper_rating: 6.5, max_team_rating: 12, entry_fee_cents: 50000, ...extra });
+  const series = { app_id: APPSER, slug: "serie-app-abcd", name: "Temporada de la app", start_date: "2099-01-01", end_date: "2099-12-31" };
+
+  const first = (await upload(A, series, event(APPEV)))[0];
+  verify("la primera subida crea el evento y la serie", first.r_event_created === true && first.r_series_created === true && !!first.r_event_id && !!first.r_series_id);
+  verify("el evento nace como BORRADOR con el tipo de sorteo, tiros y topes de la app", await num(`select count(*) n from events where id = '${first.r_event_id}' and status = 'borrador' and draw_type = 'lazada_sorteada' and lazada_shots_per_package = 4 and max_roper_rating = 6.5 and max_team_rating = 12 and organizer_id = '${A}'`) === 1);
+  verify("lo que la app no tiene queda vacío (ciudad '', sede de la app, sin cupo) y entra en la serie", await num(`select count(*) n from events where id = '${first.r_event_id}' and city = '' and venue = 'Lienzo' and capacity is null and series_id = '${first.r_series_id}' and disciplines = array['lazo']`) === 1);
+  verify("trae una categoría General con la cuota de la app", await num(`select count(*) n from event_categories where event_id = '${first.r_event_id}' and name = 'General' and fee_cents = 50000`) === 1);
+  verify("la serie nace con plantilla vacía y el nombre del organizador", await num(`select count(*) n from event_series s join event_series_template t on t.series_id = s.id where s.id = '${first.r_series_id}' and t.city = '' and t.capacity is null and s.organizer_name is not null`) === 1);
+
+  const again = (await upload(A, series, event(APPEV, { name: "Otro nombre", slug: "otro-slug-zzzz", shots: 9 })))[0];
+  verify("reenviar el mismo evento devuelve el mismo id y slug, sin crear nada", again.r_event_id === first.r_event_id && again.r_event_slug === first.r_event_slug && again.r_event_created === false && again.r_series_created === false);
+  verify("reenviar NO modifica el evento (la web manda después de crearse)", await num(`select count(*) n from events where id = '${first.r_event_id}' and name = 'Lazada de la app' and lazada_shots_per_package = 4`) === 1);
+  verify("no se duplicó el evento, la serie ni la categoría", await num(`select count(*) n from events where app_event_id = '${APPEV}'`) === 1 && await num(`select count(*) n from event_series where app_series_id = '${APPSER}'`) === 1 && await num(`select count(*) n from event_categories where event_id = '${first.r_event_id}'`) === 1);
+
+  const second = (await upload(A, series, event(APPEV2, { draw_type: "round_robin", shots: null, max_team_rating: null, max_roper_rating: null, entry_fee_cents: 0 })))[0];
+  verify("otro evento de la misma serie reutiliza la serie (vinculada por id, no por nombre)", second.r_event_created === true && second.r_series_created === false && second.r_series_id === first.r_series_id);
+  verify("un evento round_robin sin topes ni cuota se guarda tal cual", await num(`select count(*) n from events where id = '${second.r_event_id}' and draw_type = 'round_robin' and lazada_shots_per_package is null and max_roper_rating is null and max_team_rating is null`) === 1);
+
+  const byId = (await upload(A, { ...series, id: first.r_series_id, app_id: "a9000000-0000-0000-0000-0000000000b9", slug: "no-se-usa-abcd" }, event("a9000000-0000-0000-0000-0000000000a5")))[0];
+  verify("con series.id (la serie ya conocida en la web) se usa esa serie y no se crea otra", byId.r_event_created === true && byId.r_series_created === false && byId.r_series_id === first.r_series_id && await num(`select count(*) n from event_series where organizer_id = '${A}' and app_series_id = 'a9000000-0000-0000-0000-0000000000b9'`) === 0);
+  verify("series.id de OTRO organizador se rechaza (series_not_found) y no crea el evento", await denied(() => upload(B, { ...series, id: first.r_series_id }, event("a9000000-0000-0000-0000-0000000000a6", { slug: "app-b2-abcd" }))) && await num(`select count(*) n from events where app_event_id = 'a9000000-0000-0000-0000-0000000000a6'`) === 0);
+
+  const loose = (await upload(A, null, event(APPEV3, { date: "2101-01-01" })))[0];
+  verify("un evento suelto (sin serie) se crea sin serie", loose.r_event_created === true && loose.r_series_id === null && await num(`select count(*) n from events where id = '${loose.r_event_id}' and series_id is null`) === 1);
+
+  verify("una fecha fuera de las fechas de la serie se rechaza (outside_series) y no deja nada a medias", await denied(() => upload(A, series, event("a9000000-0000-0000-0000-0000000000a4", { date: "2101-02-02" }))) && await num(`select count(*) n from events where app_event_id = 'a9000000-0000-0000-0000-0000000000a4'`) === 0);
+  verify("el mismo uuid de la app en OTRO organizador es otro evento (no se pisan)", (await upload(B, null, event(APPEV, { slug: "app-b-abcd" })))[0].r_event_id !== first.r_event_id);
+  verify("el borrador de la app NO es visible para el público", await num(`select count(*) n from events where id = '${first.r_event_id}' and status = 'borrador'`) === 1);
+
+  await as("authenticated", A, "select public.app_upload_event('" + A + "', null, '{}'::jsonb)", "un organizador NO llama la función desde el navegador", "deny");
+  await as("anon", null, "select public.app_upload_event('" + A + "', null, '{}'::jsonb)", "anónimo NO llama la función", "deny");
+  await as("authenticated", A, "update events set app_event_id = gen_random_uuid() where id = '" + first.r_event_id + "'", "nadie reescribe app_event_id desde el navegador", "deny");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

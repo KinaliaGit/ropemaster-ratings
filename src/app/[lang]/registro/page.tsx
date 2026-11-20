@@ -13,8 +13,8 @@ async function Page({ props }: { props: PageProps<"/[lang]/registro"> }) {
       title: a.createAccount, participantBlurb: a.participantBlurb, organizerBlurb: a.organizerBlurb, roles: { organizador: a.organizer, participante: a.participant },
       fullName: a.fullName, email: a.email, password: a.password, passwordHint: a.passwordHint, create: a.create, checkEmail: a.checkEmail, resend: a.resend, resent: a.resent,
       acceptPrefix: g.acceptPrefix, and: g.and, terms: g.terms, privacy: g.privacy, termsHref: `/${lang}/terminos`, privacyHref: `/${lang}/privacidad`,
-      roleFields: t.roles,
-      errors: { role: a.errorRole, terms: g.acceptError, exists: a.errorExists, password: a.errorPassword, generic: a.errorGeneric },
+      roleFields: t.roles, ratingLabel: a.ratingLabel, ratingHint: a.ratingHint,
+      errors: { role: a.errorRole, rating: a.errorRating, terms: g.acceptError, exists: a.errorExists, password: a.errorPassword, generic: a.errorGeneric },
     }} />
   );
 }

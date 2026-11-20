@@ -141,7 +141,10 @@ miles de lazadores, bajar todo sería enorme y expondría correos de gente ajena
   consulta; la app lo guarda como el próximo `since` solo si recibió todas las páginas.
 - `ratings` trae un rating (escala de 1 a 10, un decimal) POR modalidad **activa** (hoy solo `lazo`). Quien aún no tiene rating en
   una modalidad viene con el rating inicial (1, igual que se muestra en la web), `events: 0`, `wins: 0` y `updated_at: null`. Las
-  modalidades que la web no tiene activas no se envían.
+  modalidades que la web no tiene activas no se envían. **El rating de partida lo declara el lazador al crear su cuenta** (KIN-663, migración 0040):
+  se guarda como su rating en `lazo` con `events: 0` y `wins: 0`, así que llega aquí sin ningún campo nuevo. Si un organizador ya le había puesto un
+  rating a ese perfil antes de que reclamara su cuenta, ese gana. La web no deja editarlo desde la cuenta; la fórmula que lo recalcula con
+  resultados sigue en pausa (KIN-571 y KIN-583).
 - Cada participante lleva solo `global_id`, `name`, `email`, `claimed`, `role`, `favorite_role` y `ratings`. Nunca celular ni ids de cuenta.
 - `role` es con qué rol compite (KIN-622): `header` (cabecero), `heeler` (pialador) o `both` (ambos); `favorite_role` es `header` o `heeler` y **solo viene
   cuando `role` es `both`** (el rol que usa más). Los perfiles que aún no eligen rol traen los dos en `null` ("sin definir"); la app no debe bloquearlos.

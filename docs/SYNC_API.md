@@ -142,6 +142,8 @@ La app (donde se creó el evento, con su serie) lo sube a la web para que el org
 - **Idempotente.** `event.app_id` (el uuid del evento en la app) es único por organizador. Reenviar el mismo evento (por ejemplo tras un corte) responde `200` con el
   mismo `id` y `slug` y **no modifica nada**: después de crearse, la web es la fuente de verdad (inscritos, pagos, ediciones del organizador). La app no actualiza
   eventos ya subidos por este endpoint.
+- **Serie ya conocida.** Si la app ya sabe cuál es la serie en la web (porque vino de ella o porque una subida anterior la creó), manda también `series.id` (el id de la
+  web). Entonces se usa esa serie —debe ser de este organizador, si no `422 series_not_found`— y no se crea ni se modifica nada de ella.
 - La web asigna `id` y `slug`; la app los guarda como `event.remote_id` y `event.remote_slug` (y los de la serie como `series.remote_id` y `series.remote_slug`).
 
 Cuerpo:
@@ -159,6 +161,7 @@ Cuerpo:
 | `event.max_roper_rating` / `event.max_team_rating` | número (0 a 10 / 0 a 20) o `null` | Topes individual y por equipo. |
 | `event.entry_fee_cents` | entero >= 0 | Cuota de la app, en centavos. Se crea una categoría **General** con ese costo; el cupo queda sin límite (`capacity` `null`). |
 | `series.app_id` / `name` / `start_date` / `end_date` | UUID / texto (2 a 120) / fechas | `end_date` no antes que `start_date`. |
+| `series.id` | UUID, opcional | Id de la serie en la web, si la app ya lo conoce. |
 
 Respuesta `201` (se creó) o `200` (ya existía): `{ contract_version, created, event: { id, slug, status: "borrador" }, series: { id, slug, created } | null }`.
 
@@ -169,6 +172,7 @@ Respuesta `201` (se creó) o `200` (ya existía): `{ contract_version, created, 
 | `403` | `organizer_not_active` | La cuenta no es de organizador activo | no |
 | `413` | `payload_too_large` | Más de 8 KB | no |
 | `422` | `outside_series` | La fecha del evento cae fuera de las fechas de su serie | no, la app avisa |
+| `422` | `series_not_found` | `series.id` no existe o es de otro organizador | no |
 | `422` | `series_full` | La serie ya tiene 30 eventos en la web | no |
 | `409` | `slug_taken` | Choque raro de enlaces | sí, de inmediato (la web genera otro) |
 | `426` | `version_unsupported` | La web ya no habla esa versión | no, pide actualizar |

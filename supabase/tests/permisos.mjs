@@ -1533,6 +1533,10 @@ console.log("- Resultados de un evento (0030)");
   verify("otro evento de la misma serie reutiliza la serie (vinculada por id, no por nombre)", second.r_event_created === true && second.r_series_created === false && second.r_series_id === first.r_series_id);
   verify("un evento round_robin sin topes ni cuota se guarda tal cual", await num(`select count(*) n from events where id = '${second.r_event_id}' and draw_type = 'round_robin' and lazada_shots_per_package is null and max_roper_rating is null and max_team_rating is null`) === 1);
 
+  const byId = (await upload(A, { ...series, id: first.r_series_id, app_id: "a9000000-0000-0000-0000-0000000000b9", slug: "no-se-usa-abcd" }, event("a9000000-0000-0000-0000-0000000000a5")))[0];
+  verify("con series.id (la serie ya conocida en la web) se usa esa serie y no se crea otra", byId.r_event_created === true && byId.r_series_created === false && byId.r_series_id === first.r_series_id && await num(`select count(*) n from event_series where organizer_id = '${A}' and app_series_id = 'a9000000-0000-0000-0000-0000000000b9'`) === 0);
+  verify("series.id de OTRO organizador se rechaza (series_not_found) y no crea el evento", await denied(() => upload(B, { ...series, id: first.r_series_id }, event("a9000000-0000-0000-0000-0000000000a6", { slug: "app-b2-abcd" }))) && await num(`select count(*) n from events where app_event_id = 'a9000000-0000-0000-0000-0000000000a6'`) === 0);
+
   const loose = (await upload(A, null, event(APPEV3, { date: "2101-01-01" })))[0];
   verify("un evento suelto (sin serie) se crea sin serie", loose.r_event_created === true && loose.r_series_id === null && await num(`select count(*) n from events where id = '${loose.r_event_id}' and series_id is null`) === 1);
 

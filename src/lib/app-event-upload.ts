@@ -14,7 +14,7 @@ type DrawType = (typeof DRAW_TYPES)[number];
 export type Failure = { ok: false; status: 400 | 413 | 426; code: string; error: string };
 const fail = (status: Failure["status"], code: string, error: string): Failure => ({ ok: false, status, code, error });
 
-export type SeriesInput = { app_id: string; slug: string; name: string; start_date: string; end_date: string };
+export type SeriesInput = { id: string | null; app_id: string; slug: string; name: string; start_date: string; end_date: string };
 export type EventInput = {
   app_id: string; slug: string; name: string; date: string; venue: string; disciplines: string[]; draw_type: DrawType;
   shots: number | null; max_roper_rating: number | null; max_team_rating: number | null; entry_fee_cents: number;
@@ -94,7 +94,8 @@ export function parseUploadEventBody(text: string, suffix: () => string = random
     if (!isRealDate(s.start_date) || !isRealDate(s.end_date) || s.end_date < s.start_date) {
       return fail(400, "invalid_field", "series.start_date y series.end_date deben ser fechas AAAA-MM-DD, la de fin no antes que la de inicio.");
     }
-    series = { app_id: s.app_id.toLowerCase(), slug: slugFrom(sName, suffix(), "serie"), name: sName, start_date: s.start_date, end_date: s.end_date };
+    if (s.id !== undefined && s.id !== null && (typeof s.id !== "string" || !UUID.test(s.id))) return fail(400, "invalid_field", "series.id debe ser un UUID.");
+    series = { id: typeof s.id === "string" ? s.id.toLowerCase() : null, app_id: s.app_id.toLowerCase(), slug: slugFrom(sName, suffix(), "serie"), name: sName, start_date: s.start_date, end_date: s.end_date };
   }
 
   return {
@@ -124,6 +125,7 @@ export function buildUploadEventResponse(row: UploadEventRow) {
 /** Errores de la base (`raise exception '<código>'`) que son culpa de los datos y no del servidor. */
 export function dbFailure(message: string): { status: 409 | 422; code: string; error: string } | null {
   if (message.includes("outside_series")) return { status: 422, code: "outside_series", error: "La fecha del evento cae fuera de las fechas de su serie." };
+  if (message.includes("series_not_found")) return { status: 422, code: "series_not_found", error: "La serie no existe en la web o no es tuya." };
   if (message.includes("series_full")) return { status: 422, code: "series_full", error: "La serie ya tiene 30 eventos en la web." };
   if (message.includes("events_slug_key") || message.includes("event_series_slug_key")) return { status: 409, code: "slug_taken", error: "El enlace del evento ya existe. Reintenta." };
   return null;

@@ -66,6 +66,13 @@ test("serie inválida: id, nombre y fechas", () => {
   bad({ app_id: "x" }); bad({ name: "A" }); bad({ start_date: "2026-12-31", end_date: "2026-01-01" }); bad({ end_date: "mañana" });
 });
 
+test("series.id (id de la web) es opcional y debe ser UUID", () => {
+  assert.equal(parse(base()).series.id, null);
+  const ok = base(); ok.series.id = "5e000000-0000-0000-0000-0000000000F1"; assert.equal(parse(ok).series.id, "5e000000-0000-0000-0000-0000000000f1");
+  const bad = base(); bad.series.id = "x"; fails(bad, 400, "invalid_field");
+  assert.equal(dbFailure("series_not_found").code, "series_not_found");
+});
+
 test("versión del contrato y forma del cuerpo", () => {
   fails({ ...base(), contract_version: 2 }, 426, "version_unsupported");
   const noVersion = base(); delete noVersion.contract_version; fails(noVersion, 400, "invalid_body");

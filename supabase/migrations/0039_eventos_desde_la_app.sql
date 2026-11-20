@@ -20,7 +20,8 @@ create unique index if not exists event_series_app_series_idx on public.event_se
 -- Nadie puede escribirlas desde el navegador: no se otorga ni insert ni update a `authenticated` (la service role no necesita grants).
 -- Se pueden LEER como cualquier columna de `events` (la tabla tiene select general): es un uuid al azar que genera la app, sin datos personales.
 
--- p_series: null (evento suelto) o { app_id, slug, name, start_date, end_date }.
+-- p_series: null (evento suelto) o { app_id, slug, name, start_date, end_date } y, si la app ya conoce la serie en la web, también `id`
+-- (el id de la serie en la web): con `id` se usa esa serie (debe ser del organizador) y no se crea nada; sin `id` se busca por `app_id`.
 -- p_event:  { app_id, slug, name, date, venue, disciplines[], draw_type, shots, max_roper_rating, max_team_rating, entry_fee_cents }.
 -- Devuelve una fila: ids y slugs del evento y de la serie, y si cada uno se creó ahora.
 create or replace function public.app_upload_event(p_organizer uuid, p_series jsonb, p_event jsonb)
@@ -45,7 +46,12 @@ begin
 
   if p_series is not null and jsonb_typeof(p_series) = 'object' then
     v_app_series := (p_series ->> 'app_id')::uuid;
-    select * into v_series from public.event_series where organizer_id = p_organizer and app_series_id = v_app_series for update;
+    if nullif(p_series ->> 'id', '') is not null then
+      select * into v_series from public.event_series where id = (p_series ->> 'id')::uuid and organizer_id = p_organizer for update;
+      if not found then raise exception 'series_not_found' using errcode = 'P0002'; end if;
+    else
+      select * into v_series from public.event_series where organizer_id = p_organizer and app_series_id = v_app_series for update;
+    end if;
     if not found then
       select display_name into v_org_name from public.profiles where user_id = p_organizer and role = 'organizador';
       insert into public.event_series (id, slug, organizer_id, organizer_name, name, description, start_date, end_date, app_series_id)

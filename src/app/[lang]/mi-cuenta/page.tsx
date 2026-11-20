@@ -12,6 +12,7 @@ import { rankedToRoper } from "@/lib/ranking";
 import { listMyRegistrations, listMyRemovals } from "@/lib/data/registrations";
 import { cancelRegistration, changeRegistrationRole } from "@/lib/registration-actions";
 import { hasEventPassed, isRegistrationOpen, statusByDate } from "@/lib/event-time";
+import { RatingEvolution } from "@/components/RatingEvolution";
 import { RoperHistorySection } from "@/components/RoperHistorySection";
 import { HistorySkeleton } from "@/components/ProfileSkeleton";
 import { getPublicRoper } from "@/lib/data/ropers";
@@ -86,6 +87,10 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                 ))}
               </dl>
             )}
+
+            <Suspense fallback={null}>
+              <RatingEvolution id={s.roperId!} lang={lang} t={t} />
+            </Suspense>
 
             <section aria-labelledby="pendientes" className="mt-10">
               <h2 id="pendientes" className="text-xl font-semibold">{t.account.pendingPayments}</h2>

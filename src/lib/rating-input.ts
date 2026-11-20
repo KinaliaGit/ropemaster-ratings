@@ -1,5 +1,5 @@
 // Rating que un lazador declara al crear su cuenta (KIN-663): de 1 a 10 con un decimal ("4", "4.5" o "4,5").
-// Es el rating de partida en la modalidad `lazo`; la base lo guarda en `roper_ratings` (ver la migración 0038) y la app lo recibe en `ratings.lazo.rating`.
+// Es el rating de partida en la modalidad `lazo`; la base lo guarda en `roper_ratings` (ver la migración 0040) y la app lo recibe en `ratings.lazo.rating`.
 // Sin dependencias para poder probarlo con `node --test` (ver tests/rating-input.test.mjs).
 
 export const RATING_MIN = 1;

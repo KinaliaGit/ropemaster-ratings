@@ -71,6 +71,10 @@ export function parseEventsQuery(url: URL): { ok: true; value: EventsQuery } | F
   return { ok: true, value: { since, cursor } };
 }
 
+/** Tipos de sorteo de un evento casual (KIN-648). */
+export type DrawType = "round_robin" | "lazada_sorteada";
+export const DRAW_TYPES: readonly DrawType[] = ["round_robin", "lazada_sorteada"];
+
 export type PaymentStatus = "pendiente" | "pagado" | "reembolsado";
 export type PaymentMethod = "efectivo" | "transferencia" | "stripe";
 
@@ -89,8 +93,12 @@ export type EventRow = {
   capacity: number | null;
   /** Rating máximo para inscribirse (KIN-638). La función SQL no lo trae: la ruta lo agrega. */
   max_roper_rating?: number | null;
-  /** Tipo de sorteo del evento (KIN-652): `round_robin` o `lazada_sorteada`. Hasta que exista la columna (KIN-649) no viene y sale `null`. */
-  draw_type?: "round_robin" | "lazada_sorteada" | null;
+  /** Tipo de sorteo (KIN-649). La función SQL no lo trae: la ruta lo agrega. Una web anterior no lo manda: se entiende `round_robin`. */
+  draw_type?: DrawType;
+  /** Tiros que trae un paquete en Lazada Sorteada (KIN-649). `null` fuera de ese tipo o mientras no se define. La ruta lo agrega. */
+  lazada_shots_per_package?: number | null;
+  /** Rating máximo de la SUMA de un equipo (KIN-649); `null` = sin tope. La ruta lo agrega. */
+  max_team_rating?: number | null;
   /** Serie del evento (KIN-625). La función SQL no la trae: la ruta la agrega. `null`/ausente = evento suelto. */
   series?: EventSeriesRef | null;
   status: string;
@@ -106,6 +114,8 @@ export type EventRow = {
     amount_cents: number;
     payment_method: PaymentMethod | null;
     role: "header" | "heeler" | null;
+    /** Paquetes de tiros que compró (KIN-649). 1 fuera de Lazada Sorteada. */
+    packages?: number;
   }[] | null;
 };
 
@@ -128,7 +138,9 @@ export function buildEventsPage(rows: EventRow[], organizer: string, snapshot: s
       disciplines: row.disciplines ?? [],
       capacity: row.capacity,
       max_roper_rating: row.max_roper_rating === undefined || row.max_roper_rating === null ? null : Number(row.max_roper_rating),
-      draw_type: row.draw_type === "round_robin" || row.draw_type === "lazada_sorteada" ? row.draw_type : null,
+      draw_type: row.draw_type ?? "round_robin",
+      lazada_shots_per_package: row.lazada_shots_per_package === undefined || row.lazada_shots_per_package === null ? null : Number(row.lazada_shots_per_package),
+      max_team_rating: row.max_team_rating === undefined || row.max_team_rating === null ? null : Number(row.max_team_rating),
       series: row.series ? { id: row.series.id, slug: row.series.slug ?? "", name: row.series.name, start_date: row.series.start_date, end_date: row.series.end_date } : null,
       description: row.description ?? "",
       updated_at: new Date(row.changed_at).toISOString(),
@@ -143,6 +155,7 @@ export function buildEventsPage(rows: EventRow[], organizer: string, snapshot: s
         amount_cents: r.amount_cents,
         payment_method: r.payment_method,
         role: r.role ?? null,
+        packages: r.packages ?? 1,
       })),
     })),
     // El cursor guarda `changed_at` TAL COMO lo entrega la base (con microsegundos): pasarlo por Date lo truncaría a milisegundos y la

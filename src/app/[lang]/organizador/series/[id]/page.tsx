@@ -65,12 +65,15 @@ async function Manage({ s, id, lang, t, flags, shareUrl }: { s: Session; id: str
 
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3" id="eventos">
           <h2 className="text-xl font-semibold">{ev.title} <span className="text-base font-normal tabular-nums text-muted">({events.length}/30)</span></h2>
-          {drafts > 0 && (
-            <form action={publishSeriesDrafts}>
-              <input type="hidden" name="lang" value={lang} /><input type="hidden" name="slug" value={x.id} />
-              <button className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hot">{ev.publishDrafts} ({drafts})</button>
-            </form>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {events.length < 30 && <a href="#agregar" className="rounded-full bg-sand px-4 py-2 text-sm font-medium hover:bg-line" data-testid="series-new-event">{ev.newEvent}</a>}
+            {drafts > 0 && (
+              <form action={publishSeriesDrafts}>
+                <input type="hidden" name="lang" value={lang} /><input type="hidden" name="slug" value={x.id} />
+                <button className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hot">{ev.publishDrafts} ({drafts})</button>
+              </form>
+            )}
+          </div>
         </div>
         {events.length === 0 ? <p className="mt-3 rounded-2xl bg-sand p-6 text-center text-muted">{ev.none}</p> : (
           <ul className="mt-3 space-y-3">

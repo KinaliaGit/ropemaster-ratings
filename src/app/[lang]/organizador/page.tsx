@@ -35,7 +35,7 @@ async function Panel({ s, lang, t, welcome }: { s: Session; lang: Lang; t: Dict;
             <p className="label">{t.org.accountType}</p>
             <h1 className="text-3xl font-semibold">{s.name}</h1>
           </div>
-          {s.verified ? <Link href={`/${lang}/organizador/eventos/nuevo`} className="rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-hot">{t.org.newEvent}</Link> : <span className="rounded-full bg-sand px-5 py-2.5 text-sm font-medium text-muted">{t.org.newEvent}</span>}
+          {s.verified ? <Link href={`/${lang}/organizador/series/nueva`} className="rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-hot">{t.org.newSeries}</Link> : <span className="rounded-full bg-sand px-5 py-2.5 text-sm font-medium text-muted">{t.org.newEvent}</span>}
         </div>
         <dl className="mt-6 grid gap-3 sm:grid-cols-3">
           {stats.map(([l, v]) => <div key={l} className="card p-4"><dd className="text-3xl font-semibold tabular-nums">{v}</dd><dt className="label mt-1">{l}</dt></div>)}

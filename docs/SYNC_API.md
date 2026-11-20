@@ -137,7 +137,7 @@ La app (donde se creó el evento, con su serie) lo sube a la web para que el org
 - **El evento nace SIEMPRE como `borrador`.** La app nunca publica: el organizador completa en la web lo que la app no sabe y lo publica. Un borrador no aparece
   en `GET /api/app/eventos` ni en el sitio público; cuando el organizador lo publica, llega a la app con el mismo `id` que la respuesta de esta subida, así que la app
   lo reconoce (`event.remote_id`) y no lo trata como evento nuevo.
-- **Serie y evento van juntos.** `series` es `null` (o falta) para un evento suelto. La serie se vincula por `series.app_id` (el uuid de la serie en la app), nunca por
+- **Serie y evento van juntos.** `series` es OBLIGATORIA (KIN-659: un evento vive siempre dentro de una serie; sin ella, `400 series_required`). La serie se vincula por `series.app_id` (el uuid de la serie en la app), nunca por
   nombre: si ya existe una serie de este organizador con ese `app_id` se reutiliza (y NO se modifica); si no, se crea con la plantilla vacía (ciudad, sede, cupo,
   modalidades y categorías las completa el organizador en la web antes de agregar eventos desde allá). La fecha del evento debe caer dentro de las fechas de la serie.
 - **Idempotente.** `event.app_id` (el uuid del evento en la app) es único por organizador. Reenviar el mismo evento (por ejemplo tras un corte) responde `200` con el
@@ -165,7 +165,7 @@ Cuerpo:
 | `series.app_id` / `name` / `start_date` / `end_date` | UUID / texto (2 a 120) / fechas | `end_date` no antes que `start_date`. |
 | `series.id` | UUID, opcional | Id de la serie en la web, si la app ya lo conoce. |
 
-Respuesta `201` (se creó) o `200` (ya existía): `{ contract_version, created, event: { id, slug, status: "borrador" }, series: { id, slug, created } | null }`.
+Respuesta `201` (se creó) o `200` (ya existía): `{ contract_version, created, event: { id, slug, status: "borrador" }, series: { id, slug, created } }`.
 
 | HTTP | `code` | Cuándo | ¿Reintentar? |
 |---|---|---|---|
@@ -173,6 +173,7 @@ Respuesta `201` (se creó) o `200` (ya existía): `{ contract_version, created, 
 | `401` | `invalid_token` | Token inválido, revocado o vencido | no, pide reconectar |
 | `403` | `organizer_not_active` | La cuenta no es de organizador activo | no |
 | `413` | `payload_too_large` | Más de 8 KB | no |
+| `400` | `series_required` | Falta `series` (evento suelto) | no |
 | `422` | `outside_series` | La fecha del evento cae fuera de las fechas de su serie | no, la app avisa |
 | `422` | `series_not_found` | `series.id` no existe o es de otro organizador | no |
 | `422` | `series_full` | La serie ya tiene 30 eventos en la web | no |

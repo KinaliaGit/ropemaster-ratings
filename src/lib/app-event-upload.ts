@@ -19,7 +19,7 @@ export type EventInput = {
   app_id: string; slug: string; name: string; date: string; venue: string; disciplines: string[]; draw_type: DrawType;
   shots: number | null; rounds: number | null; max_roper_rating: number | null; max_team_rating: number | null; entry_fee_cents: number;
 };
-export type UploadEventBody = { ok: true; event: EventInput; series: SeriesInput | null };
+export type UploadEventBody = { ok: true; event: EventInput; series: SeriesInput };
 
 const isRealDate = (value: unknown): value is string => {
   if (typeof value !== "string" || !DATE.test(value)) return false;
@@ -89,9 +89,11 @@ export function parseUploadEventBody(text: string, suffix: () => string = random
   const fee = e.entry_fee_cents === undefined || e.entry_fee_cents === null ? 0 : e.entry_fee_cents;
   if (typeof fee !== "number" || !Number.isInteger(fee) || fee < 0 || fee > 100_000_000) return fail(400, "invalid_field", "event.entry_fee_cents debe ser un entero en centavos.");
 
-  let series: SeriesInput | null = null;
-  if (body.series !== undefined && body.series !== null) {
-    if (typeof body.series !== "object" || Array.isArray(body.series)) return fail(400, "invalid_body", "series debe ser un objeto o null.");
+  // Un evento vive siempre dentro de una serie (KIN-659): la app nunca manda uno suelto.
+  if (body.series === undefined || body.series === null) return fail(400, "series_required", "series es obligatoria: un evento se sube dentro de su serie.");
+  let series: SeriesInput;
+  {
+    if (typeof body.series !== "object" || Array.isArray(body.series)) return fail(400, "invalid_body", "series debe ser un objeto.");
     const s = body.series as Record<string, unknown>;
     if (typeof s.app_id !== "string" || !UUID.test(s.app_id)) return fail(400, "invalid_field", "series.app_id debe ser un UUID.");
     const sName = textOf(s.name, 120);

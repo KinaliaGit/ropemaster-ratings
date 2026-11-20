@@ -23,9 +23,9 @@ test("un cuerpo completo se lee y arma los enlaces con el sufijo", () => {
   assert.deepEqual(r.event.disciplines, ["lazo"]);
 });
 
-test("el evento suelto (series null o ausente) es válido", () => {
-  const a = base(); a.series = null; assert.equal(parse(a).series, null);
-  const b = base(); delete b.series; assert.equal(parse(b).series, null);
+test("el evento suelto (series null o ausente) se rechaza: un evento vive dentro de una serie (KIN-659)", () => {
+  const a = base(); a.series = null; fails(a, 400, "series_required");
+  const b = base(); delete b.series; fails(b, 400, "series_required");
 });
 
 test("round_robin sin topes ni cuota ni tiros", () => {

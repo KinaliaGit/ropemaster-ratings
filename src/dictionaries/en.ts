@@ -92,8 +92,8 @@ export const en: Dict = {
       noneTitle: "Your account is under review.", noneText: "To create events and see participants you need an active Rope Master license or an administrator's approval. Until then you can't publish anything.",
       expiredTitle: "Your license has expired.", expiredText: "Renew it to create and publish events again. It expired on", validUntil: "License valid until",
     },
-    welcome: "Account created! You can now create your first event.", noEvents: "You have no events yet. Create the first one.", noParticipants: "No participants have registered yet.",
-    accountType: "Organizer account", newEvent: "+ New event", events: "Events", enrolled: "Registered", collected: "Collected", myEvents: "My events", manage: "Manage",
+    welcome: "Account created! You can now create your first event.", noEvents: "You have no events yet. Create a series and add the first one inside it.", noParticipants: "No participants have registered yet.",
+    accountType: "Organizer account", newSeries: "+ New series", newEvent: "+ New event", events: "Events", enrolled: "Registered", collected: "Collected", myEvents: "My events", manage: "Manage",
     tabs: { series: "Series", appShort: "App", adminShort: "Admin", admin: "Administration", summary: "Overview", participants: "Participants", app: "Local app" },
     tbl: { event: "Event", date: "Date", state: "Status", enrolled: "Registered" },
     stripe: { title: "Enable payments.", text: "Connect your Stripe account to receive registrations straight into your bank.", btn: "Connect Stripe", opening: "Opening…" },
@@ -116,7 +116,7 @@ export const en: Dict = {
       title: "Series", blurb: "Group the events of a season (for example 9 dates through the year) and create them all at once, each with its own registration opening.", newSeries: "+ New series", none: "You have no series yet. Create the first one.", manage: "Manage", eventsCount: "events", myEvents: "My events", deleted: "Series deleted. Its events still exist as standalone events.",
       back: "My series", emptyTemplate: "This series template is empty (it was created from the app). Fill it in so events you add from the web come with city, venue, capacity and categories already set.", shareHint: "Anyone with this link sees the series and its events, and can register from there.", publicPage: "View public page", edit: "Edit series", dates: "Series dates", noPublic: "The public page appears once you publish at least one event.", created: "Series created! Now add its events.", saved: "Changes saved.",
       form: {
-        newTitle: "New series", newBlurb: "Set the season and the configuration copied to each event. Then you add the events with their dates.", editTitle: "Edit series", editBlurb: "Changes to the configuration only apply to events you create afterwards; existing events are edited one by one.",
+        newTitle: "New series", firstSeries: "Events are created inside a series. Create the series first; once saved you can add its events.", newBlurb: "Set the season and the configuration copied to each event. Then you add the events with their dates.", editTitle: "Edit series", editBlurb: "Changes to the configuration only apply to events you create afterwards; existing events are edited one by one.",
         name: "Series name", description: "Description", start: "Starts", end: "Ends", timezone: "Time zone of the events", templateTitle: "Configuration of each event", templateHint: "Copied to each new event in the series; you can change each one afterwards.",
         city: "City", venue: "Venue", capacity: "Capacity per event", disciplines: "Disciplines", categories: "Categories and entry fee", categoryName: "Category name", cost: "Entry fee", costHint: "What each participant pays for this category", addCategory: "+ Add category",
         paymentInfo: "Payment instructions (transfer or cash)", paymentInfoHint: "Only people who register can see them. Copied to each event.", create: "Create series", save: "Save changes",
@@ -125,7 +125,7 @@ export const en: Dict = {
       ev: {
         title: "Events in the series", none: "No events yet. Add them below.", addTitle: "Add events", addHint: "Each event copies the series configuration (venue, capacity, categories and payment). Add one or several at once; you can edit each one afterwards.",
         name: "Event name", date: "Date", opens: "Registration opens", opensHint: "Empty = opens as soon as you publish the event. With a date and time it opens by itself.", addRow: "+ Add another event", removeRow: "Remove", createDraft: "Create as drafts", createPublish: "Create and publish",
-        publishDrafts: "Publish all drafts", delete: "Delete", deleteTitle: "Delete this event", deleteText: "The event is deleted and this can't be undone. Only possible if it has no registrations or results.", deleteConfirm: "Yes, delete", keep: "Cancel",
+        newEvent: "+ New event", publishDrafts: "Publish all drafts", delete: "Delete", deleteTitle: "Delete this event", deleteText: "The event is deleted and this can't be undone. Only possible if it has no registrations or results.", deleteConfirm: "Yes, delete", keep: "Cancel",
         manage: "Manage", edit: "Edit", enrolled: "Registered", range: "Allowed dates:", defaultName: "Round", opensOn: "Opens", opensNow: "As soon as it's published", closesOn: "Closes",
         msg: { agregados: "Done: we created", agregadosEnd: "event(s).", borrado: "Event deleted.", publicados: "Done: complete drafts published.", incompletos: "draft(s) not published: they are missing city, venue, capacity or a category. Complete them and publish them one by one." },
         errors: {

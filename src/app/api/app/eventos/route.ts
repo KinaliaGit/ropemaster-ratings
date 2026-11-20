@@ -75,8 +75,8 @@ export async function GET(request: Request) {
 }
 
 // La app crea un evento (y su serie) y lo sube (KIN-648, entrega 2). Contrato en docs/SYNC_API.md.
-//   POST /api/app/eventos  { contract_version, event: {...}, series: {...} | null }
-//   -> 201 (creado) o 200 (ya existía, no se modifica) { contract_version, created, event: { id, slug, status: "borrador" }, series: { id, slug, created } | null }
+//   POST /api/app/eventos  { contract_version, event: {...}, series: {...} }
+//   -> 201 (creado) o 200 (ya existía, no se modifica) { contract_version, created, event: { id, slug, status: "borrador" }, series: { id, slug, created } }
 // Orden de las comprobaciones: token de la sesión (401/429), tamaño (413), cuerpo y versión (400/426), organizador activo (403).
 // El evento nace SIEMPRE como borrador. Reenviar el mismo `event.app_id` no duplica ni cambia nada.
 export async function POST(request: Request) {

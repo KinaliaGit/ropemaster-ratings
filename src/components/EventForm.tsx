@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { createEvent, updateEvent } from "@/lib/event-actions";
+import { updateEvent } from "@/lib/event-actions";
 import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/event-time";
 
 type Labels = {
@@ -13,12 +13,12 @@ export type EventInitial = { slug: string; name: string; date: string; capacity:
 
 const input = "mt-1 w-full rounded-xl border border-line bg-white px-4 py-2.5 outline-none focus:border-ink";
 
-export function EventForm({ lang, labels: l, disciplines, error, initial }: { lang: "es" | "en"; labels: Labels; disciplines: { id: string; label: string }[]; error?: string; initial?: EventInitial }) {
+export function EventForm({ lang, labels: l, disciplines, error, initial }: { lang: "es" | "en"; labels: Labels; disciplines: { id: string; label: string }[]; error?: string; initial: EventInitial }) {
   const [cats, setCats] = useState<{ id: string; name: string; fee: number }[]>(initial?.cats ?? [{ id: "", name: "Libre", fee: 800 }]);
   const [drawType, setDrawType] = useState<"round_robin" | "lazada_sorteada">(initial?.drawType ?? "round_robin");
   const locked = initial?.drawLocked ?? false; // con inscritos o resultados el tipo y los tiros por paquete ya no cambian (la base lo impone)
   return (
-    <form action={initial ? updateEvent : createEvent} className="mt-6 space-y-5 card p-6">
+    <form action={updateEvent} className="mt-6 space-y-5 card p-6">
       <input type="hidden" name="lang" value={lang} />
       {initial && <input type="hidden" name="slug" value={initial.slug} />}
       {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{l.errors[error] ?? l.error}</p>}

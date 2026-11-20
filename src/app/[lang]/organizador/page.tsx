@@ -16,7 +16,7 @@ import type { Lang } from "@/lib/format";
 
 const badge: Record<string, string> = { publicado: "bg-brand-soft text-brand-hot", borrador: "bg-sand text-muted", finalizado: "bg-ink text-white" };
 
-async function Panel({ s, lang, t, welcome, deleted }: { s: Session; lang: Lang; t: Dict; welcome: boolean; deleted: boolean }) {
+async function Panel({ s, lang, t, welcome, deleted, verified }: { s: Session; lang: Lang; t: Dict; welcome: boolean; deleted: boolean; verified: boolean }) {
   // Un organizador sin verificar no puede operar (la base lo rechaza): no hay resumen que mostrar, solo su aviso de revisión.
   const [mine, overview] = await Promise.all([listOrganizerEvents(s.id), s.verified ? getOrganizerOverview() : Promise.resolve(null)]);
   const stateLabel: Record<string, string> = { publicado: t.status.published, borrador: t.status.draft, finalizado: t.status.finished };
@@ -24,6 +24,7 @@ async function Panel({ s, lang, t, welcome, deleted }: { s: Session; lang: Lang;
     <>
       <OrgNav lang={lang} t={t} admin={s.isAdmin} />
       <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
+        {verified && <p role="status" className="mb-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.account.alreadyVerified}</p>}
         {deleted && <p role="status" className="mb-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.org.del.deleted}</p>}
         {welcome && s.verified && <p role="status" className="mb-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.org.welcome}</p>}
         {!s.verified && (
@@ -87,7 +88,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador"> }) {
   const sp = await props.searchParams;
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador`}>
-      {(s) => <Panel s={s} lang={lang} t={t} welcome={sp.bienvenido === "1"} deleted={sp.borrado === "1"} />}
+      {(s) => <Panel s={s} lang={lang} t={t} welcome={sp.bienvenido === "1"} deleted={sp.borrado === "1"} verified={sp.yaVerificada === "1"} />}
     </Gate>
   );
 }

@@ -35,7 +35,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
   const sp = await props.searchParams;
   const t = getDictionary(lang);
   const [events, top] = await Promise.all([listPublicEvents(), listRankingPage("lazo").then((p) => p.rows.slice(0, 4).map((r) => rankedToRoper(r, "lazo")))]);
-  const notice = sp.pago === "ok" ? t.pay.returned : sp.perfil === "ok" ? t.account.profileCreated : sp.rol === "ok" ? null : sp.rolInscripcion === "ok" ? t.account.roleChanged : sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
+  const notice = sp.yaVerificada === "1" ? t.account.alreadyVerified : sp.pago === "ok" ? t.pay.returned : sp.perfil === "ok" ? t.account.profileCreated : sp.rol === "ok" ? null : sp.rolInscripcion === "ok" ? t.account.roleChanged : sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
   return (
     <Gate lang={lang} role="any" next={`/${lang}/mi-cuenta`}>
       {async (s) => {

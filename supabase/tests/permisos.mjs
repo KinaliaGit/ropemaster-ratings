@@ -535,14 +535,27 @@ console.log("- Resultados que sube la app (0021)");
   const invalid = await upload(A, [
     badRounds(11, [round(1, "pending", null)]), badRounds(12, [{ ...round(1, "completed", null), time_ms: null }]), badRounds(13, [{ ...round(1, "no_time", null), time_ms: 5000 }]),
     badRounds(14, [round(1, "completed", 8000, { penalty_ms: -1 })]), badRounds(15, [round(1, "completed", 8000), round(1, "no_time")]), badRounds(16, [round(0, "completed", 8000)]),
-    badRounds(17, Array.from({ length: 21 }, (_, i) => round(i + 1, "completed", 8000))), badRounds(18, [round(1, "completed", 8000, { stage: "semifinal" })]),
+    badRounds(17, Array.from({ length: 101 }, (_, i) => round(i + 1, "completed", 8000))), badRounds(18, [round(1, "completed", 8000, { stage: "semifinal" })]),
     badRounds(19, "no es una lista"), badRounds(20, [42]), badRounds(21, [round(1, "completed", 8000)], { completed_runs: 2 }), badRounds(22, [round(1, "no_time")], { nt_count: 0 }),
     badRounds(23, [round(1, "completed", 8000)], { dq_count: 1 }), badRounds(24, [round(1, "completed", 8000, { time_ms: 8000.5 })]),
   ]);
   await check("rondas inválidas o contadores que no coinciden: cada una se rechaza como invalid_field", invalid.length === 14 && invalid.every((r) => r.r_status === "rejected" && r.r_code === "invalid_field" && r.r_retry === false));
   await check("lo rechazado no dejó nada guardado", (await count("select count(*)::int as n from event_results where id::text like 'a1c2e3f4-0000-4000-8000-0000000001%' and id::text > '" + rid(10) + "'")) === 0);
-  const twenty = await upload(A, [withRounds(30, Array.from({ length: 20 }, (_, i) => round(i + 1, "completed", 8000 + i)))]);
-  await check("20 rondas es el máximo permitido", twenty[0].r_status === "accepted" && (await stored(30)).completed_runs === 20);
+  // Lazada Sorteada (0041): un lazador corre tantos tiros como paquetes compró, así que el tope subió de 20 a 100 rondas por resultado.
+  const hundred = await upload(A, [withRounds(30, Array.from({ length: 100 }, (_, i) => round(i + 1, "completed", 8000 + i)))]);
+  await check("100 rondas es el máximo permitido (Lazada Sorteada)", hundred[0].r_status === "accepted" && (await stored(30)).completed_runs === 100);
+  const lazada = (n, extra = {}) => withRounds(n, Array.from({ length: 6 }, (_, i) => round(i + 1, "completed", 8000 + i)), extra);
+  const lz = async (n) => (await db.query(`select packages, shots, revision from event_results where id = '${rid(n)}'`)).rows[0];
+  const withPk = await upload(A, [lazada(90, { packages: 3, shots: 6 })]);
+  await check("paquetes y tiros opcionales se guardan", withPk[0].r_status === "accepted" && (await lz(90)).packages === 3 && (await lz(90)).shots === 6);
+  const withoutPk = await upload(A, [lazada(91)]);
+  await check("sin paquetes ni tiros (Round Robin o una app anterior): quedan en NULL", withoutPk[0].r_status === "accepted" && (await lz(91)).packages === null && (await lz(91)).shots === null);
+  const sameAgain = await upload(A, [lazada(90, { packages: 3, shots: 6 })]);
+  await check("reenviar lo mismo con paquetes y tiros: unchanged", sameAgain[0].r_status === "unchanged");
+  const fixedPk = await upload(A, [lazada(90, { packages: 4, shots: 8, revision: 2 })]);
+  await check("corregir los paquetes: updated", fixedPk[0].r_status === "updated" && (await lz(90)).packages === 4 && (await lz(90)).shots === 8);
+  const badPk = await upload(A, [lazada(92, { packages: 0 }), lazada(93, { packages: 199 }), lazada(94, { shots: 0 }), lazada(95, { shots: 10000 }), lazada(96, { packages: 1.5 })]);
+  await check("paquetes o tiros fuera de rango: invalid_field", badPk.length === 5 && badPk.every((r) => r.r_status === "rejected" && r.r_code === "invalid_field"));
 
   // Sin rondas también se acepta (solo el resumen); si luego llegan rondas con revisión mayor, se completan.
   const summaryOnly = await upload(A, [{ ...one({ id: rid(40), roper_global_id: R2 }), completed_runs: 3, nt_count: 0, dq_count: 0, rounds: undefined }]);

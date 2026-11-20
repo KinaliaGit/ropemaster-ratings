@@ -235,6 +235,8 @@ Estado: **implementada en la web** (KIN-587): `POST /api/app/resultados`, `POST 
 La app la usará desde KIN-593. Los ejemplos JSON completos están en [`docs/sync-examples/`](sync-examples/); la web los usa como datos de
 prueba (`npm run test:db` y `npm run test:unit`) y la app debe poder reproducirlos tal cual.
 
+**Lazada Sorteada (2026-11-20).** Se sube igual que Round Robin: un resumen por lazador cuyo `place` es el mejor lugar entre las parejas con las que corrió y con todos sus tiros dentro de `rounds`. Como cada persona corre tantos tiros como paquetes compró, el tope subió de 20 a 100 rondas por resultado (cambio compatible: una web anterior rechaza con `invalid_field` los resultados de más de 20 rondas). `packages` y `shots` viajan como campos opcionales; el tipo de sorteo no se manda porque la web ya lo tiene en el evento.
+
 Decisiones (2026-11-06): un resultado de alguien **sin lazador en la web** se acepta igual, solo para el evento y sin ligarlo a nadie; un
 evento **cerrado** no cambia hasta reabrirlo con un motivo, y reabrir se hace **desde la app**; reabrir **no** cambia el estado del evento.
 
@@ -274,14 +276,16 @@ las rondas se guardan para cuando se defina la fórmula, y reenviar el resumen o
 | `completed_runs` | entero >= 0 | Rondas regulares completadas (preliminares y final; sin extras, ayudas ni desempates). Opcional si viene `rounds` (se calcula de ahí; si la app también lo manda, debe coincidir) |
 | `nt_count` | entero >= 0 | Rondas con no time. Igual que el anterior |
 | `dq_count` | entero >= 0 | Rondas con descalificación. Igual que el anterior |
-| `rounds` | lista (máx. 20) | Las rondas que se intentaron (ver abajo). Opcional: sin ella solo queda el resumen |
+| `packages` | entero 1 a 198 o ausente | Paquetes de tiros que compró en total (Lazada Sorteada, KIN-648; hasta 99 por rol). Opcional e informativo; no afecta el resumen |
+| `shots` | entero 1 a 9999 o ausente | Tiros que le tocaban en total (paquetes por tiros de cada paquete). Opcional e informativo |
+| `rounds` | lista (máx. 100) | Las rondas que se intentaron (ver abajo). Opcional: sin ella solo queda el resumen |
 | `recorded_at` | fecha ISO-8601 | Cuándo se capturó en la app. Informativo |
 
 Cada elemento de `rounds`:
 
 | Campo | Tipo | Regla |
 |---|---|---|
-| `round` | entero 1 a 20 | Número de ronda. Las `regular` no repiten número dentro de la misma `stage`; las `extra` y `help` sí pueden |
+| `round` | entero 1 a 100 | Número de ronda. Las `regular` no repiten número dentro de la misma `stage`; las `extra` y `help` sí pueden |
 | `stage` | `preliminary`, `final` o `tiebreak` | Etapa. Si falta, `preliminary` (sirve para saber quién llegó a la final). `tiebreak` es una ronda de desempate |
 | `kind` | `regular`, `extra` o `help` | Si falta, `regular`. `extra` es una corrida extra y `help` una ayuda de una vacante del sorteo |
 | `status` | `completed`, `no_time` o `disqualified` | `completed` exige `time_ms`; los otros dos exigen `time_ms: null` |

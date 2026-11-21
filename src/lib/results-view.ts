@@ -22,7 +22,9 @@ export function toHistoryItem(r: HistoryRow, lang: Lang, t: Dict): HistoryItem {
 
 // Etiqueta de una ronda (Corrida extra, Ayuda) con su explicación: no es una penalización, es informativa y no cuenta para el resumen.
 export type RoundTag = { label: string; hint: string };
-export type RoundItem = { key: string; title: string; tags: RoundTag[]; value: string; penalty: string | null; note: string | null };
+// `group` identifica la ronda (etapa y número) y `title` es su nombre ("Ronda 1 · Final"). Si el lazador tiró varias veces en esa ronda, cada
+// tiro lleva su `shot` ("Tiro 1", "Tiro 2"...) y la pantalla los muestra juntos bajo el nombre de la ronda; con un solo tiro, `shot` es null.
+export type RoundItem = { key: string; group: string; title: string; shot: string | null; tags: RoundTag[]; value: string; penalty: string | null; note: string | null };
 
 const STAGE_ORDER = { preliminary: 0, final: 1, tiebreak: 2 } as const;
 const KIND_ORDER = { regular: 0, extra: 1, help: 2 } as const;
@@ -30,7 +32,7 @@ const KIND_ORDER = { regular: 0, extra: 1, help: 2 } as const;
 // Un lazador puede tener varias corridas en una misma ronda (se le asignan tiros). El contrato con la app no deja repetir una ronda
 // `regular` en la misma etapa, así que las corridas adicionales llegan como `extra`. Por eso aquí se agrupan por etapa y ronda, se ordenan
 // (la regular primero) y se numeran: "Ronda 1 · Corrida 2". El tag "Corrida extra" solo se pone cuando la ronda no tiene ninguna regular
-// (una extra que está sola); las demás son simplemente otra corrida de esa ronda. "Ayuda" siempre se etiqueta.
+// (una extra que está sola); las demás son simplemente otro tiro de esa ronda. "Ayuda" siempre se etiqueta.
 export function toRoundItems(rounds: Round[], t: Dict): RoundItem[] {
   const p = t.people;
   const sorted = rounds.map((r, i) => ({ r, i })).sort((a, b) =>
@@ -48,11 +50,11 @@ export function toRoundItems(rounds: Round[], t: Dict): RoundItem[] {
     const n = (seen.get(g) ?? 0) + 1;
     seen.set(g, n);
     const stage = r.stage === "final" ? ` · ${p.roundFinal}` : r.stage === "tiebreak" ? ` · ${p.roundTiebreak}` : "";
-    const run = (size.get(g) ?? 1) > 1 ? ` · ${p.run} ${n}` : "";
+    const shot = (size.get(g) ?? 1) > 1 ? `${p.run} ${n}` : null;
     const value = r.status === "completed" ? fmtTime(r.timeMs) : r.status === "no_time" ? p.noTime : p.dq;
     const sub = r.substitution;
     return {
-      key: `${i}-${r.stage}-${r.kind}-${r.round}`, title: `${p.round} ${r.round}${stage}${run}`,
+      key: `${i}-${r.stage}-${r.kind}-${r.round}`, group: g, title: `${p.round} ${r.round}${stage}`, shot,
       tags: [...(r.kind === "extra" && !hasRegular.has(g) ? [{ label: p.extra, hint: p.extraHint }] : []), ...(r.kind === "help" ? [{ label: p.help, hint: p.helpHint }] : [])],
       value, penalty: r.status === "completed" && r.penaltyMs > 0 ? `+${fmtTime(r.penaltyMs)}` : null,
       note: sub ? `${p.substitute}: ${sub.name} (${sub.role === "header" ? p.header : p.heeler})${sub.countsForSubstitute ? ` · ${p.countsForSubstitute}` : ""}` : null,

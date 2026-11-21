@@ -1,6 +1,6 @@
 -- Paquetes y tiros en los resultados públicos de un evento (KIN-648). Cambia el tipo de lo que devuelve `public_event_results` (dos columnas
 -- nuevas al final: `packages` y `shots`, NULL fuera de Lazada Sorteada), por eso se borra y se vuelve a crear con los mismos permisos.
--- Nada se guarda ni se altera: solo se leen las columnas que agregó la 0041. Mismas reglas que la 0030 (security invoker, solo eventos visibles).
+-- Nada se guarda ni se altera: solo se leen las columnas que agregó la 0047. Mismas reglas que la 0030 (security invoker, solo eventos visibles).
 
 drop function if exists public.public_event_results(uuid, text, bigint, integer);
 

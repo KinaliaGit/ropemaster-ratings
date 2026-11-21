@@ -5,7 +5,8 @@ import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { CopyLink } from "@/components/CopyLink";
 import { parseMissing, type MissingField } from "@/lib/event-publish";
-import { setEventStatus, setRegistrationOpen } from "@/lib/event-actions";
+import { deleteEvent, setEventStatus, setRegistrationOpen } from "@/lib/event-actions";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { enrollByOrganizer, removeRegistration, setRemovalReenroll, setRemovalRefunded } from "@/lib/registration-actions";
 import { RemoveRegistrationDialog } from "@/components/RemoveRegistrationDialog";
 import { fmtDeadline, isNotOpenYet, isRegistrationOpen } from "@/lib/event-time";
@@ -15,13 +16,17 @@ import { listEventRegistrations, listEventRemovals } from "@/lib/data/registrati
 import { setRegistrationPayment } from "@/lib/payment-actions";
 import { EventPhotos } from "@/components/EventPhotos";
 import { getOrganizerEvent } from "@/lib/data/events";
+import { getResultsSyncInfo } from "@/lib/data/event-results";
+import { EventResultsSection } from "@/components/EventResultsSection";
+import { EnrolledSkeleton } from "@/components/EventSkeleton";
+import { ACTIVE_DISCIPLINES, DEFAULT_DISCIPLINE, type DisciplineId } from "@/lib/disciplines";
 import type { Session } from "@/lib/session";
 import type { Dict } from "@/dictionaries/es";
 import type { Lang } from "@/lib/format";
 import { fmtDate, mxn } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
-type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justEdited: boolean; pagoError: boolean; manual: string | null; sacado: string | null; missing: MissingField[]; shareUrl: string; stateLabel: Record<string, string> };
+type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justEdited: boolean; pagoError: boolean; manual: string | null; sacado: string | null; missing: MissingField[]; borrarError: string | null; shareUrl: string; stateLabel: Record<string, string> };
 
 type Reg = Awaited<ReturnType<typeof listEventRegistrations>>[number];
 
@@ -52,7 +57,7 @@ function PayForm({ lang, slug, id, method, label, tone }: { lang: Lang; slug: st
   );
 }
 
-async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manual, sacado, missing, shareUrl, stateLabel }: ManageProps) {
+async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manual, sacado, missing, borrarError, shareUrl, stateLabel }: ManageProps) {
   // Un organizador solo gestiona sus propios eventos (la base además lo impone).
   const e = await getOrganizerEvent(s.id, id);
   if (!e) notFound();
@@ -64,6 +69,9 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
     <RemoveRegistrationDialog action={removeRegistration} lang={lang} slug={e.id} id={r.id} name={r.name} category={r.category} paymentLabel={payLabel(r)} paid={r.paymentStatus === "pagado"}
       l={{ button: rm.button, title: rm.title, person: rm.person, payment: rm.payment, reasonLabel: rm.reasonLabel, reasonPlaceholder: rm.reasonPlaceholder, presets: rm.presets, other: rm.other, presetList: rm.presetList, refundWarning: rm.refundWarning, cancel: rm.cancel, confirm: rm.confirm, minChars: rm.minChars }} />
   ));
+  const sync = e.uuid ? await getResultsSyncInfo(e.uuid) : { count: 0, lastSyncAt: null, closedAt: null };
+  const resultDisciplines: DisciplineId[] = ACTIVE_DISCIPLINES.filter((d) => e.disciplines.includes(d.id)).map((d) => d.id);
+  if (resultDisciplines.length === 0) resultDisciplines.push(DEFAULT_DISCIPLINE);
   const regOpen = isRegistrationOpen({ opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
   const notYet = !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt }); // apertura programada: se abre sola, no hay nada que cerrar ni reabrir
   const manualMsg = manual ? (t.org.ev.manual as Record<string, string>)[manual] ?? t.org.ev.manual.failed : null;
@@ -224,6 +232,34 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                   ))}
                 </div>
               </section>
+              <section aria-labelledby="results" className="mt-14">
+                <h2 id="results" className="text-xl font-semibold">{t.org.res.title}</h2>
+                <div className="card mt-3 p-4 text-sm">
+                  <p className="text-muted">{t.org.res.fromApp}</p>
+                  <p className="mt-2">{t.org.res.lastSync}: <span className="font-medium">{sync.lastSyncAt ? fmtDeadline(sync.lastSyncAt, e.timezone, lang) : t.org.res.never}</span>{sync.count > 0 && <span className="text-muted"> · {t.org.res.count(sync.count)}</span>}</p>
+                  {sync.count > 0 && <p className="mt-1">{sync.closedAt ? `${t.org.res.closed} ${fmtDeadline(sync.closedAt, e.timezone, lang)}` : t.org.res.open}</p>}
+                  <p className="mt-1 text-xs text-muted">{t.org.res.rating}</p>
+                </div>
+                {e.uuid && e.status !== "borrador" && sync.count > 0 ? (
+                  <Suspense fallback={<EnrolledSkeleton />}>
+                    <EventResultsSection slug={e.id} uuid={e.uuid} disciplines={resultDisciplines} lang={lang} t={t} />
+                  </Suspense>
+                ) : <p className="mt-3 text-muted">{e.status === "borrador" ? t.org.res.notPublic : t.org.res.empty}</p>}
+              </section>
+              <section aria-labelledby="danger" className="mt-14 rounded-2xl border border-red-200 p-5">
+                <h2 id="danger" className="text-lg font-semibold text-red-800">{t.org.del.zone}</h2>
+                <p className="mt-1 text-sm text-muted">{t.org.del.eventText}</p>
+                {borrarError && <p role="alert" className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">{(t.org.del.errors as Record<string, string>)[borrarError] ?? t.org.del.errors.failed}</p>}
+                <div className="mt-4">
+                  {e.status === "finalizado" || !e.uuid ? <p className="text-sm text-muted">{t.org.del.finishedNote}</p> : (
+                    <DeleteConfirmDialog
+                      action={deleteEvent} lang={lang} id={e.uuid} fields={{ slug: e.id, id: e.uuid }} needReason={e.enrolled > 0}
+                      summary={[[t.org.del.name, e.name], [t.org.del.date, e.date ? fmtDate(e.date, lang) : "–"], [t.org.del.enrolled, String(e.enrolled)]]}
+                      l={{ button: t.org.del.eventButton, title: t.org.del.eventTitle, typePrompt: t.org.del.typePrompt(t.org.del.word), word: t.org.del.word, reasonLabel: t.org.del.reasonLabel, reasonPlaceholder: t.org.del.reasonPlaceholder, minChars: t.org.del.minChars, notify: e.enrolled > 0 ? t.org.del.notify(e.enrolled) : null, cancel: t.org.del.cancel, confirm: t.org.del.confirm }}
+                    />
+                  )}
+                </div>
+              </section>
             </div>
           </>
   );
@@ -238,6 +274,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
   const manual = typeof sp.manual === "string" ? sp.manual : null;
   const sacado = typeof sp.sacado === "string" ? sp.sacado : null;
   const missing = parseMissing(sp.faltan);
+  const borrarError = typeof sp.borrarError === "string" ? sp.borrarError : null;
   const justCreated = sp.nuevo === "publicado" ? "publicado" : sp.nuevo === "borrador" ? "borrador" : null;
   // Enlace sin idioma: cada persona que lo abra llega a su idioma (el proxy elige es/en por su navegador).
   const h = await headers();
@@ -248,7 +285,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
   const stateLabel: Record<string, string> = { publicado: t.status.published, borrador: t.status.draft, finalizado: t.status.finished };
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador/eventos/${id}`}>
-      {(s) => <Manage s={s} id={id} lang={lang} t={t} justCreated={justCreated} justEdited={justEdited} pagoError={pagoError} manual={manual} sacado={sacado} missing={missing} shareUrl={shareUrl} stateLabel={stateLabel} />}
+      {(s) => <Manage s={s} id={id} lang={lang} t={t} justCreated={justCreated} justEdited={justEdited} pagoError={pagoError} manual={manual} sacado={sacado} missing={missing} borrarError={borrarError} shareUrl={shareUrl} stateLabel={stateLabel} />}
     </Gate>
   );
 }

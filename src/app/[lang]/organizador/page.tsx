@@ -6,7 +6,9 @@ import { OrgNav } from "@/components/OrgNav";
 import { StripeConnectButton } from "@/components/StripeConnectButton";
 import { STRIPE_ENABLED } from "@/lib/flags";
 import { listOrganizerEvents } from "@/lib/data/events";
-import { fmtDate, mxn } from "@/lib/format";
+import { getOrganizerOverview } from "@/lib/data/overview";
+import { OrgOverview } from "@/components/OrgOverview";
+import { fmtDate } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 import type { Session } from "@/lib/session";
 import type { Dict } from "@/dictionaries/es";
@@ -14,14 +16,16 @@ import type { Lang } from "@/lib/format";
 
 const badge: Record<string, string> = { publicado: "bg-brand-soft text-brand-hot", borrador: "bg-sand text-muted", finalizado: "bg-ink text-white" };
 
-async function Panel({ s, lang, t, welcome }: { s: Session; lang: Lang; t: Dict; welcome: boolean }) {
-  const mine = await listOrganizerEvents(s.id);
+async function Panel({ s, lang, t, welcome, deleted, verified }: { s: Session; lang: Lang; t: Dict; welcome: boolean; deleted: boolean; verified: boolean }) {
+  // Un organizador sin verificar no puede operar (la base lo rechaza): no hay resumen que mostrar, solo su aviso de revisión.
+  const [mine, overview] = await Promise.all([listOrganizerEvents(s.id), s.verified ? getOrganizerOverview() : Promise.resolve(null)]);
   const stateLabel: Record<string, string> = { publicado: t.status.published, borrador: t.status.draft, finalizado: t.status.finished };
-  const stats = [[t.org.events, mine.length], [t.status.published, mine.filter((e) => e.status === "publicado").length], [t.org.collected, mxn(0, lang)]];
   return (
     <>
       <OrgNav lang={lang} t={t} admin={s.isAdmin} />
       <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
+        {verified && <p role="status" className="mb-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.account.alreadyVerified}</p>}
+        {deleted && <p role="status" className="mb-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.org.del.deleted}</p>}
         {welcome && s.verified && <p role="status" className="mb-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.org.welcome}</p>}
         {!s.verified && (
           <div role="note" className="mb-6 rounded-2xl border border-line bg-sand p-4 text-sm">
@@ -37,11 +41,9 @@ async function Panel({ s, lang, t, welcome }: { s: Session; lang: Lang; t: Dict;
           </div>
           {s.verified ? <Link href={`/${lang}/organizador/series/nueva`} className="rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-hot">{t.org.newSeries}</Link> : <span className="rounded-full bg-sand px-5 py-2.5 text-sm font-medium text-muted">{t.org.newEvent}</span>}
         </div>
-        <dl className="mt-6 grid gap-3 sm:grid-cols-3">
-          {stats.map(([l, v]) => <div key={l} className="card p-4"><dd className="text-3xl font-semibold tabular-nums">{v}</dd><dt className="label mt-1">{l}</dt></div>)}
-        </dl>
+        {s.verified && (overview ? <OrgOverview o={overview} lang={lang} t={t} /> : <p role="alert" className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-800">{t.org.overview.loadError}</p>)}
         {STRIPE_ENABLED && <StripeConnectButton lang={lang} {...t.org.stripe} />}
-        <h2 className="mt-10 text-xl font-semibold">{t.org.myEvents}</h2>
+        <h2 id="mis-eventos" className="mt-10 scroll-mt-24 text-xl font-semibold">{t.org.myEvents}</h2>
         {mine.length === 0 ? <p className="mt-3 rounded-2xl bg-sand p-6 text-center text-muted">{t.org.noEvents}</p> : (
           <>
           {/* Celular: una tarjeta por evento (la tabla obligaría a deslizar de lado). */}
@@ -86,7 +88,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador"> }) {
   const sp = await props.searchParams;
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador`}>
-      {(s) => <Panel s={s} lang={lang} t={t} welcome={sp.bienvenido === "1"} />}
+      {(s) => <Panel s={s} lang={lang} t={t} welcome={sp.bienvenido === "1"} deleted={sp.borrado === "1"} verified={sp.yaVerificada === "1"} />}
     </Gate>
   );
 }

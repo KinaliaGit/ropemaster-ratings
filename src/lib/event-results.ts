@@ -32,7 +32,7 @@ export type EventResultsPage = { rows: EventResultRow[]; next: number | null; to
 type DbRow = {
   id: string; roper_id: string | null; name: string; avatar_path: string | null; time_ms: number | null; penalty_ms: number | null; disqualified: boolean;
   place: number | null; completed_runs: number | null; nt_count: number | null; dq_count: number | null; has_rounds: boolean; pos: number | string; total: number | string;
-  packages?: number | null; shots?: number | null; // una base sin la migración 0042 no los manda
+  packages?: number | null; shots?: number | null; // una base sin la migración 0048 no los manda
 };
 
 /** Convierte lo que devuelve la base. Se pidió una fila de más: si llegó, hay otra página y `next` es la última posición de ESTA. */

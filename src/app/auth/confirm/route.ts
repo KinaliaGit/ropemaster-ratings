@@ -16,7 +16,14 @@ export async function GET(request: Request) {
   let ok = false;
   if (tokenHash && type) ok = !(await supabase.auth.verifyOtp({ type, token_hash: tokenHash })).error;
   else if (code) ok = !(await supabase.auth.exchangeCodeForSession(code)).error;
-  if (!ok) redirect(`/${lang}/entrar?error=confirm`);
+  // KIN-624: un enlace ya usado (o recargar esta página) no debe dejar a nadie en una pantalla de error si su sesión sigue activa:
+  // la cuenta ya está verificada y se le lleva a su espacio con ese mensaje. Sin sesión, a Entrar con el aviso de enlace vencido.
+  if (!ok) {
+    const { data: current } = await supabase.auth.getUser();
+    const existing = current.user ? await ensureProfile(supabase, current.user) : null;
+    if (existing) redirect(`/${lang}/${existing.role === "organizador" ? "organizador" : "mi-cuenta"}?yaVerificada=1`);
+    redirect(`/${lang}/entrar?error=confirm`);
+  }
 
   const { data } = await supabase.auth.getUser();
   const profile = data.user ? await ensureProfile(supabase, data.user) : null;

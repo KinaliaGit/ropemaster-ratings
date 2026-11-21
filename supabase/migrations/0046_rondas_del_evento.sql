@@ -1,4 +1,4 @@
--- Rondas del evento (KIN-655, KIN-653). Solo cambios aditivos, más el reemplazo de app_upload_event (0039, aún sin aplicar en producción).
+-- Rondas del evento (KIN-655, KIN-653). Solo cambios aditivos, más el reemplazo de app_upload_event (0045, aún sin aplicar en producción).
 --
 -- Decisiones (2026-11-20):
 --  * La app pide el número de rondas al crear cualquier evento casual (por defecto 3) y lo usa para sortear y capturar. La web lo guarda como
@@ -25,7 +25,7 @@ drop trigger if exists events_lock_rounds on public.events;
 create trigger events_lock_rounds before update on public.events
   for each row execute function private.lock_rounds();
 
--- app_upload_event ahora también guarda `rounds` (p_event.rounds: entero 1 a 10 o null). El resto es idéntico a la 0039.
+-- app_upload_event ahora también guarda `rounds` (p_event.rounds: entero 1 a 10 o null). El resto es idéntico a la 0045.
 create or replace function public.app_upload_event(p_organizer uuid, p_series jsonb, p_event jsonb)
 returns table (r_event_id uuid, r_event_slug text, r_event_created boolean, r_series_id uuid, r_series_slug text, r_series_created boolean)
 language plpgsql security definer set search_path = '' as $$

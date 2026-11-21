@@ -4,15 +4,13 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getPublicEvent } from "@/lib/data/events";
 import { getEventRegistrants } from "@/lib/data/registrations";
-import { getEventResults } from "@/lib/data/event-results";
 import { ACTIVE_DISCIPLINES, DEFAULT_DISCIPLINE, type DisciplineId } from "@/lib/disciplines";
-import { toResultItem } from "@/lib/event-results-view";
 import { toEnrolledItem } from "@/lib/enrolled-view";
 import { fmtDate, mxn, type Lang } from "@/lib/format";
-import { fmtDeadline, isNotOpenYet, isRegistrationOpen } from "@/lib/event-time";
+import { fmtDeadline, isNotOpenYet, isRegistrationOpen, statusByDate } from "@/lib/event-time";
 import Image from "next/image";
 import { EnrolledList } from "@/components/EnrolledList";
-import { EventResults } from "@/components/EventResults";
+import { EventResultsSection } from "@/components/EventResultsSection";
 import { EnrolledSkeleton, EventSkeleton } from "@/components/EventSkeleton";
 import { EventCover } from "@/components/EventCover";
 import { getDictionary, resolveLang } from "@/lib/i18n";
@@ -30,29 +28,15 @@ async function Enrolled({ slug, uuid, discipline, lang, t }: { slug: string; uui
   );
 }
 
-// Resultados del evento (solo de eventos finalizados): primera página de cada modalidad; el resto se pide con "Ver más" (KIN-608).
-async function Results({ slug, uuid, disciplines, lang, t }: { slug: string; uuid: string; disciplines: DisciplineId[]; lang: Lang; t: Dict }) {
-  const sets = (await Promise.all(disciplines.map(async (d) => {
-    const page = await getEventResults(uuid, d);
-    return { id: d, label: t.disc[d].label, rows: page.rows.map((r) => toResultItem(r, lang, t)), next: page.next, total: page.total };
-  }))).filter((s) => s.rows.length > 0);
-  if (sets.length === 0) return <p className="mt-3 text-muted">{t.event.noResults}</p>;
-  return (
-    <EventResults
-      slug={slug} lang={lang} sets={sets}
-      labels={{ loadMore: t.people.loadMore, loadError: t.people.loadError, retry: t.people.retry, viewRounds: t.people.viewRounds, hideRounds: t.people.hideRounds, noRounds: t.people.noRounds, results: t.event.results }}
-    />
-  );
-}
-
 async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]">["params"] }) {
   // Los datos públicos se leen al atender la visita, no al compilar (así el build no necesita conectarse a la base).
   await connection();
   const lang = await resolveLang(params);
   const { id } = await params;
   const t = getDictionary(lang);
-  const e = await getPublicEvent(id);
-  if (!e) notFound();
+  const found = await getPublicEvent(id);
+  if (!found) notFound();
+  const e = { ...found, status: statusByDate(found) }; // KIN-656: con la fecha pasada se muestra como finalizado y sin inscripción
   const regOpen = isRegistrationOpen({ opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
   const notYet = e.status === "publicado" && !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt }); // apertura programada: aún no abre
   const open = e.status === "publicado" && e.enrolled < e.capacity && regOpen;
@@ -118,7 +102,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
               </div>
               <div className="mt-2">
                 <Suspense fallback={<EnrolledSkeleton />}>
-                  <Results slug={e.id} uuid={e.uuid} disciplines={resultDisciplines} lang={lang} t={t} />
+                  <EventResultsSection slug={e.id} uuid={e.uuid} disciplines={resultDisciplines} lang={lang} t={t} />
                 </Suspense>
               </div>
             </>

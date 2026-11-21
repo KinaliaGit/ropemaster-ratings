@@ -10,6 +10,7 @@ import { PhaseBadge } from "@/components/PhaseBadge";
 import { SeriesEventsForm } from "@/components/SeriesEventsForm";
 import { getOrganizerSeries } from "@/lib/data/series";
 import { deleteSeries, deleteSeriesEvent, publishSeriesDrafts } from "@/lib/series-actions";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { eventPhase, fmtDeadline } from "@/lib/event-time";
 import { fmtDate } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
@@ -17,7 +18,7 @@ import type { Session } from "@/lib/session";
 import type { Dict } from "@/dictionaries/es";
 import type { Lang } from "@/lib/format";
 
-type Flags = { nueva: boolean; editada: boolean; agregados: number; borrado: boolean; publicados: boolean; incompletos: number; error: string | null };
+type Flags = { nueva: boolean; editada: boolean; agregados: number; borrado: boolean; publicados: boolean; incompletos: number; error: string | null; borrarError: string | null };
 
 async function Manage({ s, id, lang, t, flags, shareUrl }: { s: Session; id: string; lang: Lang; t: Dict; flags: Flags; shareUrl: string }) {
   // Un organizador solo gestiona sus propias series (la base además lo impone).
@@ -120,14 +121,22 @@ async function Manage({ s, id, lang, t, flags, shareUrl }: { s: Session; id: str
           )}
         </div>
 
-        <details className="mt-10 max-w-xl">
-          <summary className="cursor-pointer text-sm font-medium text-red-700">{m.danger.title}</summary>
-          <form action={deleteSeries} className="mt-2 rounded-2xl bg-red-50 p-4 text-sm">
-            <input type="hidden" name="lang" value={lang} /><input type="hidden" name="slug" value={x.id} />
-            <p className="text-red-900">{m.danger.text}</p>
-            <button className="mt-3 rounded-full bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800">{m.danger.confirm}</button>
-          </form>
-        </details>
+        <section aria-labelledby="danger" className="mt-14 max-w-xl rounded-2xl border border-red-200 p-5">
+          <h2 id="danger" className="text-lg font-semibold text-red-800">{t.org.del.zone}</h2>
+          <p className="mt-1 text-sm text-muted">{t.org.del.seriesText}</p>
+          {flags.borrarError && <p role="alert" className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">{(t.org.del.errors as Record<string, string>)[flags.borrarError] ?? t.org.del.errors.failed}</p>}
+          <div className="mt-4">
+            {events.length > 0 ? (
+              <p className="text-sm">{t.org.del.seriesHasEvents} <a href="#eventos" className="font-medium text-brand-hot hover:underline">{t.org.del.goToEvents} →</a></p>
+            ) : (
+              <DeleteConfirmDialog
+                action={deleteSeries} lang={lang} id={x.id} fields={{ slug: x.id }} needReason={false}
+                summary={[[t.org.del.name, x.name], [t.org.del.date, `${fmtDate(x.startDate, lang)} – ${fmtDate(x.endDate, lang)}`]]}
+                l={{ button: t.org.del.seriesButton, title: t.org.del.seriesTitle, typePrompt: t.org.del.typePrompt(t.org.del.word), word: t.org.del.word, reasonLabel: "", reasonPlaceholder: "", minChars: "", notify: null, cancel: t.org.del.cancel, confirm: t.org.del.confirm }}
+              />
+            )}
+          </div>
+        </section>
       </div>
     </>
   );
@@ -139,7 +148,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/serie
   const sp = await props.searchParams;
   const flags: Flags = {
     nueva: sp.nueva === "1", editada: sp.editada === "1", agregados: Math.max(0, Math.floor(Number(sp.agregados)) || 0),
-    borrado: sp.borrado === "1", publicados: sp.publicados === "1", incompletos: Math.max(0, Math.floor(Number(sp.incompletos)) || 0), error: typeof sp.error === "string" ? sp.error : null,
+    borrado: sp.borrado === "1", publicados: sp.publicados === "1", incompletos: Math.max(0, Math.floor(Number(sp.incompletos)) || 0), error: typeof sp.error === "string" ? sp.error : null, borrarError: typeof sp.borrarError === "string" ? sp.borrarError : null,
   };
   // Enlace sin idioma: cada persona que lo abra llega a su idioma (el proxy elige es/en por su navegador).
   const h = await headers();

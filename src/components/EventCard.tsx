@@ -2,7 +2,7 @@ import Link from "next/link";
 import { fmtDate, type Lang } from "@/lib/format";
 import { type EventItem } from "@/lib/types";
 import { EventCover } from "@/components/EventCover";
-import { eventPhase } from "@/lib/event-time";
+import { eventPhase, statusByDate } from "@/lib/event-time";
 import type { Dict } from "@/dictionaries/es";
 
 // Tarjeta tipo cartel: el flyer vertical (2:3) se ve completo y el texto va DEBAJO (el flyer ya trae el suyo).
@@ -11,7 +11,7 @@ import type { Dict } from "@/dictionaries/es";
 const CARD_SIZES = "(min-width: 1152px) 276px, (min-width: 768px) 33vw, (min-width: 480px) 50vw, 100vw";
 export function EventCard({ e, lang, t, eager = false }: { e: EventItem; lang: Lang; t: Dict; eager?: boolean }) {
   // Etapa real del evento: también cuenta la apertura programada y el cierre de inscripciones (antes todo lo no lleno decía "abiertas").
-  const phase = eventPhase({ status: e.status, enrolled: e.enrolled, capacity: e.capacity, opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
+  const phase = eventPhase({ status: statusByDate(e), enrolled: e.enrolled, capacity: e.capacity, opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
   const tag = phase === "finished" ? t.status.finished : t.series.phase[phase];
   const muted = phase === "full" || phase === "closed" || phase === "upcoming";
   return (

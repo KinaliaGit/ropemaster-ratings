@@ -1,10 +1,12 @@
 "use server";
+import { after } from "next/server";
 import { missingForPublish } from "@/lib/event-publish";
 import { redirect } from "next/navigation";
 import { updateTag } from "next/cache";
 import { getSession } from "@/lib/session";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
+import { emailParticipant } from "@/lib/notify";
 import { closesAfterEvent, DEFAULT_TIMEZONE, isValidTimezone, zonedLocalToIso } from "@/lib/event-time";
 
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
@@ -186,4 +188,40 @@ export async function setRegistrationOpen(formData: FormData) {
   await supabase.from("events").update(patch).eq("id", ev.id);
   updateTag("events");
   redirect(`/${l}/organizador/eventos/${eventSlug}`);
+}
+
+// ---- Borrar un evento (KIN-660). Solo el organizador dueño; la base valida todo (dueño, sin resultados, sin finalizar, motivo con inscritos) y deja
+// el aviso dentro de la web para cada inscrito. Aquí se exige la palabra de confirmación (también en el servidor, no solo en el diálogo) y, ya borrado,
+// se manda el correo a cada inscrito sin que un fallo de correo deshaga nada.
+const DELETE_ERRORS = ["invalid_reason", "has_results", "closed", "not_found"];
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export async function deleteEvent(formData: FormData) {
+  const l = lang(formData.get("lang"));
+  const slug = text(formData.get("slug"), 120);
+  const id = text(formData.get("id"), 40);
+  const s = await getSession();
+  if (s?.role !== "organizador" || !s.verified) redirect(`/${l}/organizador`);
+  const back = (code: string) => redirect(`/${l}/organizador/eventos/${encodeURIComponent(slug)}?borrarError=${code}`);
+  if (!UUID_RE.test(id)) return back("not_found");
+  if (!["borrar", "delete"].includes(text(formData.get("confirmWord"), 20).toLowerCase())) return back("confirm");
+  const supabase = await createServerSupabase();
+  // Datos para el correo: se leen ANTES, porque después el evento ya no existe.
+  const { data: ev } = await supabase.from("events").select("name, event_date, city, venue, organizer_name").eq("id", id).eq("organizer_id", s.id).maybeSingle();
+  const { data: people, error } = await supabase.rpc("delete_event", { p_event: id, p_reason: text(formData.get("reason"), 500) });
+  if (error) return back(DELETE_ERRORS.find((k) => error.message.includes(k)) ?? "failed");
+  updateTag("events");
+  updateTag("registrations");
+  if (ev && Array.isArray(people)) {
+    const reason = text(formData.get("reason"), 500);
+    after(async () => {
+      for (const p of people as { roper_id: string; paid: boolean }[]) {
+        await emailParticipant({
+          kind: "event_deleted", roperId: p.roper_id, eventName: ev.name, eventDate: ev.event_date, place: [ev.venue, ev.city].filter(Boolean).join(", "),
+          organizerId: s.id, organizerName: ev.organizer_name ?? "", reason, paid: p.paid,
+        });
+      }
+    });
+  }
+  redirect(`/${l}/organizador?borrado=1`);
 }

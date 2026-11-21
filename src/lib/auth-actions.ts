@@ -67,7 +67,7 @@ export async function registerAccount(formData: FormData) {
   const supabase = await createServerSupabase();
   const { data, error } = await supabase.auth.signUp({
     email, password,
-    options: { emailRedirectTo: `${await siteOrigin()}/auth/confirm?lang=${l}`, data: { display_name: name, role, terms_version: LEGAL.version, ...(roleChoice ? { roper_role: roleChoice.role, roper_favorite: roleChoice.favorite } : {}), ...(rating !== null ? { roper_rating: rating } : {}) } },
+    options: { emailRedirectTo: `${await siteOrigin()}/auth/confirm?lang=${l}`, data: { display_name: name, role, lang: l, terms_version: LEGAL.version, ...(roleChoice ? { roper_role: roleChoice.role, roper_favorite: roleChoice.favorite } : {}), ...(rating !== null ? { roper_rating: rating } : {}) } },
   });
   if (error) return fail(/registered|exists/i.test(error.message) ? "exists" : /password/i.test(error.message) ? "password" : "generic");
   if (!data.session || !data.user) redirect(`/${l}/registro?role=${role}&check=email&email=${encodeURIComponent(email)}`);

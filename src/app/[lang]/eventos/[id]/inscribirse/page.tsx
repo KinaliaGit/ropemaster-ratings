@@ -5,7 +5,7 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
 import { getPublicEvent } from "@/lib/data/events";
 import { mxn, type Lang } from "@/lib/format";
-import { fmtDeadline, isNotOpenYet, isRegistrationOpen } from "@/lib/event-time";
+import { fmtDeadline, isNotOpenYet, isRegistrationOpen, statusByDate } from "@/lib/event-time";
 import { Gate } from "@/components/Gate";
 import { enroll } from "@/lib/registration-actions";
 import { STRIPE_ENABLED } from "@/lib/flags";
@@ -20,7 +20,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
   const t = getDictionary(lang);
   const e = await getPublicEvent(id);
   if (!e) notFound();
-  const regOpen = isRegistrationOpen({ opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
+  const regOpen = statusByDate(e) === "publicado" && isRegistrationOpen({ opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed }); // fecha pasada = cerrado (KIN-656)
   const notYet = !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt });
   return (
     <Gate lang={lang} role="any" next={`/${lang}/eventos/${id}/inscribirse`}>

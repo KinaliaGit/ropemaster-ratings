@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getPublicSeries } from "@/lib/data/series";
-import { eventPhase, fmtDeadline } from "@/lib/event-time";
+import { eventPhase, statusByDate, fmtDeadline } from "@/lib/event-time";
 import { fmtDate, type Lang } from "@/lib/format";
 import { PhaseBadge } from "@/components/PhaseBadge";
 import { PageSkeleton } from "@/components/PageSkeleton";
@@ -30,7 +30,7 @@ async function SerieInner({ params }: { params: PageProps<"/[lang]/series/[id]">
       {events.length === 0 ? <p className="mt-3 text-muted">{t.series.noEvents}</p> : (
         <ol className="mt-4 space-y-3">
           {events.map((e, i) => {
-            const phase = eventPhase({ status: e.status, enrolled: e.enrolled, capacity: e.capacity, opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
+            const phase = eventPhase({ status: statusByDate(e), enrolled: e.enrolled, capacity: e.capacity, opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
             return (
               <li key={e.uuid}>
                 <Link href={`/${lang}/eventos/${e.id}`} className="card block p-4 transition hover:border-ink">

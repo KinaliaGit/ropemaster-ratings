@@ -1646,5 +1646,23 @@ console.log("- Resultados de un evento (0030)");
   await as("authenticated", A, "update events set app_event_id = gen_random_uuid() where id = '" + first.r_event_id + "'", "nadie reescribe app_event_id desde el navegador", "deny");
 }
 
+// Historial de rating (KIN-627): cada cambio real del rating deja una fila; nadie escribe directo
+{
+  const n = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const R = "11111111-0000-0000-0000-000000000001", DISC = "prueba-historial";
+  await db.exec(`insert into roper_ratings (roper_id, discipline, rating) values ('${R}','${DISC}', 5.0)`);
+  check("un rating nuevo deja su primera fila de historial (sin valor anterior)", await n(`select count(*) n from roper_rating_history where roper_id = '${R}' and discipline = '${DISC}' and rating = 5.0 and previous_rating is null`) === 1);
+  await db.exec(`update roper_ratings set rating = 6.5 where roper_id = '${R}' and discipline = '${DISC}'`);
+  check("cambiar el rating deja otra fila con el valor anterior", await n(`select count(*) n from roper_rating_history where roper_id = '${R}' and discipline = '${DISC}' and rating = 6.5 and previous_rating = 5.0`) === 1);
+  await db.exec(`update roper_ratings set events_count = 3, wins = 1 where roper_id = '${R}' and discipline = '${DISC}'`);
+  check("si el valor no cambia (solo eventos o victorias) no se guarda nada", await n(`select count(*) n from roper_rating_history where roper_id = '${R}' and discipline = '${DISC}'`) === 2);
+  await as("anon", null, `select * from public.public_roper_rating_history('${R}', 5)`, "anónimo SÍ ve la evolución del rating (es público)", "some");
+  const latest = (await db.query(`select rating from public.public_roper_rating_history('${R}', 1)`)).rows[0];
+  check("la función devuelve primero el cambio más reciente", Number(latest.rating) === 6.5);
+  await as("anon", null, `insert into roper_rating_history (roper_id, discipline, rating) values ('${R}','${DISC}', 9)`, "anónimo NO escribe historial", "deny");
+  await as("authenticated", A, `insert into roper_rating_history (roper_id, discipline, rating) values ('${R}','${DISC}', 9)`, "un organizador NO escribe historial", "deny");
+  await as("authenticated", D, `delete from roper_rating_history`, "nadie borra historial escribiendo la tabla", "deny");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

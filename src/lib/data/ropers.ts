@@ -97,3 +97,18 @@ export async function getRoperRounds(roperId: string, resultId: string): Promise
   return data ? toRounds(data.rounds) : null;
 }
 
+
+// KIN-627: últimos cambios del rating del lazador (el más reciente primero). El historial solo guarda cambios reales de `roper_ratings`:
+// mientras el recálculo esté en pausa (KIN-571/583) llega vacío, y `event` se llena cuando el recálculo anote qué evento movió el rating.
+export type RatingChange = { discipline: string; rating: number; previous: number | null; at: string; eventName: string | null; eventSlug: string | null };
+export async function getRoperRatingHistory(id: string, limit = 5): Promise<RatingChange[]> {
+  "use cache";
+  cacheTag("ropers");
+  cacheLife("minutes");
+  if (!UUID.test(id)) return [];
+  const { data, error } = await createPublicClient().rpc("public_roper_rating_history", { p_roper: id, p_limit: limit });
+  if (error) throw new Error(`No se pudo leer la evolución del rating: ${error.message}`);
+  return ((data ?? []) as { discipline: string; rating: number | string; previous_rating: number | string | null; recorded_at: string; event_name: string | null; event_slug: string | null }[]).map((r) => ({
+    discipline: r.discipline, rating: Number(r.rating), previous: r.previous_rating === null ? null : Number(r.previous_rating), at: r.recorded_at, eventName: r.event_name, eventSlug: r.event_slug,
+  }));
+}

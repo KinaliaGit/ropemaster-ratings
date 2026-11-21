@@ -18,7 +18,8 @@ create table if not exists public.roper_rating_history (
   rating numeric not null,
   previous_rating numeric,
   event_id uuid references public.events(id) on delete set null,
-  recorded_at timestamptz not null default now()
+  recorded_at timestamptz not null default now(),
+  seq bigint generated always as identity   -- orden de inserción: desempata cambios con la misma fecha (varios en una transacción)
 );
 create index if not exists roper_rating_history_roper_idx on public.roper_rating_history (roper_id, discipline, recorded_at desc);
 
@@ -54,7 +55,7 @@ returns table (discipline text, rating numeric, previous_rating numeric, recorde
     from public.roper_rating_history h
     left join public.events e on e.id = h.event_id
     where h.roper_id = p_roper
-    order by h.recorded_at desc, h.id desc
+    order by h.recorded_at desc, h.seq desc
     limit least(greatest(coalesce(p_limit, 5), 1), 50)
   $$;
 revoke all on function public.public_roper_rating_history(uuid, integer) from public;

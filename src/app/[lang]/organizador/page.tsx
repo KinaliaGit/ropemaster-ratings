@@ -39,7 +39,7 @@ async function Panel({ s, lang, t, welcome, deleted, verified }: { s: Session; l
             <p className="label">{t.org.accountType}</p>
             <h1 className="text-3xl font-semibold">{s.name}</h1>
           </div>
-          {s.verified ? <Link href={`/${lang}/organizador/eventos/nuevo`} className="rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-hot">{t.org.newEvent}</Link> : <span className="rounded-full bg-sand px-5 py-2.5 text-sm font-medium text-muted">{t.org.newEvent}</span>}
+          {s.verified ? <Link href={`/${lang}/organizador/series/nueva`} className="rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-hot">{t.org.newSeries}</Link> : <span className="rounded-full bg-sand px-5 py-2.5 text-sm font-medium text-muted">{t.org.newEvent}</span>}
         </div>
         {s.verified && (overview ? <OrgOverview o={overview} lang={lang} t={t} /> : <p role="alert" className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-800">{t.org.overview.loadError}</p>)}
         {STRIPE_ENABLED && <StripeConnectButton lang={lang} {...t.org.stripe} />}

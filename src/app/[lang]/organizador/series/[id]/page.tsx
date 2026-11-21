@@ -18,13 +18,13 @@ import type { Session } from "@/lib/session";
 import type { Dict } from "@/dictionaries/es";
 import type { Lang } from "@/lib/format";
 
-type Flags = { nueva: boolean; editada: boolean; agregados: number; borrado: boolean; publicados: boolean; error: string | null; borrarError: string | null };
+type Flags = { nueva: boolean; editada: boolean; agregados: number; borrado: boolean; publicados: boolean; incompletos: number; error: string | null; borrarError: string | null };
 
 async function Manage({ s, id, lang, t, flags, shareUrl }: { s: Session; id: string; lang: Lang; t: Dict; flags: Flags; shareUrl: string }) {
   // Un organizador solo gestiona sus propias series (la base además lo impone).
   const found = await getOrganizerSeries(s.id, id);
   if (!found) notFound();
-  const { series: x, events } = found;
+  const { series: x, template, events } = found;
   const m = t.org.series, ev = m.ev;
   const phases = events.map((e) => eventPhase({ status: e.status, enrolled: e.enrolled, capacity: e.capacity, opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed }));
   const drafts = phases.filter((p) => p === "draft").length;
@@ -54,6 +54,8 @@ async function Manage({ s, id, lang, t, flags, shareUrl }: { s: Session; id: str
         {flags.agregados > 0 && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{ev.msg.agregados} {flags.agregados} {ev.msg.agregadosEnd}</p>}
         {flags.borrado && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{ev.msg.borrado}</p>}
         {flags.publicados && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{ev.msg.publicados}</p>}
+        {flags.incompletos > 0 && <p role="alert" className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-800">{flags.incompletos} {ev.msg.incompletos}</p>}
+        {!template.city.trim() && <p role="status" data-testid="empty-template" className="mt-6 rounded-2xl bg-sand p-4 text-sm">{m.emptyTemplate} <Link href={`/${lang}/organizador/series/${x.id}/editar`} className="font-medium underline">{m.edit} →</Link></p>}
         {delError && <p role="alert" className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-800">{delError}</p>}
 
         <section aria-labelledby="share" className="card mt-6 p-5">
@@ -64,12 +66,15 @@ async function Manage({ s, id, lang, t, flags, shareUrl }: { s: Session; id: str
 
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3" id="eventos">
           <h2 className="text-xl font-semibold">{ev.title} <span className="text-base font-normal tabular-nums text-muted">({events.length}/30)</span></h2>
-          {drafts > 0 && (
-            <form action={publishSeriesDrafts}>
-              <input type="hidden" name="lang" value={lang} /><input type="hidden" name="slug" value={x.id} />
-              <button className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hot">{ev.publishDrafts} ({drafts})</button>
-            </form>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {events.length < 30 && <a href="#agregar" className="rounded-full bg-sand px-4 py-2 text-sm font-medium hover:bg-line" data-testid="series-new-event">{ev.newEvent}</a>}
+            {drafts > 0 && (
+              <form action={publishSeriesDrafts}>
+                <input type="hidden" name="lang" value={lang} /><input type="hidden" name="slug" value={x.id} />
+                <button className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hot">{ev.publishDrafts} ({drafts})</button>
+              </form>
+            )}
+          </div>
         </div>
         {events.length === 0 ? <p className="mt-3 rounded-2xl bg-sand p-6 text-center text-muted">{ev.none}</p> : (
           <ul className="mt-3 space-y-3">
@@ -143,7 +148,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/serie
   const sp = await props.searchParams;
   const flags: Flags = {
     nueva: sp.nueva === "1", editada: sp.editada === "1", agregados: Math.max(0, Math.floor(Number(sp.agregados)) || 0),
-    borrado: sp.borrado === "1", publicados: sp.publicados === "1", error: typeof sp.error === "string" ? sp.error : null, borrarError: typeof sp.borrarError === "string" ? sp.borrarError : null,
+    borrado: sp.borrado === "1", publicados: sp.publicados === "1", incompletos: Math.max(0, Math.floor(Number(sp.incompletos)) || 0), error: typeof sp.error === "string" ? sp.error : null, borrarError: typeof sp.borrarError === "string" ? sp.borrarError : null,
   };
   // Enlace sin idioma: cada persona que lo abra llega a su idioma (el proxy elige es/en por su navegador).
   const h = await headers();

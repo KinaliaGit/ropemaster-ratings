@@ -535,14 +535,27 @@ console.log("- Resultados que sube la app (0021)");
   const invalid = await upload(A, [
     badRounds(11, [round(1, "pending", null)]), badRounds(12, [{ ...round(1, "completed", null), time_ms: null }]), badRounds(13, [{ ...round(1, "no_time", null), time_ms: 5000 }]),
     badRounds(14, [round(1, "completed", 8000, { penalty_ms: -1 })]), badRounds(15, [round(1, "completed", 8000), round(1, "no_time")]), badRounds(16, [round(0, "completed", 8000)]),
-    badRounds(17, Array.from({ length: 21 }, (_, i) => round(i + 1, "completed", 8000))), badRounds(18, [round(1, "completed", 8000, { stage: "semifinal" })]),
+    badRounds(17, Array.from({ length: 101 }, (_, i) => round(i + 1, "completed", 8000))), badRounds(18, [round(1, "completed", 8000, { stage: "semifinal" })]),
     badRounds(19, "no es una lista"), badRounds(20, [42]), badRounds(21, [round(1, "completed", 8000)], { completed_runs: 2 }), badRounds(22, [round(1, "no_time")], { nt_count: 0 }),
     badRounds(23, [round(1, "completed", 8000)], { dq_count: 1 }), badRounds(24, [round(1, "completed", 8000, { time_ms: 8000.5 })]),
   ]);
   await check("rondas inválidas o contadores que no coinciden: cada una se rechaza como invalid_field", invalid.length === 14 && invalid.every((r) => r.r_status === "rejected" && r.r_code === "invalid_field" && r.r_retry === false));
   await check("lo rechazado no dejó nada guardado", (await count("select count(*)::int as n from event_results where id::text like 'a1c2e3f4-0000-4000-8000-0000000001%' and id::text > '" + rid(10) + "'")) === 0);
-  const twenty = await upload(A, [withRounds(30, Array.from({ length: 20 }, (_, i) => round(i + 1, "completed", 8000 + i)))]);
-  await check("20 rondas es el máximo permitido", twenty[0].r_status === "accepted" && (await stored(30)).completed_runs === 20);
+  // Lazada Sorteada (0047): un lazador corre tantos tiros como paquetes compró, así que el tope subió de 20 a 100 rondas por resultado.
+  const hundred = await upload(A, [withRounds(30, Array.from({ length: 100 }, (_, i) => round(i + 1, "completed", 8000 + i)))]);
+  await check("100 rondas es el máximo permitido (Lazada Sorteada)", hundred[0].r_status === "accepted" && (await stored(30)).completed_runs === 100);
+  const lazada = (n, extra = {}) => withRounds(n, Array.from({ length: 6 }, (_, i) => round(i + 1, "completed", 8000 + i)), extra);
+  const lz = async (n) => (await db.query(`select packages, shots, revision from event_results where id = '${rid(n)}'`)).rows[0];
+  const withPk = await upload(A, [lazada(90, { packages: 3, shots: 6 })]);
+  await check("paquetes y tiros opcionales se guardan", withPk[0].r_status === "accepted" && (await lz(90)).packages === 3 && (await lz(90)).shots === 6);
+  const withoutPk = await upload(A, [lazada(91)]);
+  await check("sin paquetes ni tiros (Round Robin o una app anterior): quedan en NULL", withoutPk[0].r_status === "accepted" && (await lz(91)).packages === null && (await lz(91)).shots === null);
+  const sameAgain = await upload(A, [lazada(90, { packages: 3, shots: 6 })]);
+  await check("reenviar lo mismo con paquetes y tiros: unchanged", sameAgain[0].r_status === "unchanged");
+  const fixedPk = await upload(A, [lazada(90, { packages: 4, shots: 8, revision: 2 })]);
+  await check("corregir los paquetes: updated", fixedPk[0].r_status === "updated" && (await lz(90)).packages === 4 && (await lz(90)).shots === 8);
+  const badPk = await upload(A, [lazada(92, { packages: 0 }), lazada(93, { packages: 199 }), lazada(94, { shots: 0 }), lazada(95, { shots: 10000 }), lazada(96, { packages: 1.5 })]);
+  await check("paquetes o tiros fuera de rango: invalid_field", badPk.length === 5 && badPk.every((r) => r.r_status === "rejected" && r.r_code === "invalid_field"));
 
   // Sin rondas también se acepta (solo el resumen); si luego llegan rondas con revisión mayor, se completan.
   const summaryOnly = await upload(A, [{ ...one({ id: rid(40), roper_global_id: R2 }), completed_runs: 3, nt_count: 0, dq_count: 0, rounds: undefined }]);
@@ -1072,6 +1085,9 @@ console.log("- Resultados de un evento (0030)");
   await check("quien corrió sin lazador en la web sale con su nombre y sin enlace", all[2].roper_id === null && all[2].name === "Res Chuy Invitado" && all[2].place === 3);
   await check("un perfil fusionado no se enlaza ni se nombra", all[4].roper_id === null && all[4].name === "");
   await check("trae lugar, tiempos, castigo, foto y contadores", all[0].place === 1 && all[0].time_ms === 12000 && all[0].avatar_path === "a/ana.jpg" && all[0].completed_runs === 1 && all[1].penalty_ms === 1000);
+  await db.exec(`update event_results set packages = 3, shots = 9 where id = '${all[0].id}'`);
+  const withPk = await page(EV(1));
+  await check("paquetes y tiros (Lazada Sorteada): salen donde se guardaron y en null donde no", withPk[0].packages === 3 && withPk[0].shots === 9 && withPk[1].packages === null && withPk[1].shots === null);
   await check("un descalificado sale marcado, sin lugar ni tiempo", all[5].disqualified === true && all[5].place === null && all[5].time_ms === null && all[5].dq_count === 1);
   await check("avisa si el resultado trae rondas, sin enviarlas", all[0].has_rounds === true && all[1].has_rounds === false && !("rounds" in all[0]));
   await check("cada modalidad va por separado", (await page(EV(1), "barriles")).length === 1 && (await page(EV(1), "otra")).length === 0);
@@ -1574,6 +1590,60 @@ console.log("- Resultados de un evento (0030)");
 
   // La app recibe los paquetes de cada inscripción
   verify("app_organizer_events manda packages en cada inscripción", await num(`select count(*) n from public.app_organizer_events('${A}', null, now() + interval '1 minute', null, null, 50) e, jsonb_array_elements(e.registrations) r where e.id = '${EVL}' and (r->>'packages')::int = 3`) === 1);
+}
+
+// ---- Eventos que la app sube a la web (KIN-648, entrega 2)
+{
+  console.log("\n— Eventos subidos desde la app");
+  const num = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const verify = (label, ok) => { if (!ok) failures++; console.log(`${ok ? "✔" : "✘ FALLO"}  ${label}`); };
+  const svc = async (sql, params = []) => { await db.exec("reset role; set role service_role"); try { return (await db.query(sql, params)).rows; } finally { await db.exec("reset role"); } };
+  const upload = (org, series, event) => svc("select * from public.app_upload_event($1::uuid, $2::jsonb, $3::jsonb)", [org, series ? JSON.stringify(series) : null, JSON.stringify(event)]);
+  const denied = async (fn) => { try { await fn(); return false; } catch { return true; } };
+  const APPEV = "a9000000-0000-0000-0000-0000000000a1", APPEV2 = "a9000000-0000-0000-0000-0000000000a2", APPEV3 = "a9000000-0000-0000-0000-0000000000a3", APPSER = "a9000000-0000-0000-0000-0000000000b1";
+  const event = (id, extra = {}) => ({ app_id: id, slug: `app-${id.slice(-2)}-abcd`, name: "Lazada de la app", date: "2099-10-10", venue: "Lienzo", disciplines: ["lazo"], draw_type: "lazada_sorteada", shots: 4, rounds: 5, max_roper_rating: 6.5, max_team_rating: 12, entry_fee_cents: 50000, ...extra });
+  const series = { app_id: APPSER, slug: "serie-app-abcd", name: "Temporada de la app", start_date: "2099-01-01", end_date: "2099-12-31" };
+
+  const first = (await upload(A, series, event(APPEV)))[0];
+  verify("la primera subida crea el evento y la serie", first.r_event_created === true && first.r_series_created === true && !!first.r_event_id && !!first.r_series_id);
+  verify("el evento nace como BORRADOR con el tipo de sorteo, tiros y topes de la app", await num(`select count(*) n from events where id = '${first.r_event_id}' and status = 'borrador' and draw_type = 'lazada_sorteada' and lazada_shots_per_package = 4 and max_roper_rating = 6.5 and max_team_rating = 12 and organizer_id = '${A}'`) === 1);
+  verify("lo que la app no tiene queda vacío (ciudad '', sede de la app, sin cupo) y entra en la serie", await num(`select count(*) n from events where id = '${first.r_event_id}' and city = '' and venue = 'Lienzo' and capacity is null and series_id = '${first.r_series_id}' and disciplines = array['lazo']`) === 1);
+  verify("las rondas de la app se guardan en el evento", await num(`select count(*) n from events where id = '${first.r_event_id}' and rounds = 5`) === 1);
+  verify("trae una categoría General con la cuota de la app", await num(`select count(*) n from event_categories where event_id = '${first.r_event_id}' and name = 'General' and fee_cents = 50000`) === 1);
+  verify("la serie nace con plantilla vacía y el nombre del organizador", await num(`select count(*) n from event_series s join event_series_template t on t.series_id = s.id where s.id = '${first.r_series_id}' and t.city = '' and t.capacity is null and s.organizer_name is not null`) === 1);
+
+  const again = (await upload(A, series, event(APPEV, { name: "Otro nombre", slug: "otro-slug-zzzz", shots: 9 })))[0];
+  verify("reenviar el mismo evento devuelve el mismo id y slug, sin crear nada", again.r_event_id === first.r_event_id && again.r_event_slug === first.r_event_slug && again.r_event_created === false && again.r_series_created === false);
+  verify("reenviar NO modifica el evento (la web manda después de crearse)", await num(`select count(*) n from events where id = '${first.r_event_id}' and name = 'Lazada de la app' and lazada_shots_per_package = 4`) === 1);
+  verify("no se duplicó el evento, la serie ni la categoría", await num(`select count(*) n from events where app_event_id = '${APPEV}'`) === 1 && await num(`select count(*) n from event_series where app_series_id = '${APPSER}'`) === 1 && await num(`select count(*) n from event_categories where event_id = '${first.r_event_id}'`) === 1);
+
+  const second = (await upload(A, series, event(APPEV2, { rounds: null, draw_type: "round_robin", shots: null, max_team_rating: null, max_roper_rating: null, entry_fee_cents: 0 })))[0];
+  verify("otro evento de la misma serie reutiliza la serie (vinculada por id, no por nombre)", second.r_event_created === true && second.r_series_created === false && second.r_series_id === first.r_series_id);
+  verify("sin rondas en la subida, el evento queda con rondas nulas", await num(`select count(*) n from events where id = '${second.r_event_id}' and rounds is null`) === 1);
+  verify("un evento round_robin sin topes ni cuota se guarda tal cual", await num(`select count(*) n from events where id = '${second.r_event_id}' and draw_type = 'round_robin' and lazada_shots_per_package is null and max_roper_rating is null and max_team_rating is null`) === 1);
+
+  const byId = (await upload(A, { ...series, id: first.r_series_id, app_id: "a9000000-0000-0000-0000-0000000000b9", slug: "no-se-usa-abcd" }, event("a9000000-0000-0000-0000-0000000000a5")))[0];
+  verify("con series.id (la serie ya conocida en la web) se usa esa serie y no se crea otra", byId.r_event_created === true && byId.r_series_created === false && byId.r_series_id === first.r_series_id && await num(`select count(*) n from event_series where organizer_id = '${A}' and app_series_id = 'a9000000-0000-0000-0000-0000000000b9'`) === 0);
+  verify("series.id de OTRO organizador se rechaza (series_not_found) y no crea el evento", await denied(() => upload(B, { ...series, id: first.r_series_id }, event("a9000000-0000-0000-0000-0000000000a6", { slug: "app-b2-abcd" }))) && await num(`select count(*) n from events where app_event_id = 'a9000000-0000-0000-0000-0000000000a6'`) === 0);
+
+  const loose = (await upload(A, null, event(APPEV3, { date: "2101-01-01" })))[0];
+  verify("un evento suelto (sin serie) se crea sin serie", loose.r_event_created === true && loose.r_series_id === null && await num(`select count(*) n from events where id = '${loose.r_event_id}' and series_id is null`) === 1);
+
+  verify("una fecha fuera de las fechas de la serie se rechaza (outside_series) y no deja nada a medias", await denied(() => upload(A, series, event("a9000000-0000-0000-0000-0000000000a4", { date: "2101-02-02" }))) && await num(`select count(*) n from events where app_event_id = 'a9000000-0000-0000-0000-0000000000a4'`) === 0);
+  verify("el mismo uuid de la app en OTRO organizador es otro evento (no se pisan)", (await upload(B, null, event(APPEV, { slug: "app-b-abcd" })))[0].r_event_id !== first.r_event_id);
+  verify("el borrador de la app NO es visible para el público", await num(`select count(*) n from events where id = '${first.r_event_id}' and status = 'borrador'`) === 1);
+
+  // Rondas del evento (KIN-655)
+  await as("authenticated", A, "update events set rounds = 3 where id = '" + first.r_event_id + "'", "el organizador SÍ cambia las rondas de su evento", "some");
+  await as("authenticated", A, "update events set rounds = 11 where id = '" + first.r_event_id + "'", "rondas fuera de 1 a 10 se rechazan", "deny");
+  await as("authenticated", A, "update events set rounds = 0 where id = '" + first.r_event_id + "'", "0 rondas se rechaza", "deny");
+  await as("authenticated", B, "update events set rounds = 2 where id = '" + first.r_event_id + "'", "otro organizador NO cambia las rondas ajenas", "deny");
+  await db.exec(`insert into event_results (id, event_id, participant_name, discipline, time_ms, penalty_ms, disqualified) values (gen_random_uuid(), '${first.r_event_id}', 'Sin lazador', 'lazo', 9000, 0, false)`);
+  await as("authenticated", A, "update events set rounds = 6 where id = '" + first.r_event_id + "'", "con resultados NO se cambian las rondas", "deny");
+  await as("authenticated", A, "update events set rounds = 3 where id = '" + first.r_event_id + "'", "guardar las mismas rondas (sin cambio) no estorba", "some");
+  await as("authenticated", A, "select public.app_upload_event('" + A + "', null, '{}'::jsonb)", "un organizador NO llama la función desde el navegador", "deny");
+  await as("anon", null, "select public.app_upload_event('" + A + "', null, '{}'::jsonb)", "anónimo NO llama la función", "deny");
+  await as("authenticated", A, "update events set app_event_id = gen_random_uuid() where id = '" + first.r_event_id + "'", "nadie reescribe app_event_id desde el navegador", "deny");
 }
 
 // Historial de rating (KIN-627): cada cambio real del rating deja una fila; nadie escribe directo

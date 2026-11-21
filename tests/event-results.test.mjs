@@ -58,3 +58,8 @@ test("un descalificado conserva su marca y no trae lugar", () => {
   assert.equal(dq.place, null);
   assert.equal(dq.timeMs, null);
 });
+
+test("paquetes y tiros (Lazada Sorteada) pasan a la fila y, sin ellos, quedan en null", () => {
+  const page = toEventResultsPage([row(1, { packages: 3, shots: 9 }), row(2), row(3, { packages: null, shots: null })], EVENT_RESULTS_PAGE_SIZE);
+  assert.deepEqual(page.rows.map((r) => [r.packages, r.shots]), [[3, 9], [null, null], [null, null]]);
+});

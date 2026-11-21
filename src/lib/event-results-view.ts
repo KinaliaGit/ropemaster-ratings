@@ -16,6 +16,8 @@ export function toResultItem(r: EventResultRow, lang: string, t: Dict): ResultIt
     r.completedRuns != null ? `${r.completedRuns} ${p.runsCount}` : null,
     r.ntCount ? `${r.ntCount} ${p.noTime.toLowerCase()}` : null,
     r.dqCount ? `${r.dqCount} DQ` : null,
+    r.packages != null ? `${r.packages} ${r.packages === 1 ? p.packageOne : p.packageMany}` : null,
+    r.shots != null ? `${r.shots} ${r.shots === 1 ? p.shotOne : p.shotMany}` : null,
   ].filter((x): x is string => x !== null);
   return {
     id: r.id, href: r.roperId ? `/${lang}/participantes/${r.roperId}` : null, name, initials: initials(name), photo: publicAvatarUrl(r.avatarPath),

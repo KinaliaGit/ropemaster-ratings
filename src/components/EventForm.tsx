@@ -1,24 +1,24 @@
 "use client";
 import { useState } from "react";
-import { createEvent, updateEvent } from "@/lib/event-actions";
+import { updateEvent } from "@/lib/event-actions";
 import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/event-time";
 
 type Labels = {
   name: string; date: string; capacity: string; venue: string; city: string; disciplines: string; categories: string; categoryName: string; categoryNamePlaceholder: string; cost: string; costHint: string; maxRoperRating: string; maxRoperRatingHint: string; addCategory: string;
   error: string; description: string; saveDraft: string; publish: string; photosLater: string; save: string; errors: Record<string, string>; paymentInfo: string; paymentInfoHint: string; paymentInfoPlaceholder: string;
   opens: string; opensHint: string; closes: string; closesHint: string; timezone: string;
-  drawType: string; drawTypeHint: string; drawLocked: string; roundRobin: string; lazadaSorteada: string; shotsPerPackage: string; shotsPerPackageHint: string; maxTeamRating: string; maxTeamRatingHint: string;
+  drawType: string; drawTypeHint: string; drawLocked: string; roundRobin: string; lazadaSorteada: string; shotsPerPackage: string; shotsPerPackageHint: string; maxTeamRating: string; maxTeamRatingHint: string; rounds: string; roundsHint: string;
 };
-export type EventInitial = { slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; paymentInfo: string; opensAt: string; closesAt: string; timezone: string; disciplines: string[]; maxRoperRating: number | null; drawType: "round_robin" | "lazada_sorteada"; shotsPerPackage: number | null; maxTeamRating: number | null; drawLocked: boolean; cats: { id: string; name: string; fee: number }[] };
+export type EventInitial = { slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; paymentInfo: string; opensAt: string; closesAt: string; timezone: string; disciplines: string[]; maxRoperRating: number | null; drawType: "round_robin" | "lazada_sorteada"; shotsPerPackage: number | null; maxTeamRating: number | null; rounds: number | null; drawLocked: boolean; cats: { id: string; name: string; fee: number }[] };
 
 const input = "mt-1 w-full rounded-xl border border-line bg-white px-4 py-2.5 outline-none focus:border-ink";
 
-export function EventForm({ lang, labels: l, disciplines, error, initial }: { lang: "es" | "en"; labels: Labels; disciplines: { id: string; label: string }[]; error?: string; initial?: EventInitial }) {
+export function EventForm({ lang, labels: l, disciplines, error, initial }: { lang: "es" | "en"; labels: Labels; disciplines: { id: string; label: string }[]; error?: string; initial: EventInitial }) {
   const [cats, setCats] = useState<{ id: string; name: string; fee: number }[]>(initial?.cats ?? [{ id: "", name: "Libre", fee: 800 }]);
   const [drawType, setDrawType] = useState<"round_robin" | "lazada_sorteada">(initial?.drawType ?? "round_robin");
   const locked = initial?.drawLocked ?? false; // con inscritos o resultados el tipo y los tiros por paquete ya no cambian (la base lo impone)
   return (
-    <form action={initial ? updateEvent : createEvent} className="mt-6 space-y-5 card p-6">
+    <form action={updateEvent} className="mt-6 space-y-5 card p-6">
       <input type="hidden" name="lang" value={lang} />
       {initial && <input type="hidden" name="slug" value={initial.slug} />}
       {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{l.errors[error] ?? l.error}</p>}
@@ -32,6 +32,10 @@ export function EventForm({ lang, labels: l, disciplines, error, initial }: { la
       <label className="block text-sm font-medium">{l.maxRoperRating}
         <input name="maxRoperRating" type="number" min={0} max={10} step={0.1} inputMode="decimal" defaultValue={initial?.maxRoperRating ?? ""} className={input} />
         <span className="mt-1 block text-xs font-normal text-muted">{l.maxRoperRatingHint}</span>
+      </label>
+      <label className="block text-sm font-medium">{l.rounds}
+        <input name="rounds" type="number" min={1} max={10} step={1} inputMode="numeric" defaultValue={initial?.rounds ?? ""} className={input} />
+        <span className="mt-1 block text-xs font-normal text-muted">{l.roundsHint}</span>
       </label>
       <fieldset>
         <legend className="text-sm font-medium">{l.drawType}</legend>

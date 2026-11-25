@@ -16,6 +16,7 @@ const dbRow = () => ({
   description: "Rodeo de fin de año, lazo en equipo.", disciplines: ["lazo"], capacity: 100, max_roper_rating: 6.5, draw_type: "lazada_sorteada", lazada_shots_per_package: 3, max_team_rating: 12.5, rounds: 4, series: example.events[0].series, status: "publicado", changed_at: "2026-11-05T18:30:00+00:00",
   categories: example.events[0].categories,
   registrations: example.events[0].registrations,
+  waitlist: example.events[0].waitlist.map((w) => { const row = { ...w }; delete row.position; return row; }), // la ruta la agrega; `position` lo calcula buildEventsPage
 });
 
 test("la respuesta armada desde la base es exactamente el ejemplo versionado del contrato", () => {
@@ -131,4 +132,23 @@ test("una fila de una web anterior (sin tipo ni paquetes) se entiende como round
   assert.equal(event.lazada_shots_per_package, null);
   assert.equal(event.max_team_rating, null);
   assert.ok(event.registrations.every((r) => r.packages === 1));
+});
+
+test("la lista de espera (KIN-726) viaja aparte de los inscritos, en orden, con su lugar y sin correo ni celular", () => {
+  const [event] = buildEventsPage([dbRow()], example.organizer, example.generated_at).events;
+  assert.equal(event.waitlist.length, 2);
+  assert.deepEqual(event.waitlist.map((w) => w.position), [1, 2]);
+  for (const w of event.waitlist) {
+    assert.deepEqual(Object.keys(w).sort(), ["category", "category_id", "id", "joined_at", "name", "packages", "position", "role", "roper_global_id"]);
+    assert.ok(w.role === null || ["header", "heeler"].includes(w.role));
+    assert.ok(Number.isInteger(w.packages) && w.packages >= 1 && w.packages <= 99);
+    assert.match(w.joined_at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    assert.ok(!event.registrations.some((r) => r.id === w.id), "quien espera no está entre los inscritos");
+  }
+});
+
+test("una fila sin lista de espera (web anterior o evento sin espera) llega como lista vacía", () => {
+  const row = dbRow();
+  delete row.waitlist;
+  assert.deepEqual(buildEventsPage([row], example.organizer, example.generated_at).events[0].waitlist, []);
 });

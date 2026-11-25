@@ -7,12 +7,12 @@ import { CopyLink } from "@/components/CopyLink";
 import { parseMissing, type MissingField } from "@/lib/event-publish";
 import { deleteEvent, setEventStatus, setRegistrationOpen } from "@/lib/event-actions";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { enrollByOrganizer, removeRegistration, setRemovalReenroll, setRemovalRefunded } from "@/lib/registration-actions";
+import { enrollByOrganizer, promoteWaitlistEntry, removeRegistration, removeWaitlistEntry, setRemovalReenroll, setRemovalRefunded } from "@/lib/registration-actions";
 import { RemoveRegistrationDialog } from "@/components/RemoveRegistrationDialog";
 import { fmtDeadline, isNotOpenYet, isRegistrationOpen } from "@/lib/event-time";
 import { Gate } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
-import { listEventRegistrations, listEventRemovals } from "@/lib/data/registrations";
+import { listEventRegistrations, listEventRemovals, listEventWaitlist } from "@/lib/data/registrations";
 import { setRegistrationPayment } from "@/lib/payment-actions";
 import { EventPhotos } from "@/components/EventPhotos";
 import { getOrganizerEvent } from "@/lib/data/events";
@@ -26,7 +26,7 @@ import type { Lang } from "@/lib/format";
 import { fmtDate, mxn } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
-type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justEdited: boolean; pagoError: boolean; manual: string | null; sacado: string | null; missing: MissingField[]; borrarError: string | null; shareUrl: string; stateLabel: Record<string, string> };
+type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justEdited: boolean; pagoError: boolean; manual: string | null; sacado: string | null; espera: string | null; missing: MissingField[]; borrarError: string | null; shareUrl: string; stateLabel: Record<string, string> };
 
 type Reg = Awaited<ReturnType<typeof listEventRegistrations>>[number];
 
@@ -57,12 +57,15 @@ function PayForm({ lang, slug, id, method, label, tone }: { lang: Lang; slug: st
   );
 }
 
-async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manual, sacado, missing, borrarError, shareUrl, stateLabel }: ManageProps) {
+async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manual, sacado, espera, missing, borrarError, shareUrl, stateLabel }: ManageProps) {
   // Un organizador solo gestiona sus propios eventos (la base además lo impone).
   const e = await getOrganizerEvent(s.id, id);
   if (!e) notFound();
-  const [rows, removals] = await Promise.all([listEventRegistrations(e.uuid!), listEventRemovals(e.uuid!)]);
+  const [rows, removals, waitlist] = await Promise.all([listEventRegistrations(e.uuid!), listEventRemovals(e.uuid!), listEventWaitlist(e.uuid!)]);
   const rm = t.org.ev.remove;
+  const wl = t.org.ev.waitlist;
+  const espMsg = espera ? (wl.msg as Record<string, string>)[espera] ?? wl.msg.failed : null;
+  const room = e.capacity > 0 ? Math.max(0, e.capacity - rows.length) : 0; // lugares libres hoy: cuenta inscripciones, no a quienes esperan
   const sacadoMsg = sacado ? (rm.msg as Record<string, string>)[sacado] ?? rm.msg.failed : null;
   const payLabel = (r: Reg) => (r.paymentStatus === "pagado" ? `${t.org.ev.paidAmount} ${mxn(r.amountCents / 100, lang)} · ${t.pay.method[(r.paymentMethod ?? "efectivo") as "efectivo" | "transferencia" | "stripe"]}` : t.org.ev.pending);
   const removeButton = (r: Reg) => (e.status !== "finalizado" && (
@@ -198,6 +201,37 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                   </tbody>
                 </table>
               </div>
+              {(waitlist.length > 0 || espMsg) && (
+                <section aria-labelledby="waitlist" className="mt-10" data-testid="org-waitlist">
+                  <h2 id="waitlist" className="text-xl font-semibold">{wl.title} <span className="font-normal text-muted tabular-nums">({waitlist.length})</span></h2>
+                  <p className="mt-1 text-sm text-muted">{wl.hint}</p>
+                  {waitlist.length > 0 && <p className="mt-2 text-sm font-medium" data-testid="waitlist-room">{room > 0 ? wl.room(room) : wl.full}</p>}
+                  {espMsg && <p role="status" className={`mt-3 rounded-xl p-3 text-sm ${["ok", "removed"].includes(espera!) ? "bg-brand-soft font-medium" : "bg-red-50 text-red-800"}`}>{espMsg}</p>}
+                  <div className="card mt-3 divide-y divide-line">
+                    {waitlist.map((w) => (
+                      <div key={w.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                        <div className="min-w-[14rem] flex-1">
+                          <p><span className="mr-2 rounded-full bg-sand px-2 py-0.5 text-xs font-medium tabular-nums" title={wl.place}>#{w.place}</span><Link href={`/${lang}/participantes/${w.roperId}`} className="font-semibold hover:text-brand-hot">{w.name}</Link></p>
+                          <p className="mt-0.5 text-sm text-muted">{w.category}{w.role ? ` · ${t.roles[w.role as "header" | "heeler"]}` : ""}{e.drawType === "lazada_sorteada" ? ` · ${w.packages} ${t.enroll.packages.toLowerCase()}` : ""}{w.email ? ` · ${w.email}` : ""} · {wl.joined} {fmtDate(w.joinedAt.slice(0, 10), lang)}</p>
+                        </div>
+                        {e.status === "publicado" && (
+                          <div className="flex items-center gap-2">
+                            <form action={promoteWaitlistEntry}>
+                              <input type="hidden" name="lang" value={lang} /><input type="hidden" name="slug" value={e.id} /><input type="hidden" name="id" value={w.id} />
+                              <button disabled={room === 0} title={room === 0 ? wl.full : undefined} className="rounded-full bg-ink px-4 py-2 text-xs font-medium text-white hover:bg-brand-hot disabled:cursor-not-allowed disabled:opacity-40">{wl.promote}</button>
+                            </form>
+                            <form action={removeWaitlistEntry}>
+                              <input type="hidden" name="lang" value={lang} /><input type="hidden" name="slug" value={e.id} /><input type="hidden" name="id" value={w.id} />
+                              <button className="rounded-full border border-line px-3 py-2 text-xs font-medium hover:border-ink">{wl.remove}</button>
+                            </form>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {waitlist.length === 0 && <p className="p-4 text-muted">{wl.empty}</p>}
+                  </div>
+                </section>
+              )}
               <section aria-labelledby="removed" className="mt-10">
                 <h2 id="removed" className="text-xl font-semibold">{rm.removedTitle}</h2>
                 <div className="mt-3 space-y-3">
@@ -273,6 +307,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
   const pagoError = sp.pagoError === "1";
   const manual = typeof sp.manual === "string" ? sp.manual : null;
   const sacado = typeof sp.sacado === "string" ? sp.sacado : null;
+  const espera = typeof sp.espera === "string" ? sp.espera : null;
   const missing = parseMissing(sp.faltan);
   const borrarError = typeof sp.borrarError === "string" ? sp.borrarError : null;
   const justCreated = sp.nuevo === "publicado" ? "publicado" : sp.nuevo === "borrador" ? "borrador" : null;
@@ -285,7 +320,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
   const stateLabel: Record<string, string> = { publicado: t.status.published, borrador: t.status.draft, finalizado: t.status.finished };
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador/eventos/${id}`}>
-      {(s) => <Manage s={s} id={id} lang={lang} t={t} justCreated={justCreated} justEdited={justEdited} pagoError={pagoError} manual={manual} sacado={sacado} missing={missing} borrarError={borrarError} shareUrl={shareUrl} stateLabel={stateLabel} />}
+      {(s) => <Manage s={s} id={id} lang={lang} t={t} justCreated={justCreated} justEdited={justEdited} pagoError={pagoError} manual={manual} sacado={sacado} espera={espera} missing={missing} borrarError={borrarError} shareUrl={shareUrl} stateLabel={stateLabel} />}
     </Gate>
   );
 }

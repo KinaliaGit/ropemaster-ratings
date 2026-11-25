@@ -27,3 +27,14 @@ test("sale en inglés y distingue evento borrado", () => {
   assert.ok(m.text.includes("December 5, 2026"));
   assert.ok(m.text.includes("contact the organizer from the event page"));
 });
+
+test("el aviso de lista de espera dice que ya está inscrito, sin motivo y con el pago pendiente", () => {
+  const m = buildNoticeEmail({ ...base, kind: "promoted", reason: "" });
+  assert.equal(m.subject, "Ya estás inscrito en Rodeo Norte");
+  assert.ok(m.text.includes("lista de espera"));
+  assert.ok(m.text.includes("pendiente de pago"));
+  assert.ok(!m.text.includes("Motivo"));
+  const en = buildNoticeEmail({ ...base, kind: "promoted", lang: "en", reason: "" });
+  assert.equal(en.subject, "You are now registered for Rodeo Norte");
+  assert.ok(!en.text.includes("Reason"));
+});

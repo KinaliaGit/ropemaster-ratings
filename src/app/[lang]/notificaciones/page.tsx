@@ -31,11 +31,13 @@ async function Page({ props }: { props: PageProps<"/[lang]/notificaciones"> }) {
               {items.map((i) => (
                 <article key={i.id} className={`card p-4 ${i.read ? "" : "border-brand"}`} aria-label={i.eventName}>
                   <div className="flex flex-wrap items-start justify-between gap-2">
-                    <h2 className="min-w-0 break-words font-semibold">{i.kind === "removed" ? n.removedTitle(i.eventName) : n.deletedTitle(i.eventName)}</h2>
+                    <h2 className="min-w-0 break-words font-semibold">{i.kind === "removed" ? n.removedTitle(i.eventName) : i.kind === "promoted" ? n.promotedTitle(i.eventName) : n.deletedTitle(i.eventName)}</h2>
                     {!i.read && <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-medium text-brand-hot">{n.new}</span>}
                   </div>
                   <p className="mt-1 text-xs text-muted">{fmtDate(i.createdAt.slice(0, 10), lang)}{i.eventDate ? ` · ${n.eventOn} ${fmtDate(i.eventDate, lang)}` : ""}</p>
-                  <p className="mt-2 text-sm"><span className="font-medium">{n.reason}</span> <span className="whitespace-pre-line break-words">{i.reason}</span></p>
+                  {i.kind === "promoted"
+                    ? <p className="mt-2 text-sm">{n.promotedText}</p>
+                    : <p className="mt-2 text-sm"><span className="font-medium">{n.reason}</span> <span className="whitespace-pre-line break-words">{i.reason}</span></p>}
                   {i.refundPending && <p className="mt-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{n.refund}</p>}
                   {!i.read && (
                     <form action={markNotificationsRead} className="mt-3">

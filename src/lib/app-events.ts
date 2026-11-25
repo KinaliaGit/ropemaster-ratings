@@ -81,6 +81,18 @@ export type PaymentMethod = "efectivo" | "transferencia" | "stripe";
 /** Serie de la web a la que pertenece un evento (KIN-625). Datos públicos de la serie; nunca su plantilla ni instrucciones de pago. */
 export type EventSeriesRef = { id: string; slug: string | null; name: string; start_date: string; end_date: string };
 
+export type WaitlistRow = {
+  id: string;
+  roper_global_id: string;
+  name: string;
+  category_id: string | null;
+  category: string | null;
+  role: "header" | "heeler" | null;
+  packages: number;
+  /** Cuándo se anotó (ISO). */
+  joined_at: string;
+};
+
 export type EventRow = {
   id: string;
   slug: string | null;
@@ -103,6 +115,8 @@ export type EventRow = {
   max_team_rating?: number | null;
   /** Serie del evento (KIN-625). La función SQL no la trae: la ruta la agrega. `null`/ausente = evento suelto. */
   series?: EventSeriesRef | null;
+  /** Lista de espera del evento (KIN-726), en orden de llegada. La función SQL no la trae: la ruta la agrega. No ocupa cupo ni cuenta como inscrita. */
+  waitlist?: WaitlistRow[];
   status: string;
   changed_at: string;
   categories: { id: string; name: string; fee_cents: number }[] | null;
@@ -159,6 +173,18 @@ export function buildEventsPage(rows: EventRow[], organizer: string, snapshot: s
         payment_method: r.payment_method,
         role: r.role ?? null,
         packages: r.packages ?? 1,
+      })),
+      // KIN-726: quienes esperan lugar, en orden de llegada. `position` es su lugar en la fila del evento (1 = el siguiente). No cuentan como inscritos.
+      waitlist: (row.waitlist ?? []).map((w, i) => ({
+        id: w.id,
+        roper_global_id: w.roper_global_id,
+        name: w.name,
+        category_id: w.category_id,
+        category: w.category,
+        role: w.role ?? null,
+        packages: w.packages ?? 1,
+        position: i + 1,
+        joined_at: new Date(w.joined_at).toISOString(),
       })),
     })),
     // El cursor guarda `changed_at` TAL COMO lo entrega la base (con microsegundos): pasarlo por Date lo truncaría a milisegundos y la

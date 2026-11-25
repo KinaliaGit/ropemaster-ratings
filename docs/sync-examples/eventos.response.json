@@ -61,6 +61,30 @@
           "role": null,
           "packages": 1
         }
+      ],
+      "waitlist": [
+        {
+          "id": "d0000000-0000-0000-0000-0000000000d1",
+          "roper_global_id": "44444444-4444-4444-8444-444444444444",
+          "name": "Luis Ortega",
+          "category_id": "c0000000-0000-0000-0000-0000000000c1",
+          "category": "Libre",
+          "role": "heeler",
+          "packages": 2,
+          "position": 1,
+          "joined_at": "2026-11-05T17:00:00.000Z"
+        },
+        {
+          "id": "d0000000-0000-0000-0000-0000000000d2",
+          "roper_global_id": "55555555-5555-4555-8555-555555555555",
+          "name": "Paty Salinas",
+          "category_id": "c0000000-0000-0000-0000-0000000000c2",
+          "category": "Segunda fuerza",
+          "role": null,
+          "packages": 1,
+          "position": 2,
+          "joined_at": "2026-11-05T17:45:00.000Z"
+        }
       ]
     }
   ],

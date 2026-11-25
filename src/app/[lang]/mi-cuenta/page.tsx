@@ -9,8 +9,8 @@ import { RoperCard } from "@/components/RoperCard";
 import { fmtRating, initials, publicAvatarUrl } from "@/lib/people";
 import { listRankingPage } from "@/lib/data/ropers";
 import { rankedToRoper } from "@/lib/ranking";
-import { listMyRegistrations, listMyRemovals } from "@/lib/data/registrations";
-import { cancelRegistration, changeRegistrationRole } from "@/lib/registration-actions";
+import { listMyRegistrations, listMyRemovals, listMyWaitlist } from "@/lib/data/registrations";
+import { cancelRegistration, changeRegistrationRole, leaveWaitlist } from "@/lib/registration-actions";
 import { hasEventPassed, isRegistrationOpen, statusByDate } from "@/lib/event-time";
 import { RatingEvolution } from "@/components/RatingEvolution";
 import { RoperHistorySection } from "@/components/RoperHistorySection";
@@ -36,7 +36,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
   const sp = await props.searchParams;
   const t = getDictionary(lang);
   const [events, top] = await Promise.all([listPublicEvents(), listRankingPage("lazo").then((p) => p.rows.slice(0, 4).map((r) => rankedToRoper(r, "lazo")))]);
-  const notice = sp.yaVerificada === "1" ? t.account.alreadyVerified : sp.pago === "ok" ? t.pay.returned : sp.perfil === "ok" ? t.account.profileCreated : sp.rol === "ok" ? null : sp.rolInscripcion === "ok" ? t.account.roleChanged : sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
+  const notice = sp.yaVerificada === "1" ? t.account.alreadyVerified : sp.pago === "ok" ? t.pay.returned : sp.perfil === "ok" ? t.account.profileCreated : sp.rol === "ok" ? null : sp.rolInscripcion === "ok" ? t.account.roleChanged : sp.inscrito === "1" ? t.account.enrolledOk : sp.cancelado === "1" ? t.account.canceledOk : sp.espera === "1" ? t.account.waitlistJoined : sp.espera === "salio" ? t.account.waitlistLeft : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
   return (
     <Gate lang={lang} role="any" next={`/${lang}/mi-cuenta`}>
       {async (s) => {
@@ -55,7 +55,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
             </div>
           );
         }
-        const [mine, removed, me] = await Promise.all([listMyRegistrations(), listMyRemovals(), s.roperId ? getPublicRoper(s.roperId) : Promise.resolve(null)]);
+        const [mine, removed, waiting, me] = await Promise.all([listMyRegistrations(), listMyRemovals(), listMyWaitlist(), s.roperId ? getPublicRoper(s.roperId) : Promise.resolve(null)]);
         // KIN-627: las inscripciones se separan en próximas y pasadas (por fecha en la zona del evento); los pagos pendientes son solo los de eventos próximos.
         const isPast = (m: (typeof mine)[number]) => !!m.event && (m.event.status === "finalizado" || hasEventPassed({ date: m.event.date ?? "", timezone: m.event.timezone }));
         const upcoming = mine.filter((m) => !isPast(m));
@@ -153,6 +153,28 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                 );
               })}
             </div>
+
+            {waiting.length > 0 && (
+              <section aria-labelledby="espera" className="mt-12" data-testid="my-waitlist">
+                <h2 id="espera" className="text-xl font-semibold">{t.account.waitlistTitle}</h2>
+                <p className="mt-1 text-sm text-muted">{t.account.waitlistHint}</p>
+                <div className="mt-3 space-y-3">
+                  {waiting.filter((w) => w.event?.status === "publicado").map((w) => (
+                    <div key={w.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
+                      <div className="min-w-[15rem] flex-1">
+                        {w.event?.slug ? <Link href={`/${lang}/eventos/${w.event.slug}`} className="font-medium hover:underline">{w.event.name}</Link> : <span className="font-medium">{w.event?.name ?? "—"}</span>}
+                        <span className="block text-sm text-muted">{w.category}{w.role ? ` · ${t.roles[w.role as "header" | "heeler"]}` : ""}{w.event?.date ? ` · ${fmtDate(w.event.date, lang)}` : ""}{w.event?.city ? ` · ${w.event.city}` : ""}</span>
+                      </div>
+                      <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand-hot tabular-nums">{t.account.waitlistPlace(w.place)}</span>
+                      <form action={leaveWaitlist}>
+                        <input type="hidden" name="lang" value={lang} /><input type="hidden" name="id" value={w.id} />
+                        <button className="rounded-full border border-line px-3 py-1.5 text-xs font-medium hover:border-ink">{t.account.waitlistLeave}</button>
+                      </form>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <section aria-labelledby="pasados" className="mt-12">
               <h2 id="pasados" className="text-xl font-semibold">{t.account.pastEvents}</h2>

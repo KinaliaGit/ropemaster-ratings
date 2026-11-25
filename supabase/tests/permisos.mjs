@@ -1833,5 +1833,25 @@ console.log("- Resultados de un evento (0030)");
   await old.close();
 }
 
+// Evento individual (KIN-750): el organizador crea un evento sin serie, con lo mismo que pide cada evento de una serie.
+{
+  console.log("\n— Evento individual (sin serie)");
+  const num = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const verify = (label, ok) => { if (!ok) failures++; console.log(`${ok ? "✔" : "✘ FALLO"}  ${label}`); };
+  const EVI = "e7500000-0000-0000-0000-0000000000a1", EVJ = "e7500000-0000-0000-0000-0000000000a2";
+  await db.exec(`update profiles set license_valid_until = 'infinity' where user_id = '${A}'`);
+  await as("authenticated", A, `insert into events (id, slug, name, event_date, city, venue, capacity, disciplines, status, organizer_id, organizer_name, draw_type, lazada_shots_per_package, max_team_rating, rounds, timezone, registration_opens_at, registration_closes_at, description)
+    values ('${EVI}', 'individual-7501', 'Individual', '2099-11-01', 'Zacatecas', 'Lienzo', 50, '{lazo}', 'publicado', '${A}', 'Org A', 'lazada_sorteada', 3, 12.5, 4, 'America/Mexico_City', '2099-10-01T10:00:00Z', '2099-10-31T10:00:00Z', 'Sin serie')`, "el organizador SÍ crea un evento individual con sorteo, rondas y cierre", "some");
+  await as("authenticated", A, `insert into event_categories (event_id, name, fee_cents) values ('${EVI}', 'Libre', 80000), ('${EVI}', 'Amateur', 50000)`, "y le agrega sus categorías", "some");
+  await as("authenticated", A, `insert into event_payment_info (event_id, instructions) values ('${EVI}', 'CLABE 1234')`, "y sus instrucciones de pago", "some");
+  verify("el evento individual queda sin serie, con sus datos y categorías", await num(`select count(*) n from events e where e.id = '${EVI}' and e.series_id is null and e.draw_type = 'lazada_sorteada' and e.lazada_shots_per_package = 3 and e.rounds = 4 and (select count(*) from event_categories where event_id = e.id) = 2`) === 1);
+  await as("anon", null, "select id from events where slug = 'individual-7501'", "un evento individual publicado es público", "some");
+  await as("authenticated", A, `insert into events (id, slug, name, event_date, city, venue, capacity, disciplines, status, organizer_id, organizer_name, draw_type, lazada_shots_per_package) values ('${EVJ}', 'individual-7502', 'Cero tiros', '2099-11-02', 'Zacatecas', 'Lienzo', 50, '{lazo}', 'borrador', '${A}', 'Org A', 'lazada_sorteada', 0)`, "tiros por paquete menores a 1 se rechazan al crear", "deny");
+  await as("authenticated", C, `insert into events (id, slug, name, organizer_id, status) values (gen_random_uuid(), 'individual-7503', 'De participante', '${C}', 'borrador')`, "un participante NO crea eventos individuales", "deny");
+  await as("authenticated", A, `insert into events (id, slug, name, organizer_id, status) values (gen_random_uuid(), 'individual-7504', 'A nombre de otro', '${B}', 'borrador')`, "NO crea un evento individual a nombre de otro organizador", "deny");
+  await as("authenticated", B, `insert into event_categories (event_id, name, fee_cents) values ('${EVI}', 'Colada', 1)`, "otro organizador NO agrega categorías al evento individual", "deny");
+  await as("authenticated", A, `select public.delete_series_event('${EVI}')`, "el borrado de eventos de serie NO aplica a uno individual (no_in_series)", "deny");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

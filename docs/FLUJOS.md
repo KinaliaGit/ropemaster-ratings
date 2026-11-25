@@ -22,6 +22,7 @@ recargando, volviendo atrás y abriendo el enlace dos veces.
 | Crear con error | Vuelve al formulario con el mensaje del error (`?error=…`) |
 | Publicar / pasar a borrador | La pantalla del evento |
 | Editar | `/organizador/eventos/<slug>?editado=1` |
+| Marcar un pago desde la pestaña Pagos (`/organizador/pagos`, KIN-754) | La misma pantalla, con los mismos filtros (`?evento=…&estado=…&q=…`); si falla, `&pagoError=1`. El cambio es el de la inscripción: se ve igual en el evento y en la app |
 | Sacar a un inscrito | La pantalla del evento con el resultado (`?sacado=…`) |
 | Borrar evento | `/organizador?borrado=1`; con error, la pantalla del evento con el motivo (`?borrarError=…`) |
 | Borrar serie | `/organizador/series?borrada=1`; con eventos, la serie con «borra primero los eventos» |

@@ -1,0 +1,34 @@
+// Filtros de la pantalla general de pagos (KIN-754). Viajan en la URL (?evento=&estado=&q=) y se validan igual al leerlos
+// y al volver a ella después de marcar un pago: solo se aceptan estos tres parámetros y con valores conocidos.
+
+export type PaymentFilters = { event: string | null; status: "pendiente" | "pagado" | "todos"; q: string };
+
+const SLUG = /^[a-z0-9-]{1,80}$/;
+
+export function parsePaymentFilters(get: (key: string) => string | null | undefined): PaymentFilters {
+  const event = get("evento") ?? "";
+  const status = get("estado");
+  return {
+    event: SLUG.test(event) ? event : null,
+    status: status === "pagado" || status === "todos" ? status : "pendiente",
+    q: (get("q") ?? "").slice(0, 80),
+  };
+}
+
+// Parámetros de URL de unos filtros (siempre con el estado, para que "pendiente" no dependa del valor por omisión).
+export function paymentFiltersQuery(f: PaymentFilters): string {
+  const p = new URLSearchParams();
+  if (f.event) p.set("evento", f.event);
+  p.set("estado", f.status);
+  if (f.q) p.set("q", f.q);
+  return p.toString();
+}
+
+// Desde una cadena de consulta recibida por un formulario (no confiable) a la que se usa en la redirección.
+export function sanitizePaymentsQuery(raw: string, error = false): string {
+  const params = new URLSearchParams(raw);
+  const f = parsePaymentFilters((k) => params.get(k));
+  const out = new URLSearchParams(paymentFiltersQuery(f));
+  if (error) out.set("pagoError", "1");
+  return out.toString();
+}

@@ -196,7 +196,7 @@ Respuesta `201` (se creó) o `200` (ya existía): `{ contract_version, created, 
 | `401` | `invalid_token` | Token inválido, revocado o vencido | no, pide reconectar |
 | `403` | `organizer_not_active` | La cuenta no es de organizador activo | no |
 | `413` | `payload_too_large` | Más de 8 KB | no |
-| `400` | `series_required` | Falta `series` (evento suelto) | no |
+| `400` | `series_required` | Falta `series`. La subida desde la app sigue exigiéndola; los eventos individuales se crean en la web (KIN-750) | no |
 | `422` | `outside_series` | La fecha del evento cae fuera de las fechas de su serie | no, la app avisa |
 | `422` | `series_not_found` | `series.id` no existe o es de otro organizador | no |
 | `422` | `series_full` | La serie ya tiene 30 eventos en la web | no |
@@ -485,7 +485,7 @@ cada evento de `GET /api/app/eventos` trae `series`:
 "series": { "id": "<uuid>", "slug": "temporada-norte-2026", "name": "Temporada Norte 2026", "start_date": "2026-01-01", "end_date": "2026-12-31" }
 ```
 
-- `series` es `null` cuando el evento está suelto. Solo viajan datos públicos de la serie; la plantilla y las instrucciones de pago no salen.
+- `series` es `null` cuando el evento es **individual** (KIN-750: el organizador lo creó en la web con «Evento individual», sin serie). Son eventos completos (sorteo, rondas, cupo, categorías) y llegan a la app igual que los demás; en la app entran a la bandeja de eventos sueltos. Solo viajan datos públicos de la serie; la plantilla y las instrucciones de pago no salen.
 - No hay un endpoint aparte de series: se descubren por sus eventos (una serie sin eventos publicados no le sirve a la app).
 - Renombrar una serie o cambiar sus fechas NO cambia el `updated_at` de sus eventos, así que no aparece en una descarga con `since`; la app lo
   recoge en su descarga completa periódica (sin `since`).

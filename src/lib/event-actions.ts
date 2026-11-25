@@ -6,6 +6,7 @@ import { updateTag } from "next/cache";
 import { getSession } from "@/lib/session";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
+import { slugify } from "@/lib/slug";
 import { emailParticipant } from "@/lib/notify";
 import { closesAfterEvent, DEFAULT_TIMEZONE, isValidTimezone, zonedLocalToIso } from "@/lib/event-time";
 
@@ -75,6 +76,58 @@ function parseClose(formData: FormData, eventDate: string): Close {
     if (closesAt && Date.parse(opensAt) >= Date.parse(closesAt)) return { ok: false, error: "opensAfterClose" };
   }
   return { ok: true, timezone: tzRaw, closesAt, opensAt };
+}
+
+// Crea un evento individual (KIN-750): uno que no pertenece a ninguna serie (`series_id` null). Pide lo mismo que cada evento de una serie
+// (sorteo, rondas, cupo, categorías, apertura y cierre). Nace como borrador o publicado y lleva al organizador a su pantalla, donde está el enlace
+// para compartir. Las reglas de la base garantizan que solo un organizador activo cree eventos a su nombre.
+export async function createEvent(formData: FormData) {
+  const l = lang(formData.get("lang"));
+  const session = await getSession();
+  if (session?.role !== "organizador") redirect(`/${l}/entrar?role=organizador`);
+  if (!session.verified) redirect(`/${l}/organizador`); // sin licencia vigente ni aprobación no se crean eventos (la base también lo impone)
+  const back = (error: string) => redirect(`/${l}/organizador/eventos/nuevo?error=${error}`);
+
+  const name = text(formData.get("name"), 120);
+  const date = text(formData.get("date"), 10);
+  const city = text(formData.get("city"), 80);
+  const venue = text(formData.get("venue"), 120);
+  const capacity = Math.floor(Number(formData.get("capacity")));
+  const names = formData.getAll("catName").map((v) => text(v, 60));
+  const fees = formData.getAll("catFee").map((v) => Math.max(0, Math.floor(Number(v)) || 0));
+  const categories = names.map((n, i) => ({ name: n, fee: fees[i] ?? 0 })).filter((c) => c.name);
+  const disciplines = formData.getAll("discipline").map(String).filter((d) => ACTIVE_DISCIPLINES.some((a) => a.id === d));
+
+  const limit = ratingLimit(formData.get("maxRoperRating"));
+  if (limit === "invalid") return back("ratingLimit");
+  const draw = drawFields(formData);
+  if (typeof draw === "string") return back(draw === "invalid" ? "drawType" : draw);
+  if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || !(capacity > 0) || categories.length === 0 || categories.length > 20 || disciplines.length === 0) return back("1");
+  const close = parseClose(formData, date);
+  if (!close.ok) return back(close.error);
+
+  const status = formData.get("intent") === "publish" ? "publicado" : "borrador";
+  const supabase = await createServerSupabase();
+  const id = crypto.randomUUID();
+  const eventSlug = slugify(name);
+
+  const { error } = await supabase.from("events").insert({
+    id, slug: eventSlug, name, event_date: date, city, venue, capacity, disciplines, status, max_roper_rating: limit,
+    draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds,
+    description: text(formData.get("description"), 1000), organizer_id: session.id, organizer_name: session.name,
+    timezone: close.timezone, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt,
+  });
+  if (error) return back("1");
+
+  const { error: catError } = await supabase.from("event_categories").insert(categories.map((c) => ({ event_id: id, name: c.name, fee_cents: c.fee * 100 })));
+  if (catError) {
+    await supabase.from("events").delete().eq("id", id); // no dejar un evento sin categorías
+    return back("1");
+  }
+
+  await savePaymentInfo(supabase, id, formData.get("paymentInfo"));
+  updateTag("events");
+  redirect(`/${l}/organizador/eventos/${eventSlug}?nuevo=${status}`);
 }
 
 // Instrucciones de pago (transferencia/efectivo): solo las ven el organizador y quienes se inscriben. Vacío = se borran.

@@ -30,7 +30,10 @@ export function EventCard({ e, lang, t, eager = false }: { e: EventItem; lang: L
         <p className="mt-0.5 text-sm text-muted">{e.city}{e.date ? ` · ${fmtDate(e.date, lang)}` : ""}</p>
         <p className="text-xs text-muted" data-testid="card-draw-type">{e.drawType === "lazada_sorteada" ? t.event.lazadaSorteada : t.event.roundRobin}</p>
         {/* La etiqueta va debajo para no tapar nada del flyer. */}
-        <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${phase === "finished" ? "bg-ink text-white" : muted ? "bg-sand text-muted" : "bg-brand-soft text-brand-hot"}`}>{tag}</span>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${phase === "finished" ? "bg-ink text-white" : muted ? "bg-sand text-muted" : "bg-brand-soft text-brand-hot"}`}>{tag}</span>
+          {!e.series && <span data-testid="card-individual" className="inline-block rounded-full border border-line px-2.5 py-0.5 text-xs font-medium text-muted">{t.series.individual}</span>}
+        </div>
       </div>
     </Link>
   );

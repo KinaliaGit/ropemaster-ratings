@@ -2,8 +2,9 @@ import { redirect } from "next/navigation";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { ensureProfile } from "@/lib/account";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { isRecoveryType, recoveryDestination } from "@/lib/password-reset";
 
-// Enlace del correo de confirmación. Acepta el formato con `token_hash` (plantilla de correo propia) y el de `code` (PKCE).
+// Enlace del correo de confirmación (y el de recuperar la contraseña, `type=recovery`). Acepta el formato con `token_hash` (plantilla de correo propia) y el de `code` (PKCE).
 // Confirma, deja la sesión iniciada, crea el perfil si hace falta y lleva a su espacio.
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -13,6 +14,13 @@ export async function GET(request: Request) {
   const code = url.searchParams.get("code");
 
   const supabase = await createServerSupabase();
+  // KIN-601: el enlace de «olvidé mi contraseña» deja la sesión y lleva a elegir la nueva; nunca a «bienvenido» ni al panel.
+  if (isRecoveryType(type)) {
+    let verified = false;
+    if (tokenHash) verified = !(await supabase.auth.verifyOtp({ type: "recovery", token_hash: tokenHash })).error;
+    else if (code) verified = !(await supabase.auth.exchangeCodeForSession(code)).error;
+    redirect(recoveryDestination(lang, verified));
+  }
   let ok = false;
   if (tokenHash && type) ok = !(await supabase.auth.verifyOtp({ type, token_hash: tokenHash })).error;
   else if (code) ok = !(await supabase.auth.exchangeCodeForSession(code)).error;

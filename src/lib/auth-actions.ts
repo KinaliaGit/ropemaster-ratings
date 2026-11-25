@@ -6,6 +6,7 @@ import { LEGAL } from "@/lib/legal";
 import { ensureProfile } from "@/lib/account";
 import { parseRatingInput } from "@/lib/rating-input";
 import { parseRoleChoice } from "@/lib/roles";
+import { isEmailShape, resetUpdateError, validateNewPassword } from "@/lib/password-reset";
 
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
 const str = (v: FormDataEntryValue | null, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -89,6 +90,38 @@ export async function resendConfirmation(formData: FormData) {
     await (await createServerSupabase()).auth.resend({ type: "signup", email, options: { emailRedirectTo: `${await siteOrigin()}/auth/confirm?lang=${l}` } });
   }
   redirect(`/${l}/registro?role=${role}&check=email&resent=1&email=${encodeURIComponent(email)}`);
+}
+
+// Recuperar la contraseña (KIN-601). Pide el enlace: la respuesta es SIEMPRE la misma, tenga cuenta el correo o no (y aunque Supabase
+// rechace el envío por límite), para no revelar qué correos existen. El enlace del correo lo arma la plantilla de Supabase con `token_hash`
+// (funciona abierto en otro dispositivo); `redirectTo` solo sirve al formato con `code`, que hace falta en el mismo navegador.
+export async function requestPasswordReset(formData: FormData) {
+  const l = lang(formData.get("lang"));
+  const role = roleOf(formData.get("role"));
+  const email = str(formData.get("email"), 200).toLowerCase();
+  if (!isEmailShape(email)) redirect(`/${l}/recuperar?role=${role}&error=email`);
+  try {
+    await (await createServerSupabase()).auth.resetPasswordForEmail(email, { redirectTo: `${await siteOrigin()}/auth/confirm?type=recovery&lang=${l}` });
+  } catch {
+    // Misma respuesta: no se enseña si el envío falló.
+  }
+  redirect(`/${l}/recuperar?role=${role}&sent=1`);
+}
+
+// Guarda la contraseña nueva de quien llegó por el enlace del correo (la sesión la dejó `/auth/confirm`). Cierra sus otras sesiones y lo
+// deja dentro con un aviso. Sin sesión (enlace ya usado o vencido) vuelve a pedir otro.
+export async function setNewPassword(formData: FormData) {
+  const l = lang(formData.get("lang"));
+  const problem = validateNewPassword(str(formData.get("password"), 200), str(formData.get("confirm"), 200));
+  if (problem) redirect(`/${l}/recuperar/nueva?error=${problem}`);
+  const supabase = await createServerSupabase();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) redirect(`/${l}/recuperar?error=expired`);
+  const { error } = await supabase.auth.updateUser({ password: str(formData.get("password"), 200) });
+  if (error) redirect(`/${l}/recuperar/nueva?error=${resetUpdateError(error.message)}`);
+  await supabase.auth.signOut({ scope: "others" });
+  const profile = await ensureProfile(supabase, data.user);
+  redirect(`${home(l, profile?.role === "organizador" ? "organizador" : "participante")}?contrasena=1`);
 }
 
 export async function logout(formData: FormData) {

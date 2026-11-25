@@ -13,7 +13,11 @@ recargando, volviendo atrás y abriendo el enlace dos veces.
 | Entrar (`/entrar`) con cuenta sin confirmar | `/entrar?error=unconfirmed` y botón para reenviar |
 | Entrar bien | La ruta de `?next=` si es interna, si no su espacio (`/organizador` o `/mi-cuenta`) |
 | Salir | `/{lang}` |
-| Recuperar contraseña | Pendiente: no existe todavía (KIN-601) |
+| Entrar → «¿Olvidaste tu contraseña?» (`/recuperar`, KIN-601) | Pide el correo. Responde siempre lo mismo (`?sent=1`), tenga cuenta o no; un correo mal escrito vuelve con `?error=email` |
+| Enlace del correo de recuperación (`/auth/confirm?token_hash=…&type=recovery`) | Sesión iniciada y `/recuperar/nueva` (elegir contraseña). Nunca «bienvenido» ni el panel. Funciona abierto en otro dispositivo (usa `token_hash`) |
+| Mismo enlace vencido o usado | `/recuperar?error=expired` con «el enlace no es válido o ya venció» y el formulario para pedir otro |
+| `/recuperar/nueva` sin sesión | `/recuperar?error=expired` |
+| Guardar la contraseña nueva | `/organizador?contrasena=1` o `/mi-cuenta?contrasena=1` con «Cambiaste tu contraseña»; las otras sesiones de esa cuenta se cierran. Con error vuelve con `?error=short\|long\|mismatch\|same\|weak` |
 
 ## Organizador
 | Paso | Destino esperado |

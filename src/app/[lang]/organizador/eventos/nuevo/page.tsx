@@ -6,6 +6,7 @@ import { Gate } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
 import { EventForm } from "@/components/EventForm";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
+import { listArenas } from "@/lib/data/arenas";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
 async function Page({ props }: { props: PageProps<"/[lang]/organizador/eventos/nuevo"> }) {
@@ -15,8 +16,9 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/eventos/n
   const f = t.org.form;
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador/eventos/nuevo`}>
-      {(s) => {
+      {async (s) => {
         if (!s.verified) redirect(`/${lang}/organizador`);
+        const arenas = await listArenas();
         return (
         <>
           <OrgNav lang={lang} t={t} admin={s.isAdmin} />
@@ -26,7 +28,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/eventos/n
             <p className="mt-1 text-sm text-muted" data-testid="new-event-series-hint">{f.seriesHint} <Link href={`/${lang}/organizador/series/nueva`} className="font-medium text-brand-hot hover:underline">{f.seriesLink}</Link></p>
             <EventForm
               lang={lang} error={typeof sp.error === "string" ? sp.error : undefined}
-              labels={f}
+              labels={f} arenas={arenas} arenaLabels={t.org.arenas.picker}
               disciplines={ACTIVE_DISCIPLINES.map((d) => ({ id: d.id, label: t.disc[d.id].label }))}
             />
           </div>

@@ -15,6 +15,7 @@ export type EventItem = {
   lazadaShotsPerPackage: number | null; // solo Lazada Sorteada: tiros que trae un paquete
   rounds: number | null; // rondas del evento, 1 a 10 (null = aún sin definir)
   maxTeamRating: number | null; // rating máximo de la suma de un equipo (null = sin tope)
+  arenaId: string | null; // arena del catálogo del organizador (KIN-751); null en eventos sin lugar
   resultsClosed: boolean; // los resultados ya están cerrados (candado de la app); un evento finalizado con los resultados abiertos está en corrección
 };
 

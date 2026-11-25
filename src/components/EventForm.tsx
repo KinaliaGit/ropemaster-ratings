@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { createEvent, updateEvent } from "@/lib/event-actions";
 import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/event-time";
+import { ArenaFields, type ArenaChoice, type ArenaLabels } from "@/components/ArenaFields";
 
 type Labels = {
   name: string; date: string; capacity: string; venue: string; city: string; disciplines: string; categories: string; categoryName: string; categoryNamePlaceholder: string; cost: string; costHint: string; maxRoperRating: string; maxRoperRatingHint: string; addCategory: string;
@@ -9,11 +10,11 @@ type Labels = {
   opens: string; opensHint: string; closes: string; closesHint: string; timezone: string;
   drawType: string; drawTypeHint: string; drawLocked: string; roundRobin: string; lazadaSorteada: string; shotsPerPackage: string; shotsPerPackageHint: string; maxTeamRating: string; maxTeamRatingHint: string; rounds: string; roundsHint: string;
 };
-export type EventInitial = { slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; paymentInfo: string; opensAt: string; closesAt: string; timezone: string; disciplines: string[]; maxRoperRating: number | null; drawType: "round_robin" | "lazada_sorteada"; shotsPerPackage: number | null; maxTeamRating: number | null; rounds: number | null; drawLocked: boolean; cats: { id: string; name: string; fee: number }[] };
+export type EventInitial = { arenaId?: string | null; slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; paymentInfo: string; opensAt: string; closesAt: string; timezone: string; disciplines: string[]; maxRoperRating: number | null; drawType: "round_robin" | "lazada_sorteada"; shotsPerPackage: number | null; maxTeamRating: number | null; rounds: number | null; drawLocked: boolean; cats: { id: string; name: string; fee: number }[] };
 
 const input = "mt-1 w-full rounded-xl border border-line bg-white px-4 py-2.5 outline-none focus:border-ink";
 
-export function EventForm({ lang, labels: l, disciplines, error, initial }: { lang: "es" | "en"; labels: Labels; disciplines: { id: string; label: string }[]; error?: string; initial?: EventInitial }) {
+export function EventForm({ lang, labels: l, disciplines, error, initial, arenas, arenaLabels }: { lang: "es" | "en"; labels: Labels; disciplines: { id: string; label: string }[]; error?: string; initial?: EventInitial; arenas: ArenaChoice[]; arenaLabels: ArenaLabels }) {
   const [cats, setCats] = useState<{ id: string; name: string; fee: number }[]>(initial?.cats ?? [{ id: "", name: "Libre", fee: 800 }]);
   const [drawType, setDrawType] = useState<"round_robin" | "lazada_sorteada">(initial?.drawType ?? "round_robin");
   const locked = initial?.drawLocked ?? false; // con inscritos o resultados el tipo y los tiros por paquete ya no cambian (la base lo impone)
@@ -26,9 +27,8 @@ export function EventForm({ lang, labels: l, disciplines, error, initial }: { la
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block text-sm font-medium">{l.date}<input required name="date" type="date" defaultValue={initial?.date} className={input} /></label>
         <label className="block text-sm font-medium">{l.capacity}<input required name="capacity" type="number" min={1} defaultValue={initial?.capacity ?? 100} className={input} /></label>
-        <label className="block text-sm font-medium">{l.venue}<input required name="venue" maxLength={120} defaultValue={initial?.venue} className={input} /></label>
-        <label className="block text-sm font-medium">{l.city}<input required name="city" maxLength={80} defaultValue={initial?.city} className={input} /></label>
       </div>
+      <ArenaFields arenas={arenas} labels={arenaLabels} initial={initial ? { arenaId: initial.arenaId ?? null, venue: initial.venue, city: initial.city } : undefined} />
       <label className="block text-sm font-medium">{l.maxRoperRating}
         <input name="maxRoperRating" type="number" min={0} max={10} step={0.1} inputMode="decimal" defaultValue={initial?.maxRoperRating ?? ""} className={input} />
         <span className="mt-1 block text-xs font-normal text-muted">{l.maxRoperRatingHint}</span>

@@ -7,7 +7,7 @@ import { getPublicEvent } from "@/lib/data/events";
 import { mxn, type Lang } from "@/lib/format";
 import { fmtDeadline, isNotOpenYet, isRegistrationOpen, statusByDate } from "@/lib/event-time";
 import { Gate } from "@/components/Gate";
-import { enroll } from "@/lib/registration-actions";
+import { enroll, joinWaitlist } from "@/lib/registration-actions";
 import { STRIPE_ENABLED } from "@/lib/flags";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
@@ -21,6 +21,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
   const e = await getPublicEvent(id);
   if (!e) notFound();
   const regOpen = statusByDate(e) === "publicado" && isRegistrationOpen({ opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed }); // fecha pasada = cerrado (KIN-656)
+  const full = e.enrolled >= e.capacity; // KIN-726: con el cupo lleno el mismo formulario entra a la lista de espera (la base lo vuelve a comprobar)
   const notYet = !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt });
   return (
     <Gate lang={lang} role="any" next={`/${lang}/eventos/${id}/inscribirse`}>
@@ -31,7 +32,8 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
           {regOpen && e.registrationClosesAt && <p className="mt-2 text-sm text-muted">{t.event.closesOn} {fmtDeadline(e.registrationClosesAt, e.timezone, lang)}</p>}
           {!regOpen && <p role="alert" className="mt-4 rounded-xl bg-sand p-3 text-sm font-medium">{notYet && e.registrationOpensAt ? `${t.enroll.errors.not_open_yet} ${t.event.opensOn} ${fmtDeadline(e.registrationOpensAt, e.timezone, lang)}` : t.enroll.errors.registration_closed}</p>}
           {typeof sp.error === "string" && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{(t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed}</p>}
-          {regOpen && <form action={enroll} className="card mt-6 space-y-5 p-6">
+          {regOpen && full && <div role="note" className="mt-4 rounded-xl bg-sand p-3 text-sm" data-testid="waitlist-note"><p className="font-medium">{t.enroll.fullTitle}</p><p className="mt-1 text-muted">{t.enroll.fullNote}</p></div>}
+          {regOpen && <form action={full ? joinWaitlist : enroll} className="card mt-6 space-y-5 p-6">
             <input type="hidden" name="lang" value={lang} /><input type="hidden" name="event" value={e.id} />
             <fieldset>
               <legend className="text-sm font-medium">{t.enroll.category}</legend>
@@ -62,8 +64,8 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
               </label>
             )}
             {e.maxRoperRating !== null && <p className="text-xs text-muted">{t.event.maxRating}: <span className="tabular-nums">{e.maxRoperRating.toFixed(1)}</span></p>}
-            <button className="w-full rounded-full bg-brand py-3 font-semibold text-white hover:bg-brand-hot">{t.enroll.submit}</button>
-            <p className="text-center text-xs text-muted">{STRIPE_ENABLED ? t.enroll.pendingNote : t.enroll.pendingNoteOffline}</p>
+            <button className="w-full rounded-full bg-brand py-3 font-semibold text-white hover:bg-brand-hot">{full ? t.enroll.joinWaitlist : t.enroll.submit}</button>
+            {!full && <p className="text-center text-xs text-muted">{STRIPE_ENABLED ? t.enroll.pendingNote : t.enroll.pendingNoteOffline}</p>}
           </form>}
         </div>
       )}

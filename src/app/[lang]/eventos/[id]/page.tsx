@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getPublicEvent } from "@/lib/data/events";
-import { getEventRegistrants } from "@/lib/data/registrations";
+import { getEventRegistrants, getEventWaitlistCount } from "@/lib/data/registrations";
 import { ACTIVE_DISCIPLINES, DEFAULT_DISCIPLINE, type DisciplineId } from "@/lib/disciplines";
 import { toEnrolledItem } from "@/lib/enrolled-view";
 import { fmtDate, mxn, type Lang } from "@/lib/format";
@@ -40,6 +40,9 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   const regOpen = isRegistrationOpen({ opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
   const notYet = e.status === "publicado" && !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt }); // apertura programada: aún no abre
   const open = e.status === "publicado" && e.enrolled < e.capacity && regOpen;
+  // KIN-726: con el cupo lleno y las inscripciones abiertas, el botón pasa a "Entrar a lista de espera" (la base decide si de verdad está lleno).
+  const canWait = e.status === "publicado" && e.enrolled >= e.capacity && regOpen;
+  const waiting = canWait && e.uuid ? await getEventWaitlistCount(e.uuid) : 0;
   const closesLine = e.status === "publicado" && regOpen && e.registrationClosesAt ? `${t.event.closesOn} ${fmtDeadline(e.registrationClosesAt, e.timezone, lang)}` : null;
   const resultDisciplines: DisciplineId[] = ACTIVE_DISCIPLINES.filter((d) => e.disciplines.includes(d.id)).map((d) => d.id);
   if (resultDisciplines.length === 0) resultDisciplines.push(DEFAULT_DISCIPLINE);
@@ -54,6 +57,11 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
           <Link href={`/${lang}/eventos/${e.id}/inscribirse`} className="block whitespace-nowrap rounded-full bg-ink px-5 py-3 text-center text-sm font-medium text-white transition hover:bg-brand-hot">
             {t.event.enroll} · <span className="tabular-nums text-white/80">{t.event.from} {mxn(fromFee, lang).replace(" MXN", "")}</span>
           </Link>
+        </div>
+      )}
+      {canWait && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-cream/90 p-3 backdrop-blur-xl lg:hidden">
+          <Link href={`/${lang}/eventos/${e.id}/inscribirse`} className="block whitespace-nowrap rounded-full bg-ink px-5 py-3 text-center text-sm font-medium text-white transition hover:bg-brand-hot">{t.event.joinWaitlist}</Link>
         </div>
       )}
       <div className="grid gap-8 lg:grid-cols-[minmax(0,380px)_1fr] lg:gap-12">
@@ -86,6 +94,12 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
             {e.drawType === "lazada_sorteada" && <p className="mt-1 text-xs text-muted">{t.event.packageFee}</p>}
             {open
               ? <Link href={`/${lang}/eventos/${e.id}/inscribirse`} className="mt-4 block rounded-full bg-ink py-3 text-center text-sm font-medium text-white transition hover:bg-brand-hot">{t.event.enroll}</Link>
+              : canWait
+              ? <>
+                  <p className="mt-4 rounded-full bg-sand py-3 text-center text-sm text-muted">{t.event.full}</p>
+                  <Link href={`/${lang}/eventos/${e.id}/inscribirse`} className="mt-2 block rounded-full bg-ink py-3 text-center text-sm font-medium text-white transition hover:bg-brand-hot">{t.event.joinWaitlist}</Link>
+                  {waiting > 0 && <p className="mt-2 text-center text-xs font-medium text-muted" data-testid="waitlist-count">{t.event.waitlistCount(waiting)}</p>}
+                </>
               : <p className="mt-4 rounded-full bg-sand py-3 text-center text-sm text-muted">{e.status === "finalizado" ? t.event.eventFinished : notYet ? t.event.notYetOpen : !regOpen ? t.event.registrationClosed : t.event.full}</p>}
             {notYet && e.registrationOpensAt && <p className="mt-2 text-center text-xs font-medium text-muted">{t.event.opensOn} {fmtDeadline(e.registrationOpensAt, e.timezone, lang)}</p>}
             {closesLine && <p className="mt-2 text-center text-xs font-medium text-muted">{closesLine}</p>}

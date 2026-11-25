@@ -2,7 +2,7 @@ import { organizerFromRequest } from "@/lib/app-auth";
 import { adminClient } from "@/lib/supabase/admin";
 import { checkActiveOrganizer } from "@/lib/app-organizer";
 import { MAX_BYTES, buildUploadEventResponse, dbFailure, parseUploadEventBody, type UploadEventRow } from "@/lib/app-event-upload";
-import { PAGE_SIZE, buildEventsPage, checkVersion, parseEventsQuery, type EventRow, type EventSeriesRef } from "@/lib/app-events";
+import { PAGE_SIZE, buildEventsPage, checkVersion, parseEventsQuery, type EventRow, type EventSeriesRef, type WaitlistRow } from "@/lib/app-events";
 
 // La app local descarga los eventos publicados y finalizados del organizador, con sus inscritos y el estado de pago (KIN-585).
 // Contrato en docs/SYNC_API.md.
@@ -67,6 +67,37 @@ export async function GET(request: Request) {
         row.rounds = extra?.rounds ?? null;
         row.series = byId.get(row.id)?.series ?? null;
       }
+    }
+    // Lista de espera de cada evento de la página (KIN-726), también aparte de la función SQL. Cada fila lleva el perfil vigente de la persona
+    // (si se fusionó con otro, el del perfil al que se fusionó) y nunca correo ni celular: eso va en GET /api/app/participantes.
+    if (page.length > 0) {
+      const { data: waiting, error: waitingError } = await db
+        .from("event_waitlist")
+        .select("id, event_id, category_id, role, packages, created_at, event_categories(name), ropers(id, full_name, merged_into)")
+        .in("event_id", page.map((row) => row.id))
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true });
+      if (waitingError) return unavailable();
+      type WaitingRow = { id: string; event_id: string; category_id: string | null; role: "header" | "heeler" | null; packages: number; created_at: string; event_categories: { name: string } | null; ropers: { id: string; full_name: string; merged_into: string | null } | null };
+      const list = (waiting ?? []) as unknown as WaitingRow[];
+      const mergedIds = [...new Set(list.map((w) => w.ropers?.merged_into).filter((id): id is string => !!id))];
+      const canon = new Map<string, string>();
+      if (mergedIds.length > 0) {
+        const { data: canonical, error: canonicalError } = await db.from("ropers").select("id, full_name").in("id", mergedIds);
+        if (canonicalError) return unavailable();
+        for (const r of canonical ?? []) canon.set(r.id as string, r.full_name as string);
+      }
+      const byEvent = new Map<string, WaitlistRow[]>();
+      for (const w of list) {
+        if (!w.ropers) continue;
+        const global = w.ropers.merged_into ?? w.ropers.id;
+        const entry: WaitlistRow = {
+          id: w.id, roper_global_id: global, name: (w.ropers.merged_into ? canon.get(w.ropers.merged_into) : null) ?? w.ropers.full_name, category_id: w.category_id,
+          category: w.event_categories?.name ?? null, role: w.role, packages: w.packages, joined_at: w.created_at,
+        };
+        byEvent.set(w.event_id, [...(byEvent.get(w.event_id) ?? []), entry]);
+      }
+      for (const row of page) row.waitlist = byEvent.get(row.id) ?? [];
     }
     return json(buildEventsPage(rows, auth.organizer, snapshot));
   } catch {

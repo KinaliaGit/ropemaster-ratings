@@ -10,12 +10,11 @@ import { createServerSupabase } from "@/lib/supabase/server";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
-const KNOWN = ["invalid_packages", "not_open_yet", "role_required", "invalid_role", "removed", "registration_closed", "full", "closed", "already", "invalid_category", "rating_limit", "paid", "not_found"];
+const KNOWN = ["invalid_packages", "not_open_yet", "role_required", "invalid_role", "removed", "registration_closed", "full", "not_full", "closed", "already", "invalid_category", "rating_limit", "paid", "not_found"];
 const codeOf = (message: string) => KNOWN.find((k) => message.includes(k)) ?? "failed";
 
-// Inscribirse a un evento. La base valida todo (evento publicado, categoría del evento, no repetir, cupo con bloqueo) y el precio
-// sale de la categoría, nunca del navegador. Queda en "pendiente" hasta que exista el pago.
-export async function enroll(formData: FormData) {
+// Lo que mandan los formularios de inscribirse y de entrar a la lista de espera: mismas reglas de validación en la web y en la base.
+async function enrollmentInput(formData: FormData) {
   const l = lang(formData.get("lang"));
   const slug = String(formData.get("event") ?? "");
   const category = String(formData.get("category") ?? "");
@@ -33,13 +32,40 @@ export async function enroll(formData: FormData) {
   // Lazada Sorteada (KIN-649): cuántos paquetes de tiros compra en cada rol (1 a 99). La base valida que solo ese tipo acepte más de uno y el monto
   // sale del costo de la categoría * paquetes, nunca del navegador. Los demás tipos de sorteo siguen con las firmas de siempre.
   const packages = Math.floor(Number(formData.get("packages") ?? 1));
+  return { l, s, event: { ...event, uuid: event.uuid }, category, role, packages: Number.isFinite(packages) ? packages : 0, back };
+}
+
+// Inscribirse a un evento. La base valida todo (evento publicado, categoría del evento, no repetir, cupo con bloqueo) y el precio
+// sale de la categoría, nunca del navegador. Queda en "pendiente" hasta que exista el pago.
+export async function enroll(formData: FormData) {
+  const { l, s, event, category, role, packages, back } = await enrollmentInput(formData);
   const args = event.drawType === "lazada_sorteada"
-    ? { p_event: event.uuid, p_category: category, p_role: role, p_packages: Number.isFinite(packages) ? packages : 0 }
+    ? { p_event: event.uuid, p_category: category, p_role: role, p_packages: packages }
     : s.roleChoice?.role === "both" ? { p_event: event.uuid, p_category: category, p_role: role } : { p_event: event.uuid, p_category: category };
   const { error } = await (await createServerSupabase()).rpc("register_for_event", args);
   if (error) return back(codeOf(error.message));
   updateTag("registrations");
   redirect(`/${l}/mi-cuenta?inscrito=1`);
+}
+
+// Entrar a la lista de espera de un evento lleno (KIN-726). La base solo la acepta si inscribirse hoy fallaría por cupo y aplica las mismas reglas
+// (ventana de inscripción, categoría, rol, rating máximo, no repetir). Esperar no ocupa lugar ni se cobra. Si ya hay lugar, "not_full": hay que inscribirse normal.
+export async function joinWaitlist(formData: FormData) {
+  const { l, event, category, role, packages, back } = await enrollmentInput(formData);
+  const { error } = await (await createServerSupabase()).rpc("join_waitlist", { p_event: event.uuid, p_category: category, p_role: role, p_packages: event.drawType === "lazada_sorteada" ? packages : 1 });
+  if (error) return back(codeOf(error.message));
+  updateTag("registrations");
+  redirect(`/${l}/mi-cuenta?espera=1`);
+}
+
+// La persona sale de la lista de espera (solo de la suya).
+export async function leaveWaitlist(formData: FormData) {
+  const l = lang(formData.get("lang"));
+  const id = String(formData.get("id") ?? "");
+  if (!UUID.test(id)) redirect(`/${l}/mi-cuenta`);
+  const { error } = await (await createServerSupabase()).rpc("leave_waitlist", { p_entry: id });
+  if (!error) updateTag("registrations");
+  redirect(`/${l}/mi-cuenta?${error ? `error=${codeOf(error.message)}` : "espera=salio"}`);
 }
 
 // Cancelar una inscripción propia que aún no se ha pagado.
@@ -138,4 +164,40 @@ export async function setRemovalRefunded(formData: FormData) {
   if (!UUID.test(id)) return back("sacado=not_found");
   const { error } = await supabase.rpc("set_removal_refunded", { p_removal: id, p_done: formData.get("done") === "true" });
   return back(error ? `sacado=${removeCode(error.message)}` : "sacado=refund");
+}
+
+// ---- Lista de espera del evento, del lado del organizador (KIN-726). La base valida que sea el organizador activo del evento (o un admin) y el cupo. ----
+const WAITLIST_ERRORS = ["full", "closed", "already", "rating_limit", "invalid_category", "not_found"];
+const waitlistCode = (message: string) => WAITLIST_ERRORS.find((k) => message.includes(k)) ?? "failed";
+
+// Pasar a alguien de la lista de espera a inscrito. Solo si hay lugar; queda pendiente de pago y se le avisa dentro de la web y por correo.
+export async function promoteWaitlistEntry(formData: FormData) {
+  const { back, supabase } = await organizerContext(formData);
+  const id = String(formData.get("id") ?? "");
+  if (!UUID.test(id)) return back("espera=not_found");
+  type Entry = { roper_id: string; events: { name: string; event_date: string | null; city: string | null; venue: string | null; organizer_name: string | null; organizer_id: string | null } | null };
+  const { data: entry } = await supabase.from("event_waitlist").select("roper_id, events(name, event_date, city, venue, organizer_name, organizer_id)").eq("id", id).maybeSingle<Entry>();
+  const { error } = await supabase.rpc("promote_waitlist_entry", { p_entry: id });
+  if (error) return back(`espera=${waitlistCode(error.message)}`);
+  updateTag("registrations");
+  // El aviso dentro de la web ya lo guardó la base; el correo sale aparte y, si falla, no deshace nada.
+  const ev = entry?.events;
+  if (entry && ev) {
+    after(() => emailParticipant({
+      kind: "promoted", roperId: entry.roper_id, eventName: ev.name, eventDate: ev.event_date, place: [ev.venue, ev.city].filter(Boolean).join(", "),
+      organizerId: ev.organizer_id, organizerName: ev.organizer_name ?? "", reason: "", paid: false,
+    }));
+  }
+  return back("espera=ok");
+}
+
+// Quitar a alguien de la lista de espera.
+export async function removeWaitlistEntry(formData: FormData) {
+  const { back, supabase } = await organizerContext(formData);
+  const id = String(formData.get("id") ?? "");
+  if (!UUID.test(id)) return back("espera=not_found");
+  const { error } = await supabase.rpc("remove_waitlist_entry", { p_entry: id });
+  if (error) return back(`espera=${waitlistCode(error.message)}`);
+  updateTag("registrations");
+  return back("espera=removed");
 }

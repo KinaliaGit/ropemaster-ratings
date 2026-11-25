@@ -83,6 +83,59 @@ export async function listEventRegistrations(eventUuid: string): Promise<EventRe
   }));
 }
 
+// ---- Lista de espera de un evento lleno (KIN-726) ----
+
+// Cuántas personas esperan en un evento público (solo el número). Se invalida con las inscripciones.
+export async function getEventWaitlistCount(eventUuid: string): Promise<number> {
+  "use cache";
+  cacheTag("registrations");
+  cacheLife("minutes");
+  const { data, error } = await createPublicClient().rpc("event_waitlist_counts");
+  if (error) throw new Error(`No se pudo leer la lista de espera: ${error.message}`);
+  return Number((data ?? []).find((r: { event_id: string; n: number }) => r.event_id === eventUuid)?.n ?? 0);
+}
+
+export type MyWaitlistEntry = { id: string; place: number; role: string | null; packages: number; category: string; event: { slug: string | null; name: string; date: string | null; city: string | null; status: string } | null };
+
+// Mis lugares en listas de espera, con mi lugar en la fila de cada evento (la base solo devuelve los míos y un número: no revela a nadie).
+export async function listMyWaitlist(): Promise<MyWaitlistEntry[]> {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase.rpc("my_waitlist");
+  if (error) throw new Error(`No se pudo leer tu lista de espera: ${error.message}`);
+  const rows = (data ?? []) as { id: string; event_id: string; category_id: string; role: string | null; packages: number; place: number }[];
+  if (rows.length === 0) return [];
+  const { data: events } = await supabase.from("events").select("id, slug, name, event_date, city, status, event_categories(id, name)").in("id", [...new Set(rows.map((r) => r.event_id))]);
+  type EventRow = { id: string; slug: string | null; name: string; event_date: string | null; city: string | null; status: string; event_categories: { id: string; name: string }[] | null };
+  const byId = new Map(((events ?? []) as unknown as EventRow[]).map((e) => [e.id, e]));
+  return rows.map((r) => {
+    const e = byId.get(r.event_id);
+    return {
+      id: r.id, place: Number(r.place), role: r.role, packages: r.packages, category: e?.event_categories?.find((c) => c.id === r.category_id)?.name ?? "",
+      event: e ? { slug: e.slug, name: e.name, date: e.event_date, city: e.city, status: e.status } : null,
+    };
+  });
+}
+
+export type EventWaitlistEntry = { id: string; roperId: string; place: number; name: string; category: string; role: string | null; packages: number; joinedAt: string; email: string | null };
+
+// Lista de espera de un evento propio, en orden de llegada (la base solo la deja ver al organizador del evento y a un admin). El correo solo llega si es organizador activo.
+export async function listEventWaitlist(eventUuid: string): Promise<EventWaitlistEntry[]> {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase.from("event_waitlist")
+    .select("id, roper_id, role, packages, created_at, event_categories(name), ropers(full_name)")
+    .eq("event_id", eventUuid).order("created_at", { ascending: true }).order("id", { ascending: true });
+  if (error) throw new Error(`No se pudo leer la lista de espera: ${error.message}`);
+  type Row = { id: string; roper_id: string; role: string | null; packages: number; created_at: string; event_categories: { name: string } | null; ropers: { full_name: string } | null };
+  const rows = data as unknown as Row[];
+  const ids = [...new Set(rows.map((r) => r.roper_id))];
+  const { data: contacts } = ids.length ? await supabase.from("roper_contacts").select("roper_id, email").in("roper_id", ids) : { data: [] };
+  const emails = new Map((contacts ?? []).map((c) => [c.roper_id, c.email]));
+  return rows.map((r, i) => ({
+    id: r.id, roperId: r.roper_id, place: i + 1, name: r.ropers?.full_name ?? "—", category: r.event_categories?.name ?? "", role: r.role, packages: r.packages,
+    joinedAt: r.created_at, email: emails.get(r.roper_id) ?? null,
+  }));
+}
+
 // Instrucciones de pago de un evento propio (para editarlas).
 export async function getPaymentInstructions(eventUuid: string): Promise<string> {
   const { data } = await (await createServerSupabase()).from("event_payment_info").select("instructions").eq("event_id", eventUuid).maybeSingle();

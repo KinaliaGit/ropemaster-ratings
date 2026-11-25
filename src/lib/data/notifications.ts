@@ -1,7 +1,7 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 
 // Avisos de la persona que visita (KIN-657). Sin caché: son personales. La base solo deja leer los propios (RLS).
-export type NotificationItem = { id: string; kind: "removed" | "event_deleted"; eventName: string; eventDate: string | null; reason: string; refundPending: boolean; createdAt: string; read: boolean };
+export type NotificationItem = { id: string; kind: "removed" | "event_deleted" | "promoted"; eventName: string; eventDate: string | null; reason: string; refundPending: boolean; createdAt: string; read: boolean };
 
 export async function listMyNotifications(limit = 50): Promise<NotificationItem[]> {
   const { data } = await (await createServerSupabase()).from("notifications")

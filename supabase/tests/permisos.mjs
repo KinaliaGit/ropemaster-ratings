@@ -1664,5 +1664,83 @@ console.log("- Resultados de un evento (0030)");
   await as("authenticated", D, `delete from roper_rating_history`, "nadie borra historial escribiendo la tabla", "deny");
 }
 
+// Lista de espera de un evento lleno (KIN-726, 0049)
+{
+  console.log("— Lista de espera (0049)");
+  const WEV = "e0000000-0000-0000-0000-0000000000b1", WEV2 = "e0000000-0000-0000-0000-0000000000b2", WCAT = "ca000000-0000-0000-0000-0000000000b1", WCAT2 = "ca000000-0000-0000-0000-0000000000b2";
+  const WU = ["11111111-bbbb-0000-0000-0000000000b1", "11111111-bbbb-0000-0000-0000000000b2", "11111111-bbbb-0000-0000-0000000000b3"];
+  const WR = ["33333333-0000-0000-0000-0000000000b1", "33333333-0000-0000-0000-0000000000b2", "33333333-0000-0000-0000-0000000000b3"];
+  await db.exec(`
+    insert into auth.users (id, email, email_confirmed_at) values ('${WU[0]}','w1@x.com',now()), ('${WU[1]}','w2@x.com',now()), ('${WU[2]}','w3@x.com',now());
+    insert into ropers (id, full_name, user_id) values ('${WR[0]}','Espera Uno','${WU[0]}'), ('${WR[1]}','Espera Dos','${WU[1]}'), ('${WR[2]}','Espera Tres','${WU[2]}');
+    insert into events (id, name, organizer_id, status, slug, capacity) values ('${WEV}','Evento lleno','${A}','publicado','evento-lleno',1), ('${WEV2}','Evento con lugar','${A}','publicado','evento-con-lugar',5);
+    insert into event_categories (id, event_id, name, fee_cents) values ('${WCAT}','${WEV}','Libre',50000), ('${WCAT2}','${WEV2}','Libre',50000);
+  `);
+  const rows = async (role, uid, sql) => {
+    await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${uid ?? ""}', false); set role ${role}`);
+    try { return (await db.query(sql)).rows; } finally { await db.exec("reset role"); }
+  };
+  const n = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const entryOf = async (roper) => (await db.query(`select id from event_waitlist where event_id = '${WEV}' and roper_id = '${roper}'`)).rows[0]?.id;
+
+  await as("authenticated", WU[0], `select public.join_waitlist('${WEV}','${WCAT}',null,1)`, "con lugar libre NO entra a la lista de espera (se inscribe normal)", "deny");
+  await as("authenticated", WU[0], `select public.register_for_event('${WEV}','${WCAT}')`, "el primero toma el único lugar", "some");
+  await as("authenticated", WU[1], `select public.register_for_event('${WEV}','${WCAT}')`, "cupo lleno: inscribirse sigue rechazado", "deny");
+  await as("authenticated", WU[1], `select public.join_waitlist('${WEV}','${WCAT}',null,1)`, "con el evento lleno SÍ entra a la lista de espera", "some");
+  await as("authenticated", WU[1], `select public.join_waitlist('${WEV}','${WCAT}',null,1)`, "no entra dos veces a la misma lista", "deny");
+  await as("authenticated", WU[2], `select public.join_waitlist('${WEV}','${WCAT}',null,1)`, "el segundo también espera", "some");
+  await as("authenticated", WU[0], `select public.join_waitlist('${WEV}','${WCAT}',null,1)`, "quien ya está inscrito NO entra a la lista", "deny");
+  await as("authenticated", WU[1], `select public.join_waitlist('${WEV2}','${WCAT2}',null,1)`, "evento con lugar: la lista de espera se rechaza", "deny");
+  await as("authenticated", WU[1], `select public.join_waitlist('${WEV}','${WCAT2}',null,1)`, "categoría de otro evento se rechaza", "deny");
+  await as("anon", null, `select public.join_waitlist('${WEV}','${WCAT}',null,1)`, "anónimo NO entra a la lista de espera", "deny");
+  await as("authenticated", WU[1], `insert into event_waitlist (event_id, roper_id, category_id) values ('${WEV}','${WR[1]}','${WCAT}')`, "NO se escribe la tabla directo", "deny");
+  check("una persona en espera NO cuenta en el cupo ni en las inscripciones", await n(`select count(*) n from registrations where event_id = '${WEV}'`) === 1);
+
+  check("la persona ve solo su fila de espera", (await rows("authenticated", WU[1], "select id from event_waitlist")).length === 1);
+  check("el organizador del evento ve toda la lista", (await rows("authenticated", A, `select id from event_waitlist where event_id = '${WEV}'`)).length === 2);
+  check("otro organizador NO ve la lista", (await rows("authenticated", B, `select id from event_waitlist where event_id = '${WEV}'`)).length === 0);
+  check("anónimo NO ve la lista", (await rows("anon", null, "select 1 from event_waitlist").catch(() => [])).length === 0);
+  const mine = await rows("authenticated", WU[2], "select place from public.my_waitlist()");
+  check("my_waitlist da el lugar en la fila (el segundo es el 2)", mine.length === 1 && Number(mine[0].place) === 2);
+  check("event_waitlist_counts da cuántos esperan (solo el número)", Number((await rows("anon", null, `select n from public.event_waitlist_counts() where event_id = '${WEV}'`))[0]?.n) === 2);
+
+  const e2 = await entryOf(WR[1]), e3 = await entryOf(WR[2]);
+  await as("authenticated", WU[1], `select public.promote_waitlist_entry('${e2}')`, "un participante NO pasa a nadie a inscrito", "deny");
+  await as("authenticated", B, `select public.promote_waitlist_entry('${e2}')`, "otro organizador NO pasa a nadie a inscrito", "deny");
+  await as("authenticated", A, `select public.promote_waitlist_entry('${e2}')`, "con el evento lleno NO se puede pasar a nadie", "deny");
+  await as("authenticated", WU[1], `select public.remove_waitlist_entry('${e3}')`, "un participante NO quita a otro de la lista", "deny");
+  await as("authenticated", WU[1], `select public.leave_waitlist('${e3}')`, "nadie sale de la lista por otra persona", "deny");
+
+  // Se abre un lugar: la persona cancela su inscripción (pendiente) y el organizador mueve al siguiente.
+  const before = await n("select count(*) n from notifications where kind = 'promoted'");
+  const upd0 = (await db.query(`select updated_at from events where id = '${WEV}'`)).rows[0].updated_at;
+  await as("authenticated", WU[0], `select public.cancel_registration((select id from registrations where event_id = '${WEV}' and roper_id = '${WR[0]}'))`, "el inscrito cancela y libera su lugar", "some");
+  const upd1 = (await db.query(`select updated_at from events where id = '${WEV}'`)).rows[0].updated_at;
+  check("cambiar inscripciones o la lista mueve events.updated_at (sync con la app)", new Date(upd1) > new Date(upd0));
+  await as("authenticated", A, `select public.promote_waitlist_entry('${e2}')`, "con lugar libre el organizador SÍ pasa al siguiente a inscrito", "some");
+  check("queda inscrito y pendiente de pago, con el monto de la categoría", await n(`select count(*) n from registrations where event_id = '${WEV}' and roper_id = '${WR[1]}' and payment_status = 'pendiente' and amount_cents = 50000`) === 1);
+  check("sale de la lista de espera al pasar a inscrito", await n(`select count(*) n from event_waitlist where id = '${e2}'`) === 0);
+  check("la persona recibe un aviso dentro de la web", await n("select count(*) n from notifications where kind = 'promoted'") === before + 1);
+  await as("authenticated", A, `select public.promote_waitlist_entry('${e3}')`, "el cupo vuelve a estar lleno: no pasa al siguiente", "deny");
+
+  // Quitar y salir
+  await as("authenticated", A, `select public.remove_waitlist_entry('${e3}')`, "el organizador quita a alguien de la lista", "some");
+  check("quitado de la lista", await n(`select count(*) n from event_waitlist where id = '${e3}'`) === 0);
+  await as("authenticated", WU[2], `select public.join_waitlist('${WEV}','${WCAT}',null,1)`, "puede volver a entrar a la lista", "some");
+  const back = await entryOf(WR[2]);
+  await as("authenticated", WU[2], `select public.leave_waitlist('${back}')`, "la persona sale de la lista por su cuenta", "some");
+  check("ya no está en la lista", await n(`select count(*) n from event_waitlist where id = '${back}'`) === 0);
+
+  // Si se inscribe por otra vía, su fila de espera desaparece sola
+  await as("authenticated", WU[2], `select public.join_waitlist('${WEV}','${WCAT}',null,1)`, "vuelve a la lista (para probar la limpieza)", "some");
+  await db.exec(`update events set capacity = 3 where id = '${WEV}'; insert into registrations (event_id, roper_id, category_id, amount_cents) values ('${WEV}','${WR[2]}','${WCAT}',50000)`);
+  check("inscribirse por cualquier vía borra su fila de espera", await n(`select count(*) n from event_waitlist where event_id = '${WEV}' and roper_id = '${WR[2]}'`) === 0);
+  await db.exec(`insert into event_waitlist (event_id, roper_id, category_id) values ('${WEV}','${WR[0]}','${WCAT}')`);
+  const asked = (await db.query(`select global_id from public.app_event_participants('${WEV}', null, now() + interval '1 day', null, null, 50)`)).rows.map((r) => r.global_id);
+  check("la API de participantes de la app también trae a quien está en lista de espera", asked.includes(WR[0]) && asked.includes(WR[1]));
+  await db.exec(`delete from events where id in ('${WEV}','${WEV2}')`);
+  check("borrar el evento borra su lista de espera", await n(`select count(*) n from event_waitlist where event_id in ('${WEV}','${WEV2}')`) === 0);
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

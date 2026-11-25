@@ -1737,7 +1737,9 @@ console.log("- Resultados de un evento (0030)");
   check("inscribirse por cualquier vía borra su fila de espera", await n(`select count(*) n from event_waitlist where event_id = '${WEV}' and roper_id = '${WR[2]}'`) === 0);
   await db.exec(`insert into event_waitlist (event_id, roper_id, category_id) values ('${WEV}','${WR[0]}','${WCAT}')`);
   const asked = (await db.query(`select global_id from public.app_event_participants('${WEV}', null, now() + interval '1 day', null, null, 50)`)).rows.map((r) => r.global_id);
-  check("la API de participantes de la app también trae a quien está en lista de espera", asked.includes(WR[0]) && asked.includes(WR[1]));
+  // La app mete a su roster a TODO el que devuelve esta API: quien solo espera lugar no debe venir (va aparte, en waitlist[] de eventos).
+  check("la API de participantes de la app NO trae a quien solo está en lista de espera", !asked.includes(WR[0]));
+  check("la API de participantes de la app sí trae a quien ya está inscrito", asked.includes(WR[1]));
   await db.exec(`delete from events where id in ('${WEV}','${WEV2}')`);
   check("borrar el evento borra su lista de espera", await n(`select count(*) n from event_waitlist where event_id in ('${WEV}','${WEV2}')`) === 0);
 }

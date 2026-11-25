@@ -83,7 +83,7 @@ test("una página pequeña no trae cursor y repite el corte de la consulta", () 
   assert.equal(page.next_cursor, null);
   assert.equal(page.generated_at, "2026-11-05T10:00:00.000Z");
   assert.deepEqual(page.participants[0], {
-    global_id: row(1).global_id, name: "Persona 1", email: "p1@example.com", claimed: false, role: null, favorite_role: null,
+    global_id: row(1).global_id, short_id: null, name: "Persona 1", email: "p1@example.com", claimed: false, role: null, favorite_role: null,
     ratings: { lazo: { rating: 1, events: 0, wins: 0, updated_at: null } },
   });
 });
@@ -103,8 +103,16 @@ test("con una fila de más hay otra página: el cursor apunta al último de ESTA
 test("la respuesta nunca trae celular, ids de cuenta ni campos internos", () => {
   const leaky = { ...row(1), phone_e164: "+528112345678", user_id: "x", merged_into: null };
   const [participant] = buildPage([leaky], "2026-11-05T10:00:00.000Z", ["lazo"], 1).participants;
-  assert.deepEqual(Object.keys(participant).sort(), ["claimed", "email", "favorite_role", "global_id", "name", "ratings", "role"]);
+  assert.deepEqual(Object.keys(participant).sort(), ["claimed", "email", "favorite_role", "global_id", "name", "ratings", "role", "short_id"]);
   assert.doesNotMatch(JSON.stringify(participant), /phone|user_id|merged|\+52/);
+});
+
+test("cada participante lleva su ID corto cuando lo tiene y null cuando no se pudo leer (KIN-752)", () => {
+  const rows = [row(1), row(2)];
+  const page = buildPage(rows, "2026-11-05T10:00:00.000Z", ["lazo"], 1, { [rows[0].global_id]: "RM-0042" });
+  assert.equal(page.participants[0].short_id, "RM-0042");
+  assert.equal(page.participants[1].short_id, null);
+  assert.equal(page.participants[0].global_id, rows[0].global_id, "el ID corto no sustituye al global_id");
 });
 
 test("cada participante lleva su rol y su favorito; un perfil sin rol los trae en null (KIN-622)", () => {

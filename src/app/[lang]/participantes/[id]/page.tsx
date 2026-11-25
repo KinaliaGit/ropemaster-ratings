@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
+import { CopyId } from "@/components/CopyId";
 import { RoperHistorySection } from "@/components/RoperHistorySection";
 import { HistorySkeleton, ProfileSkeleton } from "@/components/ProfileSkeleton";
 import { getPublicRoper } from "@/lib/data/ropers";
@@ -26,6 +27,7 @@ async function PerfilInner({ params }: { params: PageProps<"/[lang]/participante
         <Avatar name={r.name} initials={initials(r.name)} url={publicAvatarUrl(r.avatarPath)} className="size-20 text-2xl" />
         <div className="flex-1">
           <h1 className="text-4xl font-semibold">{r.name}</h1>
+          {r.shortId && <CopyId id={r.shortId} label={t.people.idLabel} copy={t.people.copyId} copied={t.people.idCopied} />}
           {r.role && <p className="mt-2"><span className="rounded-full bg-sand px-3 py-1 text-sm font-medium">{roleText(r.role, t.roles)}</span></p>}
         </div>
         <div className="flex gap-8 text-right">

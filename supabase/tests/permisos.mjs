@@ -1744,5 +1744,94 @@ console.log("- Resultados de un evento (0030)");
   check("borrar el evento borra su lista de espera", await n(`select count(*) n from event_waitlist where event_id in ('${WEV}','${WEV2}')`) === 0);
 }
 
+
+// ID corto del lazador (0051, KIN-752)
+{
+  console.log("— ID corto del lazador (0051)");
+  const rows = async (sql) => (await db.query(sql)).rows;
+  const one = async (sql) => (await db.query(sql)).rows[0];
+  const check = (label, ok) => { if (!ok) failures++; console.log(`${ok ? "✔" : "✘ FALLO"}  ${label.padEnd(58)} → ${ok ? "ok" : "NO"}`); };
+
+  // Los perfiles que ya existían (aquí, los de los datos de prueba de arriba) y los nuevos tienen número, único y con formato.
+  check("todo perfil tiene número único", (await one("select count(*)::int a, count(distinct rm_number)::int b from ropers")).a === (await one("select count(distinct rm_number)::int b from ropers")).b);
+  check("el texto es RM- con al menos 4 dígitos", (await one("select count(*)::int n from ropers where short_id !~ '^RM-[0-9]{4,}$'")).n === 0);
+
+  // Los nuevos reciben el siguiente número solos, sin reutilizar el de uno borrado.
+  const first = (await one("insert into ropers (full_name) values ('[RM] Uno') returning rm_number, id")).rm_number;
+  const second = await one("insert into ropers (full_name) values ('[RM] Dos') returning rm_number, id");
+  check("el siguiente perfil recibe el número siguiente", Number(second.rm_number) === Number(first) + 1);
+  await db.exec(`delete from ropers where id = '${second.id}'`);
+  const third = await one("insert into ropers (full_name) values ('[RM] Tres') returning rm_number, short_id, id");
+  check("un número borrado NO se reutiliza", Number(third.rm_number) === Number(second.rm_number) + 1);
+  check("el texto sale con ceros a la izquierda", third.short_id === "RM-" + String(third.rm_number).padStart(4, "0"));
+
+  // Una vez puesto, no cambia (ni con la llave de servicio).
+  let changed = true;
+  try { await db.exec(`update ropers set rm_number = 99999 where id = '${third.id}'`); } catch { changed = false; }
+  check("el número no se puede cambiar", !changed && Number((await one(`select rm_number from ropers where id = '${third.id}'`)).rm_number) === Number(third.rm_number));
+
+  // Permisos: se lee público y nadie lo escribe desde la API.
+  await as("anon", null, "select short_id from ropers limit 1", "anónimo SÍ ve el ID corto", "some");
+  await as("authenticated", C, "select rm_number, short_id from ropers limit 1", "autenticado SÍ ve el ID corto", "some");
+  await as("authenticated", C, `update ropers set rm_number = 5 where id = '${third.id}'`, "autenticado NO cambia el número", "deny");
+  await as("authenticated", C, `update ropers set short_id = 'RM-0005' where id = '${third.id}'`, "autenticado NO escribe el texto", "deny");
+  await as("anon", null, `update ropers set rm_number = 5 where id = '${third.id}'`, "anónimo NO cambia el número", "deny");
+
+  // El formato crece sin cambiar: ... RM-9999, RM-10000, RM-10001.
+  await db.exec("select setval('public.ropers_rm_number_seq', 9998, true)");
+  const a = await one("insert into ropers (full_name) values ('[RM] Casi') returning short_id");
+  const b = await one("insert into ropers (full_name) values ('[RM] Cinco') returning short_id");
+  const c = await one("insert into ropers (full_name) values ('[RM] Seis') returning short_id");
+  check("pasado el 9999 el ID sigue como RM-10000", a.short_id === "RM-9999" && b.short_id === "RM-10000" && c.short_id === "RM-10001");
+
+  // Búsqueda pública por ID.
+  const target = await one("select id, rm_number, short_id from ropers where full_name = '[RM] Cinco'");
+  const search = (token) => `select roper_id, full_name from public.public_ranking('lazo', 1, array['${token}'], null, 10)`;
+  await as("anon", null, search(target.short_id.toLowerCase()), "anónimo busca por ID (rm-10000)", "some");
+  check("la búsqueda por ID devuelve a esa persona y a nadie más", JSON.stringify((await rows(search(target.short_id.toLowerCase()))).map((r) => r.full_name)) === '["[RM] Cinco"]');
+  check("también sin guion (rm10000)", (await rows(search("rm10000"))).length === 1);
+  check("un ID que no existe no devuelve a nadie", (await rows(search("rm-99999999"))).length === 0);
+  check("un ID que nunca se asignó no devuelve a nadie", (await rows(search("rm-0000"))).length === 0);
+  check("buscar por nombre sigue funcionando", (await rows("select full_name from public.public_ranking('lazo', 1, array['cinc'], null, 10)")).some((r) => r.full_name === "[RM] Cinco"));
+  check("ID mezclado con nombre busca por nombre (sin resultados)", (await rows("select full_name from public.public_ranking('lazo', 1, array['rm-10000','cinco'], null, 10)")).length === 0);
+  check("dígitos sueltos NO se toman por un ID", (await rows("select full_name from public.public_ranking('lazo', 1, array['10000'], null, 10)")).length === 0);
+  check("un número enorme no rompe la búsqueda", (await rows(search("rm-" + "9".repeat(30)))).length === 0);
+  // Un perfil fusionado no sale al buscar por su ID (el ranking solo lista perfiles vigentes).
+  await db.exec(`update ropers set merged_into = '${target.id}' where full_name = '[RM] Seis'`);
+  check("un perfil fusionado no aparece por su ID", (await rows(search("rm-10001"))).length === 0);
+
+  // Relleno de los perfiles que ya existían, en una base aparte con todo hasta la 0050 y la 0051 aplicada después.
+  const old = new PGlite();
+  await old.exec(`
+    create role anon; create role authenticated; create role service_role;
+    create schema auth; create table auth.users (id uuid primary key default gen_random_uuid(), email text, email_confirmed_at timestamptz);
+    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+    create schema storage;
+    create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
+    create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text);
+    alter table storage.objects enable row level security;
+    create function storage.foldername(name text) returns text[] language sql as $$ select string_to_array(name, '/') $$;
+    grant usage on schema public, auth, storage to anon, authenticated;
+    grant usage on schema public to service_role;
+    grant select, insert, update, delete on storage.objects to anon, authenticated;
+    alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+  `);
+  const files = readdirSync(dir).sort();
+  for (const f of files.filter((x) => x < "0051")) await old.exec(readFileSync(`${dir}/${f}`, "utf8"));
+  await old.exec(`
+    insert into ropers (id, full_name, created_at) values
+      ('00000000-0000-0000-0000-00000000000c', 'Carla (la tercera)', '2026-03-01'),
+      ('00000000-0000-0000-0000-00000000000a', 'Ana (la primera)',   '2026-01-01'),
+      ('00000000-0000-0000-0000-00000000000b', 'Beto (el segundo)',  '2026-02-01'),
+      ('00000000-0000-0000-0000-00000000000d', 'Dani (mismo día)',   '2026-03-01');
+  `);
+  for (const f of files.filter((x) => x >= "0051")) await old.exec(readFileSync(`${dir}/${f}`, "utf8"));
+  const order = (await old.query("select full_name, short_id from ropers order by rm_number")).rows.map((r) => `${r.short_id} ${r.full_name.split(" ")[0]}`);
+  check("los existentes se numeran en orden de creación (y por id si empatan)", JSON.stringify(order) === '["RM-0001 Ana","RM-0002 Beto","RM-0003 Carla","RM-0004 Dani"]');
+  const next = (await old.query("insert into ropers (full_name) values ('Nuevo') returning short_id")).rows[0].short_id;
+  check("el primer perfil nuevo continúa la numeración", next === "RM-0005");
+  await old.close();
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

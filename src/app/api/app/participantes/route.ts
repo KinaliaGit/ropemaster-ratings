@@ -48,7 +48,14 @@ export async function GET(request: Request) {
     });
     if (error) return json({ error: "Servicio no disponible" }, 503);
 
-    return json(buildPage((data ?? []) as ParticipantRow[], snapshot, ACTIVE_DISCIPLINES.map((d) => d.id), INITIAL_RATING));
+    const rows = (data ?? []) as ParticipantRow[];
+    // ID corto de cada persona de la página (KIN-752). Si no se pudo leer, la página sale igual con `short_id: null`: es un dato extra.
+    const shortIds: Record<string, string> = {};
+    if (rows.length) {
+      const found = await db.from("ropers").select("id, short_id").in("id", rows.slice(0, PAGE_SIZE).map((r) => r.global_id));
+      for (const r of found.data ?? []) if (r.short_id) shortIds[r.id] = r.short_id;
+    }
+    return json(buildPage(rows, snapshot, ACTIVE_DISCIPLINES.map((d) => d.id), INITIAL_RATING, shortIds));
   } catch {
     return json({ error: "Servicio no disponible" }, 503);
   }

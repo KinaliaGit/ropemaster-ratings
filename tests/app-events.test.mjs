@@ -13,7 +13,7 @@ const EVENT = "e0000000-0000-0000-0000-0000000000e1";
 // Las filas tal como las entrega la función de la base (app_organizer_events): de aquí sale el ejemplo del contrato.
 const dbRow = () => ({
   id: EVENT, slug: "rodeo-norte-2026", name: "Rodeo Norte 2026", event_date: "2026-12-06", city: "Monterrey", venue: "Lienzo Charro del Norte",
-  description: "Rodeo de fin de año, lazo en equipo.", disciplines: ["lazo"], capacity: 100, max_roper_rating: 6.5, draw_type: "lazada_sorteada", lazada_shots_per_package: 3, max_team_rating: 12.5, rounds: 4, series: example.events[0].series, status: "publicado", changed_at: "2026-11-05T18:30:00+00:00",
+  description: "Rodeo de fin de año, lazo en equipo.", disciplines: ["lazo"], capacity: 100, max_roper_rating: 6.5, draw_type: "lazada_sorteada", lazada_shots_per_package: 3, max_team_rating: 12.5, rounds: 4, series: example.events[0].series, arena: example.events[0].arena, status: "publicado", changed_at: "2026-11-05T18:30:00+00:00",
   categories: example.events[0].categories,
   registrations: example.events[0].registrations,
   waitlist: example.events[0].waitlist.map((w) => { const row = { ...w }; delete row.position; return row; }), // la ruta la agrega; `position` lo calcula buildEventsPage
@@ -151,4 +151,19 @@ test("una fila sin lista de espera (web anterior o evento sin espera) llega como
   const row = dbRow();
   delete row.waitlist;
   assert.deepEqual(buildEventsPage([row], example.organizer, example.generated_at).events[0].waitlist, []);
+});
+
+test("la arena del evento (KIN-751) sale con id, nombre y ciudad, o null si el evento no tiene o la fila no la trae", () => {
+  const [linked] = buildEventsPage([dbRow()], "org", "2026-11-06T09:00:00.000Z").events;
+  assert.deepEqual(Object.keys(linked.arena).sort(), ["city", "id", "name"], "sin notas internas");
+  assert.equal(linked.arena.name, linked.venue, "el nombre de la arena es el venue del evento");
+  const withoutField = dbRow();
+  delete withoutField.arena;
+  for (const row of [{ ...dbRow(), arena: null }, withoutField]) {
+    const [event] = buildEventsPage([row], "org", "2026-11-06T09:00:00.000Z").events;
+    assert.equal(event.arena, null);
+    assert.equal(event.venue, "Lienzo Charro del Norte", "venue y city siguen viajando igual sin arena");
+  }
+  const [noCity] = buildEventsPage([{ ...dbRow(), arena: { ...example.events[0].arena, city: null } }], "org", "2026-11-06T09:00:00.000Z").events;
+  assert.equal(noCity.arena.city, "");
 });

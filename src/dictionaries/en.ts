@@ -79,6 +79,15 @@ export const en: Dict = {
     organizerBlurb: "Create and publish events, and receive registrations and payments from participants.",
     fullName: "Full name", email: "Email", create: "Create account",
   },
+  recovery: {
+    forgot: "Forgot your password?", title: "Reset password", intro: "Enter your account email and we'll send you a link to choose a new password.",
+    send: "Send link", sent: "If that email has an account, we sent you a link to choose a new password. Check your inbox and your spam folder.",
+    errorExpired: "The link is invalid or has expired. Request another one below.", errorEmail: "Enter a valid email.", back: "Back to sign in",
+    newTitle: "Choose a new password", newIntro: "When you save it you're signed in and your other sessions are closed.", newPassword: "New password", confirmPassword: "Repeat the password", save: "Save password",
+    errorShort: "The password must be at least 8 characters.", errorLong: "The password can be 72 characters at most.", errorMismatch: "The two passwords don't match.",
+    errorSame: "Choose a password different from the old one.", errorWeak: "That password is too easy to guess or has been leaked. Choose another.", errorGeneric: "Couldn't save the password. Please try again.",
+    changed: "You changed your password. We signed out your other sessions.",
+  },
   notifications: {
     title: "Notifications", empty: "You have no notifications.", markAll: "Mark all as read", markRead: "Mark as read", new: "New", reason: "Reason:", eventOn: "event on",
     removedTitle: (e: string) => `You were removed from ${e}`, deletedTitle: (e: string) => `${e} was canceled`,

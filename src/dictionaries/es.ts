@@ -79,6 +79,15 @@ export const es = {
     organizerBlurb: "Crea y publica eventos, y recibe las inscripciones y pagos de los participantes.",
     fullName: "Nombre completo", email: "Correo", create: "Crear cuenta",
   },
+  recovery: {
+    forgot: "¿Olvidaste tu contraseña?", title: "Recuperar contraseña", intro: "Escribe el correo de tu cuenta y te enviamos un enlace para elegir una contraseña nueva.",
+    send: "Enviar enlace", sent: "Si el correo tiene una cuenta, te enviamos un enlace para elegir una contraseña nueva. Revisa tu bandeja y la carpeta de correo no deseado.",
+    errorExpired: "El enlace no es válido o ya venció. Pide otro aquí abajo.", errorEmail: "Escribe un correo válido.", back: "Volver a entrar",
+    newTitle: "Elige una contraseña nueva", newIntro: "Al guardarla entras a tu cuenta y se cierran tus otras sesiones.", newPassword: "Contraseña nueva", confirmPassword: "Repite la contraseña", save: "Guardar contraseña",
+    errorShort: "La contraseña debe tener al menos 8 caracteres.", errorLong: "La contraseña puede tener 72 caracteres como máximo.", errorMismatch: "Las dos contraseñas no coinciden.",
+    errorSame: "Elige una contraseña distinta a la anterior.", errorWeak: "Esa contraseña es muy fácil de adivinar o ya se filtró. Elige otra.", errorGeneric: "No se pudo guardar la contraseña. Intenta de nuevo.",
+    changed: "Cambiaste tu contraseña. Cerramos tus otras sesiones.",
+  },
   notifications: {
     title: "Avisos", empty: "No tienes avisos.", markAll: "Marcar todo como leído", markRead: "Marcar como leído", new: "Nuevo", reason: "Motivo:", eventOn: "evento del",
     removedTitle: (e: string) => `Te sacaron del evento ${e}`, deletedTitle: (e: string) => `Se canceló el evento ${e}`,

@@ -31,6 +31,7 @@ async function Form({ props }: { props: PageProps<"/[lang]/entrar"> }) {
         <label className="block text-sm font-medium">{a.email}<input required type="email" name="email" autoComplete="email" className={field} /></label>
         <label className="block text-sm font-medium">{a.password}<input required type="password" name="password" autoComplete="current-password" className={field} /></label>
         <button className="w-full rounded-full bg-ink py-3 text-sm font-medium text-white transition hover:bg-brand-hot">{a.signInBtn}</button>
+        <p className="text-center text-sm"><Link href={`/${lang}/recuperar?role=${role}`} className="font-medium text-brand-hot underline">{t.recovery.forgot}</Link></p>
       </form>
       <p className="mt-6 text-center text-sm text-muted">{a.firstTime} <Link href={`/${lang}/registro?role=${role}`} className="font-medium text-brand-hot underline">{a.createAccount}</Link></p>
     </div>

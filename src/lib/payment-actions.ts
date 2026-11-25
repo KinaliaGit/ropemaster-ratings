@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { updateTag } from "next/cache";
 import { getSession } from "@/lib/session";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { sanitizePaymentsQuery } from "@/lib/payment-filters";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -17,5 +18,9 @@ export async function setRegistrationPayment(formData: FormData) {
   if (s?.role !== "organizador" || !s.verified || !UUID.test(id)) redirect(`/${l}/organizador`);
   const { error } = await (await createServerSupabase()).rpc("set_registration_payment", { p_registration: id, p_method: method === "pendiente" ? null : method });
   if (!error) updateTag("registrations");
+  // Desde la pantalla general de pagos (KIN-754) se vuelve a ella con los mismos filtros; solo se aceptan sus tres parámetros conocidos.
+  if (formData.get("from") === "pagos") {
+    redirect(`/${l}/organizador/pagos?${sanitizePaymentsQuery(String(formData.get("query") ?? ""), Boolean(error))}`);
+  }
   redirect(`/${l}/organizador/eventos/${encodeURIComponent(slug)}${error ? "?pagoError=1" : ""}`);
 }

@@ -126,7 +126,15 @@ export const es = {
     },
     welcome: "¡Cuenta creada! Ya puedes crear tu primer evento.", noEvents: "Aún no tienes eventos. Crea una serie y agrega el primero dentro de ella.", noParticipants: "Todavía no hay participantes registrados.",
     accountType: "Cuenta de organizador", newSeries: "+ Serie nueva", newEvent: "+ Evento individual", events: "Eventos", enrolled: "Inscritos", collected: "Cobrado", myEvents: "Mis eventos", manage: "Gestionar",
-    tabs: { series: "Series", appShort: "App", adminShort: "Admin", admin: "Administración", summary: "Resumen", participants: "Participantes", app: "App local" },
+    tabs: { series: "Series", appShort: "App", adminShort: "Admin", admin: "Administración", summary: "Resumen", participants: "Participantes", payments: "Pagos", app: "App local" },
+    pays: {
+      title: "Pagos", blurb: "Todo lo que cobras en un solo lugar: cuánto se espera, cuánto ya pagó y quién debe, evento por evento.",
+      expected: "Esperado", collected: "Pagado", pending: "Pendiente", events: "Mis eventos", noEvents: "Aún no hay inscripciones con pago que mostrar.", registered: "inscripciones", payments: "pagos", pendings: "pendientes", open: "Ver quién debe",
+      filters: "Filtros", event: "Evento", allEvents: "Todos los eventos", status: "Estado", statusPending: "Pendientes", statusPaid: "Pagados", statusAll: "Todos", search: "Buscar por nombre", apply: "Filtrar", clear: "Quitar filtros",
+      listTitle: "Quién debe y quién pagó", empty: "Nada que mostrar con estos filtros.", showing: "Mostrando", of: "de", refine: "Afina los filtros para ver el resto.",
+      person: "Persona", category: "Categoría", amount: "Monto", since: "Debe desde", paidOn: "Pagó el", method: "Método", action: "Acción", eventCol: "Evento", paidState: "Pagado", pendingState: "Pendiente",
+      loadError: "No pudimos cargar los pagos. Intenta de nuevo.", unverified: "Necesitas una licencia vigente o la aprobación de un administrador para ver los pagos.",
+    },
     tbl: { event: "Evento", date: "Fecha", state: "Estado", enrolled: "Inscritos" },
     stripe: { title: "Activa tus cobros.", text: "Conecta tu cuenta de Stripe para recibir las inscripciones directo en tu banco.", btn: "Conectar Stripe", opening: "Abriendo…" },
     ev: {

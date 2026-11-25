@@ -1853,5 +1853,21 @@ console.log("- Resultados de un evento (0030)");
   await as("authenticated", A, `select public.delete_series_event('${EVI}')`, "el borrado de eventos de serie NO aplica a uno individual (no_in_series)", "deny");
 }
 
+// Pantalla general de pagos (KIN-754): lo que lee y cambia usa permisos que ya existen; se comprueba que cada organizador solo ve y marca lo suyo.
+{
+  console.log("\n— Pagos del organizador (pantalla general)");
+  const num = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const verify = (label, ok) => { if (!ok) failures++; console.log(`${ok ? "✔" : "✘ FALLO"}  ${label}`); };
+  const mine = `select r.id from registrations r join events e on e.id = r.event_id where e.organizer_id = '${A}' and r.payment_status = 'pendiente' order by r.id limit 1`;
+  verify("hay una inscripción pendiente de A para probar", await num(`select count(*) n from (${mine}) x`) === 1);
+  await as("authenticated", A, "select r.id, r.created_at, r.paid_at, r.payment_status, r.payment_method, r.amount_cents, r.role from registrations r where r.payment_status in ('pendiente','pagado')", "el organizador lee los pagos de sus eventos", "some");
+  await as("authenticated", B, `select id from registrations where event_id in (select id from events where organizer_id = '${A}') and roper_id <> (select public.my_roper_id())`, "otro organizador NO lee los pagos de inscritos ajenos de ese organizador", "deny");
+  await as("anon", null, "select id from registrations", "anónimo NO lee pagos", "deny");
+  await as("authenticated", B, `select public.set_registration_payment((${mine}), 'efectivo')`, "otro organizador NO marca un pago ajeno", "deny");
+  await as("authenticated", A, `select public.set_registration_payment((${mine}), 'efectivo')`, "el organizador SÍ marca un pago de su evento", "some");
+  verify("el pago queda pagado, con fecha y método", await num(`select count(*) n from registrations r join events e on e.id = r.event_id where e.organizer_id = '${A}' and r.payment_status = 'pagado' and r.payment_method = 'efectivo' and r.paid_at is not null`) >= 1);
+  await as("authenticated", A, `select public.set_registration_payment((select r.id from registrations r join events e on e.id = r.event_id where e.organizer_id = '${A}' and r.payment_method = 'efectivo' order by r.id limit 1), null)`, "y lo puede regresar a pendiente", "some");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

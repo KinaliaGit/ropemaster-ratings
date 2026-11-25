@@ -9,6 +9,9 @@ import { RopeMasterPromo } from "@/components/RopeMasterPromo";
 import { statusByDate } from "@/lib/event-time";
 import type { Lang } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
+import { JsonLd } from "@/components/JsonLd";
+import { organizationJsonLd, pageAlternates, socialMeta, websiteJsonLd } from "@/lib/seo";
+import type { Metadata } from "next";
 import type { Dict } from "@/dictionaries/es";
 
 // Cifras y carteles: lo único que depende de la base. Va aparte para que el título salga al instante (KIN-611).
@@ -48,11 +51,18 @@ async function Events({ lang, t, searchParams }: { lang: Lang; t: Dict; searchPa
   );
 }
 
+export async function generateMetadata({ params }: PageProps<"/[lang]">): Promise<Metadata> {
+  const lang = await resolveLang(params);
+  const t = getDictionary(lang);
+  return { alternates: pageAlternates(lang), ...socialMeta({ lang, path: "", title: t.meta.title, description: t.meta.description }) };
+}
+
 export default async function Home({ params, searchParams }: PageProps<"/[lang]">) {
   const lang = await resolveLang(params);
   const t = getDictionary(lang);
   return (
     <div className="mx-auto max-w-6xl px-5 pb-10 pt-12">
+      <JsonLd data={[organizationJsonLd(), websiteJsonLd(lang, t.meta.description)]} />
       <h1 className="text-4xl font-semibold sm:text-5xl">{t.home.title}</h1>
       <p className="mt-3 max-w-xl text-lg text-muted">{t.home.subtitle}</p>
       <Suspense fallback={<EventsSkeleton />}>

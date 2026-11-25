@@ -2,7 +2,7 @@ import { MAX_UPLOAD_MB } from "@/lib/limits";
 
 // Textos en español. `en.ts` debe tener exactamente la misma forma (lo verifica TypeScript).
 export const es = {
-  meta: { title: "Rope Master Ratings", description: "El registro global de lazadores: rating, historial y resultados de cada evento." },
+  meta: { title: "Rope Master Ratings: eventos de lazo, resultados y ranking de lazadores", description: "Encuentra torneos y eventos de lazo, inscríbete, consulta resultados y sigue el rating y el historial de cada lazador." },
   common: { brand: "Rope Master", ratings: "Ratings", loading: "Cargando…", back: "Volver", of: "de" },
   roles: { legend: "¿Con qué rol sueles competir?", header: "Cabecero", heeler: "Pialador", both: "Ambos", favoriteLegend: "¿Cuál es tu rol favorito, el que usas más?", favorite: "favorito", undefined: "Sin definir" },
   nav: { myLazador: "Mi perfil de lazador", createLazador: "Crear mi perfil de lazador", events: "Eventos", participants: "Participantes", signIn: "Entrar", myPanel: "Mi panel", myAccount: "Mi cuenta", signOut: "Salir", publicSite: "Sitio público", language: "Idioma" },

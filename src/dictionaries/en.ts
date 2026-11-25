@@ -2,7 +2,7 @@ import type { Dict } from "./es";
 import { MAX_UPLOAD_MB } from "@/lib/limits";
 
 export const en: Dict = {
-  meta: { title: "Rope Master Ratings", description: "The global registry of ropers: rating, history and results from every event." },
+  meta: { title: "Rope Master Ratings: roping events, results and roper rankings", description: "Find team roping events, sign up, check results and follow every roper's rating and history." },
   common: { brand: "Rope Master", ratings: "Ratings", loading: "Loading…", back: "Back", of: "of" },
   roles: { legend: "Which role do you usually compete in?", header: "Header", heeler: "Heeler", both: "Both", favoriteLegend: "Which is your favorite role, the one you use most?", favorite: "favorite", undefined: "Not set" },
   nav: { myLazador: "My roper profile", createLazador: "Create my roper profile", events: "Events", participants: "Participants", signIn: "Sign in", myPanel: "My dashboard", myAccount: "My account", signOut: "Sign out", publicSite: "Public site", language: "Language" },

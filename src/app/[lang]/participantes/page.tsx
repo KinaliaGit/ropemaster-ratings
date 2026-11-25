@@ -1,5 +1,7 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
+import type { Metadata } from "next";
+import { pageAlternates, socialMeta } from "@/lib/seo";
 import { ParticipantList } from "@/components/ParticipantList";
 import { RankingSkeleton } from "@/components/ListSkeletons";
 import { listRankingPage } from "@/lib/data/ropers";
@@ -25,6 +27,12 @@ async function Ranking({ lang, t }: { lang: Lang; t: Dict }) {
       labels={{ search: t.people.search, noResults: t.people.noResults, empty: t.people.empty, loadMore: t.people.loadMore, loadError: t.people.loadError, retry: t.people.retry }}
     />
   );
+}
+
+export async function generateMetadata({ params }: PageProps<"/[lang]/participantes">): Promise<Metadata> {
+  const lang = await resolveLang(params);
+  const t = getDictionary(lang);
+  return { title: t.people.title, description: t.people.subtitle, alternates: pageAlternates(lang, "/participantes"), ...socialMeta({ lang, path: "/participantes", title: t.people.title, description: t.people.subtitle }) };
 }
 
 export default async function Participantes({ params }: PageProps<"/[lang]/participantes">) {

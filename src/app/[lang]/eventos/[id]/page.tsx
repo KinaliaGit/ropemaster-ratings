@@ -14,6 +14,9 @@ import { EventResultsSection } from "@/components/EventResultsSection";
 import { EnrolledSkeleton, EventSkeleton } from "@/components/EventSkeleton";
 import { EventCover } from "@/components/EventCover";
 import { getDictionary, resolveLang } from "@/lib/i18n";
+import { JsonLd } from "@/components/JsonLd";
+import { eventJsonLd, pageAlternates, socialMeta, summarize } from "@/lib/seo";
+import type { Metadata } from "next";
 import type { Dict } from "@/dictionaries/es";
 
 // Lista de inscritos: va aparte para que el cartel, las categorías y el botón de inscribirse salgan sin esperarla (KIN-612 y KIN-611).
@@ -28,6 +31,23 @@ async function Enrolled({ slug, uuid, discipline, lang, t }: { slug: string; uui
   );
 }
 
+// Título, descripción, canonical y vista previa al compartir (KIN-617). El mismo texto alimenta los datos estructurados de la página.
+function eventSummary(e: { description: string; date: string; venue: string; city: string; organizer: string }, lang: Lang, t: Dict) {
+  const where = [e.date ? fmtDate(e.date, lang) : "", [e.venue, e.city].filter(Boolean).join(", ")].filter(Boolean).join(" · ");
+  return e.description ? summarize(e.description) : summarize([where, e.organizer ? `${t.event.organizedBy} ${e.organizer}` : ""].filter(Boolean).join(". "));
+}
+
+export async function generateMetadata({ params }: PageProps<"/[lang]/eventos/[id]">): Promise<Metadata> {
+  await connection();
+  const lang = await resolveLang(params);
+  const { id } = await params;
+  const e = await getPublicEvent(id);
+  if (!e) return { title: getDictionary(lang).account.notFoundTitle, robots: { index: false } };
+  const title = [e.name, e.city].filter(Boolean).join(" · ");
+  const description = eventSummary(e, lang, getDictionary(lang));
+  const path = `/eventos/${e.id}`;
+  return { title, description, alternates: pageAlternates(lang, path), ...socialMeta({ lang, path, title, description, images: e.cover ? [e.cover] : e.photos.slice(0, 1).map((p) => p.url) }) };
+}
 async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]">["params"] }) {
   // Los datos públicos se leen al atender la visita, no al compilar (así el build no necesita conectarse a la base).
   await connection();
@@ -51,6 +71,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   const meta = [e.date ? fmtDate(e.date, lang) : "", [e.venue, e.city].filter(Boolean).join(", ")].filter(Boolean);
   return (
     <div className="mx-auto max-w-6xl px-5 pb-12 pt-8">
+      <JsonLd data={eventJsonLd(e, lang, eventSummary(e, lang, t), open)} />
       {/* Celular: barra fija abajo con el botón de inscripción siempre a la mano (a todo el ancho; el selector de idioma en celular va en el pie). */}
       {open && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-cream/90 p-3 backdrop-blur-xl lg:hidden">

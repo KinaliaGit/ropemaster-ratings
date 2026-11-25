@@ -8,6 +8,23 @@ import { fmtDate, type Lang } from "@/lib/format";
 import { PhaseBadge } from "@/components/PhaseBadge";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { getDictionary, resolveLang } from "@/lib/i18n";
+import { JsonLd } from "@/components/JsonLd";
+import { pageAlternates, seriesJsonLd, socialMeta, summarize } from "@/lib/seo";
+import type { Metadata } from "next";
+
+export async function generateMetadata({ params }: PageProps<"/[lang]/series/[id]">): Promise<Metadata> {
+  await connection();
+  const lang: Lang = await resolveLang(params);
+  const { id } = await params;
+  const t = getDictionary(lang);
+  const found = await getPublicSeries(id);
+  if (!found) return { title: t.account.notFoundTitle, robots: { index: false } };
+  const { series: x, events } = found;
+  const description = x.description ? summarize(x.description) : summarize(`${fmtDate(x.startDate, lang)} ${t.series.to} ${fmtDate(x.endDate, lang)} · ${events.length} ${t.series.eventsCount}${x.organizer ? `. ${t.series.organizedBy} ${x.organizer}` : ""}`);
+  const path = `/series/${x.id}`;
+  const cover = events.find((e) => e.cover)?.cover;
+  return { title: x.name, description, alternates: pageAlternates(lang, path), ...socialMeta({ lang, path, title: x.name, description, images: cover ? [cover] : undefined }) };
+}
 
 async function SerieInner({ params }: { params: PageProps<"/[lang]/series/[id]">["params"] }) {
   // Los datos públicos se leen al atender la visita, no al compilar (así el build no necesita conectarse a la base).
@@ -20,6 +37,7 @@ async function SerieInner({ params }: { params: PageProps<"/[lang]/series/[id]">
   const { series: x, events } = found;
   return (
     <div className="mx-auto max-w-4xl px-5 pb-12 pt-8">
+      <JsonLd data={seriesJsonLd(x, events, lang)} />
       <p className="label">{t.series.label}</p>
       <h1 className="mt-1 text-3xl font-semibold sm:text-4xl">{x.name}</h1>
       <p className="mt-2 text-muted">{t.series.dates} {fmtDate(x.startDate, lang)} {t.series.to} {fmtDate(x.endDate, lang)} · <span className="tabular-nums">{events.length}</span> {t.series.eventsCount}</p>

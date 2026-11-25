@@ -15,6 +15,15 @@ test("la búsqueda se parte en palabras sin acentos ni mayúsculas, sin repetir 
   assert.deepEqual(searchTokens("x".repeat(MAX_QUERY_LENGTH + 40)), ["x".repeat(MAX_QUERY_LENGTH)]);
 });
 
+// KIN-752: un ID corto ("RM-0042") llega a la base como UNA palabra en minúsculas; la base decide si es un ID (rm-42 / rm0042).
+test("un ID corto escrito de cualquier forma llega como una sola palabra en minúsculas", () => {
+  assert.deepEqual(searchTokens("RM-0042"), ["rm-0042"]);
+  assert.deepEqual(searchTokens("  rm0042 "), ["rm0042"]);
+  assert.deepEqual(searchTokens("Rm-10000"), ["rm-10000"]);
+  const parsed = parseRankingQuery(url("?discipline=lazo&q=RM-0042"), ACTIVE);
+  assert.deepEqual(parsed.ok && parsed.value.tokens, ["rm-0042"]);
+});
+
 test("la petición exige una modalidad activa", () => {
   for (const query of ["", "?discipline=", "?discipline=barriles", "?discipline=hack", "?q=ana"]) {
     assert.equal(parseRankingQuery(url(query), ACTIVE).ok, false, query);

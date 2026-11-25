@@ -222,14 +222,18 @@ miles de lazadores, bajar todo sería enorme y expondría correos de gente ajena
   se guarda como su rating en `lazo` con `events: 0` y `wins: 0`, así que llega aquí sin ningún campo nuevo. Si un organizador ya le había puesto un
   rating a ese perfil antes de que reclamara su cuenta, ese gana. La web no deja editarlo desde la cuenta; la fórmula que lo recalcula con
   resultados sigue en pausa (KIN-571 y KIN-583).
-- Cada participante lleva solo `global_id`, `name`, `email`, `claimed`, `role`, `favorite_role` y `ratings`. Nunca celular ni ids de cuenta.
+- Cada participante lleva solo `global_id`, `short_id`, `name`, `email`, `claimed`, `role`, `favorite_role` y `ratings`. Nunca celular ni ids de cuenta.
+- `short_id` (KIN-752, migración 0051) es el **ID corto** que se comparte entre personas: `RM-` y un número con al menos 4 dígitos (`RM-0001` ... `RM-9999` y después
+  `RM-10000`, sin cambiar el formato). Lo asigna la web al crear el perfil, es único, **nunca se reutiliza ni cambia** y se ve en el perfil público. **No sustituye a `global_id`**: la
+  identidad para ligar personas sigue siendo `global_id` (y el correo). No es el `public_id` que el crossplay de la app guarda en cada base local (otro valor, por instalación).
+  Campo opcional: una web anterior no lo manda; una persona sin ID legible llega con `null`. La app puede mostrarlo y buscar por él.
 - `role` es con qué rol compite (KIN-622): `header` (cabecero), `heeler` (pialador) o `both` (ambos); `favorite_role` es `header` o `heeler` y **solo viene
   cuando `role` es `both`** (el rol que usa más). Los perfiles que aún no eligen rol traen los dos en `null` ("sin definir"); la app no debe bloquearlos.
   Son los mismos `header` / `heeler` de `substitution.role`. Cambiar el rol cuenta como cambio del participante para `since`.
 - Un perfil fusionado (`merged_into`) no se incluye.
 
 ```json
-{ "participants": [{ "global_id": "…", "name": "…", "email": "ana@example.com", "claimed": true, "role": "both", "favorite_role": "heeler",
+{ "participants": [{ "global_id": "…", "short_id": "RM-0042", "name": "…", "email": "ana@example.com", "claimed": true, "role": "both", "favorite_role": "heeler",
                      "ratings": { "lazo": { "rating": 9.4, "events": 18, "wins": 6, "updated_at": "2026-11-01T00:00:00Z" } } }],
   "next_cursor": null, "generated_at": "2026-11-05T10:00:00Z" }
 ```

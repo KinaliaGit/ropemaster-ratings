@@ -105,14 +105,21 @@ export type ParticipantRow = {
   favorite_role: "header" | "heeler" | null;
 };
 
-/** Respuesta de una página. Nunca incluye celular ni ids de cuenta. `role` / `favorite_role` son null en perfiles sin rol (KIN-622). */
-export function buildPage(rows: ParticipantRow[], snapshot: string, activeDisciplines: readonly string[], initialRating: number) {
+/**
+ * Respuesta de una página. Nunca incluye celular ni ids de cuenta. `role` / `favorite_role` son null en perfiles sin rol (KIN-622).
+ * `shortIds` (global_id -> "RM-0001", KIN-752) es el ID corto que se comparte entre personas: dato extra, no sustituye a `global_id`.
+ */
+export function buildPage(
+  rows: ParticipantRow[], snapshot: string, activeDisciplines: readonly string[], initialRating: number,
+  shortIds: Readonly<Record<string, string>> = {},
+) {
   const hasMore = rows.length > PAGE_SIZE;
   const page = hasMore ? rows.slice(0, PAGE_SIZE) : rows;
   const last = page[page.length - 1];
   return {
     participants: page.map((row) => ({
       global_id: row.global_id,
+      short_id: shortIds[row.global_id] ?? null,
       name: row.name,
       email: row.email,
       claimed: row.claimed,

@@ -58,7 +58,7 @@ export const es = {
     initialRating: "Rating inicial · aún sin eventos",
     empty: "Aún no hay participantes con rating en esta modalidad.", dq: "Descalificado",
     title: "Participantes", subtitle: "Lazadores y barrileras con su rating e historial. Público, sin necesidad de cuenta.",
-    search: "Buscar por nombre", noResults: "Sin resultados para", noRating: "Sin eventos en esta modalidad",
+    search: "Buscar por nombre o ID (RM-0001)", idLabel: "ID", copyId: "Copiar", idCopied: "Copiado", noResults: "Sin resultados para", noRating: "Sin eventos en esta modalidad",
     verified: "Perfil verificado", unclaimed: "Perfil sin reclamar", rating: "Rating", eventsWord: "eventos", winsWord: "victorias", resultsWord: "resultados",
     history: "Historial de eventos", noHistory: "Aún no hay resultados registrados.", event: "Evento", date: "Fecha", discipline: "Modalidad", time: "Tiempo", place: "Lugar",
     contactNote: "Los datos de contacto no son públicos. ¿No eres tú o es un error?", report: "Reportar", verifiedEvent: "Evento verificado",

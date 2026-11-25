@@ -16,6 +16,7 @@ import { RatingEvolution } from "@/components/RatingEvolution";
 import { RoperHistorySection } from "@/components/RoperHistorySection";
 import { HistorySkeleton } from "@/components/ProfileSkeleton";
 import { getPublicRoper } from "@/lib/data/ropers";
+import { CopyId } from "@/components/CopyId";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { createMyRoperProfile, setMyRole } from "@/lib/profile-actions";
 import { RoleFields } from "@/components/RoleFields";
@@ -76,6 +77,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                   <h1 className="min-w-0 break-words text-3xl font-semibold">{s.name}</h1>
                   <RoleBadgeDialog action={setMyRole} lang={lang} initial={s.roleChoice ?? null} text={roleText(s.roleChoice ?? null, t.roles)} l={{ fields: t.roles, title: t.account.roleTitle, save: t.account.roleSave, cancel: t.account.roleCancel, choose: t.account.roleChoose, edit: t.account.roleEdit }} />
                 </div>
+                {me?.shortId && <CopyId id={me.shortId} label={t.people.idLabel} copy={t.people.copyId} copied={t.people.idCopied} />}
               </div>
             </div>
 

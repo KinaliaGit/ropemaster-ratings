@@ -96,7 +96,7 @@ inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
 | `registrations[].role` | `header` \| `heeler` o `null` | Rol con el que entra a ESTE evento (KIN-623). Es por inscripción y no cambia el perfil. `null` si la persona aún no definió su rol. |
 | `waitlist` | lista | Lista de espera del evento (KIN-726), en orden de llegada: quienes quisieron entrar con el cupo lleno. **No ocupan cupo, no se cobran y no están en `registrations`.** Vacía si nadie espera. Campo opcional: una web anterior no lo manda y se entiende vacío. |
 | `waitlist[].id` | UUID | Id de la entrada de espera (no es el de una inscripción: al pasar a inscrita nace una inscripción nueva con otro `id` y la entrada desaparece). |
-| `waitlist[].roper_global_id` | UUID | `global_id` de la persona (el mismo de `GET /api/app/participantes`, que también trae a quien está en espera para que la app la reconozca). |
+| `waitlist[].roper_global_id` | UUID | `global_id` de la persona (el mismo de `GET /api/app/participantes` cuando la persona ya está inscrita; **mientras solo espera, esa API no la trae**, porque la app mete al roster a todo el que devuelve). |
 | `waitlist[].name` | texto | Nombre de la persona. Nunca correo ni celular. |
 | `waitlist[].category_id` / `category` | UUID / texto | Categoría a la que quiere entrar. |
 | `waitlist[].role` | `header` \| `heeler` o `null` | Rol con el que espera. Quien eligió "los dos" aparece **dos veces** (una por rol), como en las inscripciones. |
@@ -122,7 +122,7 @@ que la app no recibe). Para la app, esa persona simplemente **deja de venir** en
 con cualquier alta, cambio o baja de inscripciones, el evento vuelve a descargarse en la siguiente sincronización incremental. La app debe tratar
 `registrations` como la lista completa vigente del evento (reemplazarla, no solo agregar): una inscripción que ya no viene es una baja. Un inscrito
 que ya tiene resultados no se puede sacar desde la web. Si la persona vuelve a inscribirse (con permiso del organizador), llega con una
-inscripción nueva y otro `registrations[].id`. `GET /api/app/participantes` tampoco la trae mientras no tenga ninguna inscripción ni lugar en la lista de espera en ese evento.
+inscripción nueva y otro `registrations[].id`. `GET /api/app/participantes` tampoco la trae mientras no tenga ninguna inscripción en ese evento (estar en la lista de espera no cuenta).
 
 **Lista de espera y cupo (KIN-726, 2026-11-24).** `capacity` es el cupo del evento y cuenta **inscripciones** (con "los dos" roles son dos). Cuando se llena, quien quiere
 entrar queda en `waitlist` en vez de rechazarse: no ocupa lugar, no tiene monto ni pago y no sale en `registrations` ni en las listas públicas de inscritos. Reglas:
@@ -207,7 +207,7 @@ Respuesta `201` (se creó) o `200` (ya existía): `{ contract_version, created, 
 ## `GET /api/app/participantes?event_id=<uuid>&since=<ISO-8601>&cursor=<texto>`
 
 **La sincronización de participantes es SIEMPRE por evento (decisión del 2026-11-05).** No existe un modo "todo el
-directorio": devuelve solo a las personas inscritas **o en lista de espera** (KIN-726: la app necesita reconocerlas) en UN evento del organizador del token de la sesión. Con decenas de
+directorio": devuelve solo a las personas inscritas (**no** a quien solo está en lista de espera: la app mete al roster a todo el que devuelve esta API; la espera viaja aparte en `waitlist[]` de `/api/app/eventos`) en UN evento del organizador del token de la sesión. Con decenas de
 miles de lazadores, bajar todo sería enorme y expondría correos de gente ajena a ese organizador. Reglas:
 
 - `event_id` es **obligatorio** (el `id` del evento en la web, el mismo que entrega `GET /api/app/eventos`). Sin él, `400`.

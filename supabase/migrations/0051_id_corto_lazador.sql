@@ -13,6 +13,10 @@
 --
 -- Es aditivo: una columna nueva con valor para todas las filas, una secuencia y un índice único. Lo que ya existe sigue funcionando.
 
+-- Todo en una transacción: o se aplica entera o no se aplica nada (la CLI de Supabase no envuelve la migración por su cuenta y `lock table`
+-- solo existe dentro de una).
+begin;
+
 -- Nadie inserta perfiles mientras se numeran los existentes (así ninguno queda sin número).
 lock table public.ropers in exclusive mode;
 
@@ -97,3 +101,5 @@ create or replace function public.public_ranking(
 
 revoke all on function public.public_ranking(text, numeric, text[], bigint, integer) from public;
 grant execute on function public.public_ranking(text, numeric, text[], bigint, integer) to anon, authenticated;
+
+commit;

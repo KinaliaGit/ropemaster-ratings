@@ -7,6 +7,7 @@ import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { DEFAULT_TIMEZONE, isValidTimezone, zonedLocalToIso } from "@/lib/event-time";
 import { slugify } from "@/lib/slug";
 import { missingForPublish } from "@/lib/event-publish";
+import { resolveArena } from "@/lib/arena-resolve";
 
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
 const text = (v: FormDataEntryValue | null, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -58,11 +59,13 @@ export async function createSeries(formData: FormData) {
   const supabase = await createServerSupabase();
   const id = crypto.randomUUID();
   const seriesSlug = slugify(p.name, "serie");
+  const arena = await resolveArena(supabase, session.id, formData);
+  if (!arena) redirect(`/${l}/organizador/series/nueva?error=arena`);
   const { error } = await supabase.from("event_series").insert({
     id, slug: seriesSlug, organizer_id: session.id, organizer_name: session.name, name: p.name, description: p.description, start_date: p.startDate, end_date: p.endDate, timezone: p.timezone,
   });
   if (error) redirect(`/${l}/organizador/series/nueva?error=1`);
-  const { error: tplError } = await supabase.from("event_series_template").insert({ series_id: id, ...p.template });
+  const { error: tplError } = await supabase.from("event_series_template").insert({ series_id: id, ...p.template, city: arena.city || p.template.city, venue: arena.name, arena_id: arena.id });
   if (tplError) {
     await supabase.from("event_series").delete().eq("id", id); // no dejar una serie sin plantilla
     redirect(`/${l}/organizador/series/nueva?error=1`);
@@ -86,7 +89,9 @@ export async function updateSeries(formData: FormData) {
   if (!s) redirect(`/${l}/organizador/series`);
   const { error } = await supabase.from("event_series").update({ name: p.name, description: p.description, start_date: p.startDate, end_date: p.endDate, timezone: p.timezone }).eq("id", s.id);
   if (error) return back(error.message.includes("events_outside_range") ? "outsideRange" : "1");
-  const { error: tplError } = await supabase.from("event_series_template").upsert({ series_id: s.id, ...p.template });
+  const arena = await resolveArena(supabase, session.id, formData);
+  if (!arena) return back("arena");
+  const { error: tplError } = await supabase.from("event_series_template").upsert({ series_id: s.id, ...p.template, city: arena.city || p.template.city, venue: arena.name, arena_id: arena.id });
   if (tplError) return back("1");
   updateTag("events");
   redirect(`/${l}/organizador/series/${seriesSlug}?editada=1`);

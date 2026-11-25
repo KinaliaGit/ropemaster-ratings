@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
+import { ArenaFilter } from "@/components/ArenaFilter";
+import { arenaKey, collectArenas, parseArenaParam } from "@/lib/arena";
 import { StripeConnectButton } from "@/components/StripeConnectButton";
 import { STRIPE_ENABLED } from "@/lib/flags";
 import { listOrganizerEvents } from "@/lib/data/events";
@@ -16,10 +18,13 @@ import type { Lang } from "@/lib/format";
 
 const badge: Record<string, string> = { publicado: "bg-brand-soft text-brand-hot", borrador: "bg-sand text-muted", finalizado: "bg-ink text-white" };
 
-async function Panel({ s, lang, t, welcome, deleted, verified }: { s: Session; lang: Lang; t: Dict; welcome: boolean; deleted: boolean; verified: boolean }) {
+async function Panel({ s, lang, t, welcome, deleted, verified, arena }: { s: Session; lang: Lang; t: Dict; welcome: boolean; deleted: boolean; verified: boolean; arena: string }) {
   // Un organizador sin verificar no puede operar (la base lo rechaza): no hay resumen que mostrar, solo su aviso de revisión.
   const [mine, overview] = await Promise.all([listOrganizerEvents(s.id), s.verified ? getOrganizerOverview() : Promise.resolve(null)]);
   const stateLabel: Record<string, string> = { publicado: t.status.published, borrador: t.status.draft, finalizado: t.status.finished };
+  // KIN-751: filtro por arena en "Mis eventos" (?arena=<llave>); las opciones salen de todos sus eventos.
+  const arenaOptions = collectArenas(mine.map((e) => e.venue));
+  const shown = arena ? mine.filter((e) => arenaKey(e.venue) === arena) : mine;
   return (
     <>
       <OrgNav lang={lang} t={t} admin={s.isAdmin} />
@@ -49,11 +54,12 @@ async function Panel({ s, lang, t, welcome, deleted, verified }: { s: Session; l
         {s.verified && (overview ? <OrgOverview o={overview} lang={lang} t={t} /> : <p role="alert" className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-800">{t.org.overview.loadError}</p>)}
         {STRIPE_ENABLED && <StripeConnectButton lang={lang} {...t.org.stripe} />}
         <h2 id="mis-eventos" className="mt-10 scroll-mt-24 text-xl font-semibold">{t.org.myEvents}</h2>
-        {mine.length === 0 ? <p className="mt-3 rounded-2xl bg-sand p-6 text-center text-muted">{t.org.noEvents}</p> : (
+        <ArenaFilter action={`/${lang}/organizador#mis-eventos`} options={arenaOptions} selected={arena} labels={t.org.arenas.filter} className="mt-3" />
+        {shown.length === 0 ? <p className="mt-3 rounded-2xl bg-sand p-6 text-center text-muted">{mine.length === 0 ? t.org.noEvents : t.org.arenas.filter.empty}</p> : (
           <>
           {/* Celular: una tarjeta por evento (la tabla obligaría a deslizar de lado). */}
           <div className="mt-3 space-y-3 sm:hidden">
-            {mine.map((e) => (
+            {shown.map((e) => (
               <Link key={e.id} href={`/${lang}/organizador/eventos/${e.id}`} className="card block p-4">
                 <div className="flex items-start justify-between gap-3">
                   <p className="font-semibold leading-snug">{e.name}{!e.series && <span data-testid="individual-mark" className="ml-2 rounded-full bg-sand px-2 py-0.5 align-middle text-xs font-medium text-muted">{t.series.individual}</span>}</p>
@@ -68,7 +74,7 @@ async function Panel({ s, lang, t, welcome, deleted, verified }: { s: Session; l
             <table className="w-full text-left text-sm">
               <thead className="bg-sand label"><tr><th className="p-3">{t.org.tbl.event}</th><th>{t.org.tbl.date}</th><th>{t.org.tbl.state}</th><th>{t.org.tbl.enrolled}</th><th></th></tr></thead>
               <tbody>
-                {mine.map((e) => (
+                {shown.map((e) => (
                   <tr key={e.id} className="border-t border-line">
                     <td className="p-3 font-medium">{e.name}{!e.series && <span data-testid="individual-mark" className="ml-2 rounded-full bg-sand px-2 py-0.5 text-xs font-medium text-muted">{t.series.individual}</span>}</td>
                     <td className="tabular-nums">{e.date ? fmtDate(e.date, lang) : "–"}</td>
@@ -93,7 +99,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador"> }) {
   const sp = await props.searchParams;
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador`}>
-      {(s) => <Panel s={s} lang={lang} t={t} welcome={sp.bienvenido === "1"} deleted={sp.borrado === "1"} verified={sp.yaVerificada === "1"} />}
+      {(s) => <Panel s={s} lang={lang} t={t} welcome={sp.bienvenido === "1"} deleted={sp.borrado === "1"} verified={sp.yaVerificada === "1"} arena={parseArenaParam(sp.arena)} />}
     </Gate>
   );
 }

@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
+import { ArenaFilter } from "@/components/ArenaFilter";
+import { arenaKey, collectArenas, parseArenaParam } from "@/lib/arena";
 import { listOrganizerSeries } from "@/lib/data/series";
 import { eventPhase } from "@/lib/event-time";
 import { fmtDate } from "@/lib/format";
@@ -11,8 +13,11 @@ import type { Session } from "@/lib/session";
 import type { Dict } from "@/dictionaries/es";
 import type { Lang } from "@/lib/format";
 
-async function List({ s, lang, t, deleted }: { s: Session; lang: Lang; t: Dict; deleted: boolean }) {
-  const all = await listOrganizerSeries(s.id);
+async function List({ s, lang, t, deleted, arena }: { s: Session; lang: Lang; t: Dict; deleted: boolean; arena: string }) {
+  const everything = await listOrganizerSeries(s.id);
+  // KIN-751: una serie entra en el filtro si alguno de sus eventos es de esa arena.
+  const arenaOptions = collectArenas(everything.flatMap((x) => x.events.map((e) => e.venue)));
+  const all = arena ? everything.filter((x) => x.events.some((e) => arenaKey(e.venue) === arena)) : everything;
   const m = t.org.series;
   return (
     <>
@@ -25,8 +30,9 @@ async function List({ s, lang, t, deleted }: { s: Session; lang: Lang; t: Dict; 
           </div>
           {s.verified ? <Link href={`/${lang}/organizador/series/nueva`} className="rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-hot">{m.newSeries}</Link> : <span className="rounded-full bg-sand px-5 py-2.5 text-sm font-medium text-muted">{m.newSeries}</span>}
         </div>
+        <ArenaFilter action={`/${lang}/organizador/series`} options={arenaOptions} selected={arena} labels={t.org.arenas.filter} />
         {deleted && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{m.deleted}</p>}
-        {all.length === 0 ? <p className="mt-6 rounded-2xl bg-sand p-6 text-center text-muted">{m.none}</p> : (
+        {all.length === 0 ? <p className="mt-6 rounded-2xl bg-sand p-6 text-center text-muted">{arena ? t.org.arenas.filter.empty : m.none}</p> : (
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             {all.map(({ series, events }) => {
               const open = events.filter((e) => eventPhase({ status: e.status, enrolled: e.enrolled, capacity: e.capacity, opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed }) === "open").length;
@@ -52,7 +58,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/series"> 
   const t = getDictionary(lang);
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador/series`}>
-      {(s) => <List s={s} lang={lang} t={t} deleted={sp.borrada === "1"} />}
+      {(s) => <List s={s} lang={lang} t={t} deleted={sp.borrada === "1"} arena={parseArenaParam(sp.arena)} />}
     </Gate>
   );
 }

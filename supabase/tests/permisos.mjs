@@ -1869,5 +1869,132 @@ console.log("- Resultados de un evento (0030)");
   await as("authenticated", A, `select public.set_registration_payment((select r.id from registrations r join events e on e.id = r.event_id where e.organizer_id = '${A}' and r.payment_method = 'efectivo' order by r.id limit 1), null)`, "y lo puede regresar a pendiente", "some");
 }
 
+// Arenas como catálogo (KIN-751): cada organizador solo ve y cambia las suyas; los eventos se enlazan solos; renombrar y unir no pierden eventos.
+{
+  console.log("\n— Arenas del organizador");
+  const num = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const verify = (label, ok) => { if (!ok) failures++; console.log(`${ok ? "✔" : "✘ FALLO"}  ${label}`); };
+  const AR1 = "a7510000-0000-0000-0000-000000000001", AR2 = "a7510000-0000-0000-0000-000000000002", ARB = "a7510000-0000-0000-0000-0000000000b1";
+  const E1 = "e7510000-0000-0000-0000-000000000001", E2 = "e7510000-0000-0000-0000-000000000002", E3 = "e7510000-0000-0000-0000-000000000003", E4 = "e7510000-0000-0000-0000-000000000004";
+  const SER = "5e510000-0000-0000-0000-000000000001";
+  await db.exec(`update profiles set license_valid_until = 'infinity' where user_id = '${A}'`);
+
+  // La llave de la base es la misma que calcula la web (src/lib/arena.ts)
+  for (const [txt, key] of [["Arena X", "arena x"], ["  ARENA   x. ", "arena x"], ["Árbol Ñandú, S.A.", "arbol nandu s a"], ["Lienzo Charro «Los Encinos»", "lienzo charro los encinos"], [" ... ", ""]]) {
+    verify(`la llave de «${txt.trim()}» es «${key}»`, (await db.query(`select private.arena_key($1) k`, [txt])).rows[0].k === key);
+  }
+
+  // Catálogo: permisos y llave
+  await as("authenticated", A, `insert into arenas (id, organizer_id, name, city, notes) values ('${AR1}', '${A}', '  Lienzo   Charro ', 'Zacatecas', 'Av. Principal')`, "el organizador SÍ agrega una arena", "some");
+  verify("el nombre se limpia y la llave ignora mayúsculas, acentos y signos", await num(`select count(*) n from arenas where id = '${AR1}' and name = 'Lienzo Charro' and key = 'lienzo charro'`) === 1);
+  await as("authenticated", A, `insert into arenas (organizer_id, name) values ('${A}', 'LIENZO  charro.')`, "otra escritura de la misma arena se rechaza (duplicada)", "deny");
+  await as("authenticated", A, `insert into arenas (organizer_id, name) values ('${A}', '  ... ')`, "un nombre sin letras ni números se rechaza", "deny");
+  await as("authenticated", A, `insert into arenas (organizer_id, name) values ('${B}', 'A nombre de B')`, "NO crea arenas a nombre de otro organizador", "deny");
+  await as("authenticated", A, `select id from arenas`, "el organizador ve sus arenas", "some");
+  await as("authenticated", B, `select id from arenas where organizer_id = '${A}'`, "otro organizador NO ve sus arenas", "deny");
+  await as("authenticated", C, `select id from arenas`, "un participante NO ve arenas", "deny");
+  await as("anon", null, `select id from arenas`, "anónimo NO ve arenas", "deny");
+  await as("authenticated", B, `update arenas set name = 'Robada' where id = '${AR1}'`, "otro organizador NO edita la arena", "deny");
+  await as("authenticated", A, `update arenas set key = 'otra' where id = '${AR1}'`, "la llave no se escribe a mano", "deny");
+
+  // Enlace automático: un evento con solo el texto del lugar queda enlazado, sin cambiar su texto
+  await as("authenticated", A, `insert into events (id, name, organizer_id, status, slug, venue, city) values ('${E1}', 'Con texto', '${A}', 'publicado', 'arena-e1', 'LIENZO charro', 'Otra ciudad')`, "un evento con el lugar escrito se crea", "some");
+  verify("queda enlazado a la arena que ya existía y su texto no cambia", await num(`select count(*) n from events where id = '${E1}' and arena_id = '${AR1}' and venue = 'LIENZO charro' and city = 'Otra ciudad'`) === 1);
+  await as("authenticated", A, `insert into events (id, name, organizer_id, status, slug, venue, city) values ('${E2}', 'Arena nueva', '${A}', 'publicado', 'arena-e2', 'Arena del Sur', 'Monterrey')`, "un lugar que no existe se crea al vuelo", "some");
+  verify("se creó la arena del organizador con su ciudad", await num(`select count(*) n from arenas where organizer_id = '${A}' and key = 'arena del sur' and city = 'Monterrey'`) === 1);
+  verify("y el evento quedó enlazado a ella", await num(`select count(*) n from events e join arenas a on a.id = e.arena_id where e.id = '${E2}' and a.key = 'arena del sur'`) === 1);
+  await as("authenticated", A, `insert into events (id, name, organizer_id, status, slug, venue, city) values ('${E3}', 'Sin lugar', '${A}', 'borrador', 'arena-e3', '', '')`, "un evento sin lugar se crea sin arena", "some");
+  verify("y queda sin arena", await num(`select count(*) n from events where id = '${E3}' and arena_id is null`) === 1);
+
+  // Elegir una arena explícita
+  await db.exec(`insert into arenas (id, organizer_id, name, city) values ('${ARB}', '${B}', 'Arena de B', 'Puebla')`);
+  await as("authenticated", A, `insert into events (id, name, organizer_id, status, slug, venue, city, arena_id) values ('${E4}', 'Con arena de B', '${A}', 'borrador', 'arena-e4', 'x', 'y', '${ARB}')`, "NO crea un evento con la arena de otro organizador", "deny");
+  await as("authenticated", A, `update events set arena_id = '${ARB}' where id = '${E1}'`, "NO cambia un evento a la arena de otro organizador", "deny");
+  await as("authenticated", A, `update events set arena_id = (select id from arenas where key = 'arena del sur' and organizer_id = '${A}') where id = '${E3}'`, "SÍ elige una arena propia para un evento", "some");
+  verify("el evento toma el nombre y la ciudad de la arena elegida", await num(`select count(*) n from events where id = '${E3}' and venue = 'Arena del Sur' and city = 'Monterrey'`) === 1);
+  await as("authenticated", A, `update events set venue = 'Rancho Nuevo' where id = '${E3}'`, "cambiar solo el texto del lugar", "some");
+  verify("lo enlaza (o crea) la arena de ese nombre", await num(`select count(*) n from events e join arenas a on a.id = e.arena_id where e.id = '${E3}' and a.key = 'rancho nuevo'`) === 1);
+
+  // Plantilla de serie
+  await db.exec(`insert into event_series (id, slug, organizer_id, name, start_date, end_date) values ('${SER}', 'serie-arenas-7510', '${A}', 'Serie arenas', '2099-01-01', '2099-12-31')`);
+  await as("authenticated", A, `insert into event_series_template (series_id, city, venue) values ('${SER}', '', 'Lienzo Charro')`, "la plantilla de una serie se crea con su lugar", "some");
+  verify("la plantilla queda enlazada a la misma arena", await num(`select count(*) n from event_series_template where series_id = '${SER}' and arena_id = '${AR1}'`) === 1);
+
+  // Renombrar se refleja en sus eventos que no han terminado
+  await db.exec(`update events set status = 'finalizado' where id = '${E2}'`);
+  await db.exec(`update events set arena_id = (select id from arenas where key = 'arena del sur' and organizer_id = '${A}') where id = '${E2}'`);
+  await db.exec(`insert into events (id, name, organizer_id, status, slug, venue, city) values ('e7510000-0000-0000-0000-000000000005', 'Sin terminar', '${A}', 'publicado', 'arena-e5', 'Arena del Sur', 'Monterrey')`);
+  await as("authenticated", A, `update arenas set name = 'Arena del Sur Grande', city = 'San Pedro' where key = 'arena del sur' and organizer_id = '${A}'`, "el organizador renombra su arena", "some");
+  verify("su evento sin terminar toma el nombre y la ciudad nuevos", await num(`select count(*) n from events where id = 'e7510000-0000-0000-0000-000000000005' and venue = 'Arena del Sur Grande' and city = 'San Pedro'`) === 1);
+  verify("(el evento finalizado conserva lo que tenía)", await num(`select count(*) n from events where id = '${E2}' and venue = 'Arena del Sur'`) === 1);
+
+  // Unir
+  await as("authenticated", B, `select public.merge_arenas('${ARB}', '${AR1}')`, "otro organizador NO une arenas ajenas", "deny");
+  await as("authenticated", A, `select public.merge_arenas('${AR1}', '${AR1}')`, "no se une una arena consigo misma", "deny");
+  await as("authenticated", A, `select public.merge_arenas('${AR1}', '${ARB}')`, "NO une con una arena de otro organizador", "deny");
+  const before = await num(`select count(*) n from events where organizer_id = '${A}'`);
+  await db.exec(`insert into arenas (id, organizer_id, name, city) values ('${AR2}', '${A}', 'Lienzo Charro Zacatecas', '')`);
+  await db.exec(`update events set arena_id = '${AR2}' where id = '${E1}'`);
+  await as("authenticated", A, `select public.merge_arenas('${AR1}', '${AR2}')`, "el organizador SÍ une dos arenas suyas", "some");
+  verify("la arena repetida se borró", await num(`select count(*) n from arenas where id = '${AR2}'`) === 0);
+  verify("sus eventos pasaron a la arena que se quedó, con su nombre", await num(`select count(*) n from events where id = '${E1}' and arena_id = '${AR1}' and venue = 'Lienzo Charro'`) === 1);
+  verify("no se perdió ningún evento", await num(`select count(*) n from events where organizer_id = '${A}'`) === before);
+
+  // Borrar
+  await as("authenticated", A, `delete from arenas where id = '${AR1}'`, "una arena con eventos NO se borra", "deny");
+  await db.exec(`insert into arenas (id, organizer_id, name) values ('a7510000-0000-0000-0000-0000000000c1', '${A}', 'Sin uso')`);
+  await as("authenticated", B, `delete from arenas where id = 'a7510000-0000-0000-0000-0000000000c1'`, "otro organizador NO borra la arena", "deny");
+  await as("authenticated", A, `delete from arenas where id = 'a7510000-0000-0000-0000-0000000000c1'`, "una arena sin uso SÍ se borra", "some");
+}
+
+// Relleno de la 0052: las arenas salen de los lugares que ya existían, sin cambiar el texto de los eventos ni su fecha de actualización.
+{
+  console.log("\n— Arenas: relleno de los eventos existentes");
+  const check = (label, ok) => { if (!ok) failures++; console.log(`${ok ? "✔" : "✘ FALLO"}  ${label}`); };
+  const old = new PGlite();
+  await old.exec(`
+    create role anon; create role authenticated; create role service_role;
+    create schema auth; create table auth.users (id uuid primary key default gen_random_uuid(), email text, email_confirmed_at timestamptz);
+    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+    create schema storage;
+    create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
+    create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text);
+    alter table storage.objects enable row level security;
+    create function storage.foldername(name text) returns text[] language sql as $$ select string_to_array(name, '/') $$;
+    grant usage on schema public, auth, storage to anon, authenticated;
+    grant usage on schema public to service_role;
+    grant select, insert, update, delete on storage.objects to anon, authenticated;
+    alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+  `);
+  const files = readdirSync(dir).sort();
+  for (const f of files.filter((x) => x < "0052")) await old.exec(readFileSync(`${dir}/${f}`, "utf8"));
+  const O1 = "0a000000-0000-0000-0000-000000000001", O2 = "0a000000-0000-0000-0000-000000000002";
+  await old.exec(`
+    insert into auth.users (id, email) values ('${O1}', 'o1@x.com'), ('${O2}', 'o2@x.com');
+    insert into events (id, name, organizer_id, status, slug, venue, city, updated_at) values
+      ('0e000000-0000-0000-0000-000000000001', 'E1', '${O1}', 'publicado', 'rel-1', 'Arena Norte', 'Monterrey', '2026-01-01'),
+      ('0e000000-0000-0000-0000-000000000002', 'E2', '${O1}', 'publicado', 'rel-2', 'arena  norte.', '', '2026-01-02'),
+      ('0e000000-0000-0000-0000-000000000003', 'E3', '${O1}', 'publicado', 'rel-3', 'Arena Norte', 'Monterrey', '2026-01-03'),
+      ('0e000000-0000-0000-0000-000000000004', 'E4', '${O1}', 'borrador', 'rel-4', 'Lienzo Sur', 'Puebla', '2026-01-04'),
+      ('0e000000-0000-0000-0000-000000000005', 'E5', '${O1}', 'borrador', 'rel-5', '', '', '2026-01-05'),
+      ('0e000000-0000-0000-0000-000000000006', 'E6', '${O2}', 'publicado', 'rel-6', 'Arena Norte', 'Saltillo', '2026-01-06');
+    insert into event_series (id, slug, organizer_id, name, start_date, end_date) values ('0b000000-0000-0000-0000-000000000001', 'rel-serie', '${O1}', 'Serie', '2099-01-01', '2099-12-31');
+    insert into event_series_template (series_id, city, venue) values ('0b000000-0000-0000-0000-000000000001', 'Monterrey', 'ARENA NORTE');
+  `);
+  await old.exec(readFileSync(`${dir}/0052_arenas.sql`, "utf8"));
+  const q = async (sql) => (await old.query(sql)).rows;
+  const arenas = await q("select organizer_id, name, city, key from arenas order by organizer_id, key");
+  check("una arena por organizador y lugar (3: Arena Norte y Lienzo Sur de uno, Arena Norte del otro)", arenas.length === 3);
+  const norte = arenas.find((a) => a.organizer_id === O1 && a.key === "arena norte");
+  check("con la escritura más usada y la ciudad más común", norte?.name === "Arena Norte" && norte?.city === "Monterrey");
+  check("la arena del otro organizador es aparte, con su ciudad", arenas.some((a) => a.organizer_id === O2 && a.key === "arena norte" && a.city === "Saltillo"));
+  check("los eventos con lugar quedaron enlazados (5) y el vacío no", (await q("select count(*)::int n from events where arena_id is not null"))[0].n === 5 && (await q("select count(*)::int n from events where slug = 'rel-5' and arena_id is null"))[0].n === 1);
+  check("las dos escrituras de Arena Norte apuntan a la misma arena", (await q("select count(distinct arena_id)::int n from events where slug in ('rel-1','rel-2','rel-3')"))[0].n === 1);
+  check("la plantilla de la serie también se enlazó", (await q("select count(*)::int n from event_series_template t join arenas a on a.id = t.arena_id where a.key = 'arena norte' and a.organizer_id = '" + O1 + "'"))[0].n === 1);
+  check("el texto de los eventos no cambió", (await q("select venue from events where slug = 'rel-2'"))[0].venue === "arena  norte.");
+  check("events.updated_at no se movió", (await q("select count(*)::int n from events where updated_at >= now() - interval '1 hour'"))[0].n === 0);
+  await old.close();
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

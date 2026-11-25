@@ -7,6 +7,7 @@ import { getSession } from "@/lib/session";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { slugify } from "@/lib/slug";
+import { resolveArena } from "@/lib/arena-resolve";
 import { emailParticipant } from "@/lib/notify";
 import { closesAfterEvent, DEFAULT_TIMEZONE, isValidTimezone, zonedLocalToIso } from "@/lib/event-time";
 
@@ -110,9 +111,11 @@ export async function createEvent(formData: FormData) {
   const supabase = await createServerSupabase();
   const id = crypto.randomUUID();
   const eventSlug = slugify(name);
+  const arena = await resolveArena(supabase, session.id, formData);
+  if (!arena) return back("arena");
 
   const { error } = await supabase.from("events").insert({
-    id, slug: eventSlug, name, event_date: date, city, venue, capacity, disciplines, status, max_roper_rating: limit,
+    id, slug: eventSlug, name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, disciplines, status, max_roper_rating: limit,
     draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds,
     description: text(formData.get("description"), 1000), organizer_id: session.id, organizer_name: session.name,
     timezone: close.timezone, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt,
@@ -185,7 +188,9 @@ export async function updateEvent(formData: FormData) {
   if (toDelete.some((id) => usedIds.has(id))) return back("catInUse");
   const owned = new Set((current ?? []).map((c) => c.id));
 
-  const { error } = await supabase.from("events").update({ name, event_date: date, city, venue, capacity, disciplines, max_roper_rating: limit, draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds, description: text(formData.get("description"), 1000), timezone: close.timezone, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt }).eq("id", ev.id);
+  const arena = await resolveArena(supabase, session.id, formData);
+  if (!arena) return back("arena");
+  const { error } = await supabase.from("events").update({ name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, disciplines, max_roper_rating: limit, draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds, description: text(formData.get("description"), 1000), timezone: close.timezone, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt }).eq("id", ev.id);
   // Un evento de una serie debe seguir dentro de las fechas de su serie (la base lo exige).
   if (error) return back(error.message.includes("draw_type_locked") ? "drawLocked" : error.message.includes("rounds_locked") ? "roundsLocked" : error.message.includes("outside_series") ? "outsideSeries" : error.message.includes("open_after") ? "opensAfterClose" : "1");
   for (const r of rows) {

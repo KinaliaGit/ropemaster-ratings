@@ -81,6 +81,9 @@ export type PaymentMethod = "efectivo" | "transferencia" | "stripe";
 /** Serie de la web a la que pertenece un evento (KIN-625). Datos públicos de la serie; nunca su plantilla ni instrucciones de pago. */
 export type EventSeriesRef = { id: string; slug: string | null; name: string; start_date: string; end_date: string };
 
+/** Arena del catálogo del organizador a la que está enlazado el evento (KIN-751). Solo id, nombre y ciudad; las notas internas no salen. */
+export type EventArenaRef = { id: string; name: string; city: string | null };
+
 export type WaitlistRow = {
   id: string;
   roper_global_id: string;
@@ -115,6 +118,8 @@ export type EventRow = {
   max_team_rating?: number | null;
   /** Serie del evento (KIN-625). La función SQL no la trae: la ruta la agrega. `null`/ausente = evento suelto. */
   series?: EventSeriesRef | null;
+  /** Arena del evento (KIN-751). La función SQL no la trae: la ruta la agrega. `null`/ausente = el evento no está enlazado a una arena. */
+  arena?: EventArenaRef | null;
   /** Lista de espera del evento (KIN-726), en orden de llegada. La función SQL no la trae: la ruta la agrega. No ocupa cupo ni cuenta como inscrita. */
   waitlist?: WaitlistRow[];
   status: string;
@@ -159,6 +164,7 @@ export function buildEventsPage(rows: EventRow[], organizer: string, snapshot: s
       max_team_rating: row.max_team_rating === undefined || row.max_team_rating === null ? null : Number(row.max_team_rating),
       rounds: row.rounds === undefined || row.rounds === null ? null : Number(row.rounds),
       series: row.series ? { id: row.series.id, slug: row.series.slug ?? "", name: row.series.name, start_date: row.series.start_date, end_date: row.series.end_date } : null,
+      arena: row.arena ? { id: row.arena.id, name: row.arena.name, city: row.arena.city ?? "" } : null,
       description: row.description ?? "",
       updated_at: new Date(row.changed_at).toISOString(),
       categories: (row.categories ?? []).map((c) => ({ id: c.id, name: c.name, fee_cents: c.fee_cents })),

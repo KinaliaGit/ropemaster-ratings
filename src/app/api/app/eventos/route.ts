@@ -2,7 +2,7 @@ import { organizerFromRequest } from "@/lib/app-auth";
 import { adminClient } from "@/lib/supabase/admin";
 import { checkActiveOrganizer } from "@/lib/app-organizer";
 import { MAX_BYTES, buildUploadEventResponse, dbFailure, parseUploadEventBody, type UploadEventRow } from "@/lib/app-event-upload";
-import { PAGE_SIZE, buildEventsPage, checkVersion, parseEventsQuery, type EventRow, type EventSeriesRef, type WaitlistRow } from "@/lib/app-events";
+import { PAGE_SIZE, buildEventsPage, checkVersion, parseEventsQuery, type EventArenaRef, type EventRow, type EventSeriesRef, type WaitlistRow } from "@/lib/app-events";
 
 // La app local descarga los eventos publicados y finalizados del organizador, con sus inscritos y el estado de pago (KIN-585).
 // Contrato en docs/SYNC_API.md.
@@ -48,16 +48,16 @@ export async function GET(request: Request) {
     if (error) return unavailable();
 
     const rows = (data ?? []) as EventRow[];
-    // El rating máximo para inscribirse (KIN-638), el tipo de sorteo con sus campos (KIN-649) y la serie del evento (KIN-625) se leen aparte para no tocar la función SQL de la
-    // sincronización. La serie viaja con datos públicos (id, slug, nombre y fechas); la plantilla y las instrucciones de pago no salen.
+    // El rating máximo para inscribirse (KIN-638), el tipo de sorteo con sus campos (KIN-649), la serie del evento (KIN-625) y su arena (KIN-751) se leen aparte para no tocar la función SQL de la
+    // sincronización. La serie viaja con datos públicos (id, slug, nombre y fechas); la plantilla y las instrucciones de pago no salen. La arena viaja solo con id, nombre y ciudad (sin notas).
     const page = rows.slice(0, PAGE_SIZE);
     if (page.length > 0) {
       const { data: extras, error: extrasError } = await db
         .from("events")
-        .select("id, max_roper_rating, draw_type, lazada_shots_per_package, max_team_rating, rounds, series:event_series(id, slug, name, start_date, end_date)")
+        .select("id, max_roper_rating, draw_type, lazada_shots_per_package, max_team_rating, rounds, series:event_series(id, slug, name, start_date, end_date), arena:arenas(id, name, city)")
         .in("id", page.map((row) => row.id));
       if (extrasError) return unavailable();
-      const byId = new Map((extras ?? []).map((row) => [row.id as string, row as unknown as Pick<EventRow, "max_roper_rating" | "draw_type" | "lazada_shots_per_package" | "max_team_rating" | "rounds"> & { series: EventSeriesRef | null }]));
+      const byId = new Map((extras ?? []).map((row) => [row.id as string, row as unknown as Pick<EventRow, "max_roper_rating" | "draw_type" | "lazada_shots_per_package" | "max_team_rating" | "rounds"> & { series: EventSeriesRef | null; arena: EventArenaRef | null }]));
       for (const row of page) {
         const extra = byId.get(row.id);
         row.max_roper_rating = extra?.max_roper_rating ?? null;
@@ -66,6 +66,7 @@ export async function GET(request: Request) {
         row.max_team_rating = extra?.max_team_rating ?? null;
         row.rounds = extra?.rounds ?? null;
         row.series = byId.get(row.id)?.series ?? null;
+        row.arena = extra?.arena ?? null;
       }
     }
     // Lista de espera de cada evento de la página (KIN-726), también aparte de la función SQL. Cada fila lleva el perfil vigente de la persona

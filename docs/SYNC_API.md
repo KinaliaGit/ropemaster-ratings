@@ -179,7 +179,7 @@ Cuerpo:
 | `event.name` | texto | 1 a 120 caracteres. |
 | `event.date` | `AAAA-MM-DD` | Fecha real. |
 | `event.venue` | texto o `null` | El «lugar» de la app (hasta 120). La app no separa ciudad: `city` queda vacío en la web. |
-| (arenas) | — | KIN-751: en la web cada organizador tiene un catálogo de arenas y el evento queda enlazado a una (`events.arena_id`). Por ahora el contrato NO lo manda: `venue` y `city` siguen siendo el nombre y la ciudad de esa arena. Un lugar que llega escrito desde la app se enlaza solo con la arena del organizador que tenga la misma llave (sin mayúsculas, acentos ni signos) o crea una nueva; el texto que mandó la app no se toca. Mandar `arena` en `GET /api/app/eventos` es la fase 2 de KIN-751. |
+| (arenas) | — | KIN-751: en la web cada organizador tiene un catálogo de arenas y el evento queda enlazado a una (`events.arena_id`). `GET /api/app/eventos` ya manda esa arena en `arena` (ver «Arena del evento»); `venue` y `city` siguen siendo el nombre y la ciudad de esa arena. Un lugar que llega escrito desde la app se enlaza solo con la arena del organizador que tenga la misma llave (sin mayúsculas, acentos ni signos) o crea una nueva; el texto que mandó la app no se toca. |
 | `event.disciplines` | `["lazo"]` | Solo modalidades activas. |
 | `event.draw_type` | `round_robin` \| `lazada_sorteada` | Ver `GET /api/app/eventos`. |
 | `event.rounds` | entero 1 a 10 o `null` | Rondas del evento en la app (su base solo admite de 1 a 10). Opcional. |
@@ -494,3 +494,17 @@ cada evento de `GET /api/app/eventos` trae `series`:
 
 `events.registration_opens_at` (apertura programada de inscripciones) tampoco viaja en el contrato: solo afecta a quién puede inscribirse desde la web.
 El organizador sigue pudiendo inscribir a mano antes de la apertura.
+
+## Arena del evento (KIN-751)
+
+Cambio **aditivo** del contrato 1 (una app anterior ignora el campo): cada evento de `GET /api/app/eventos` trae `arena`, la arena del catálogo del organizador a la que está enlazado:
+
+```json
+"arena": { "id": "<uuid>", "name": "Lienzo Charro del Norte", "city": "Monterrey" }
+```
+
+- `arena` es `null` cuando el evento no está enlazado a ninguna arena (la arena se borró, o el evento es anterior al catálogo y aún no se enlazó). La app debe tratar `null` o ausente como evento heredado y seguir usando `venue` y `city`.
+- `venue` y `city` **no cambian**: siguen viajando como texto. Si hay `arena`, `venue` es el nombre de la arena y `city` su ciudad (la web los mantiene iguales; renombrar una arena actualiza los eventos que aún no se finalizan).
+- El `id` es de la web y es estable: la app lo guarda como `remote_id` de la arena y agrupa por él, no por el texto. Una persona organizadora puede fusionar dos arenas en la web; los eventos pasan a la arena que queda y el `id` anterior deja de aparecer.
+- Solo viajan id, nombre y ciudad; las notas internas de la arena no salen. No hay un endpoint de arenas aparte: se descubren por sus eventos.
+- Renombrar una arena actualiza `venue`/`city` de sus eventos no finalizados (y su `updated_at`), así que llega en una descarga con `since`; los finalizados conservan el texto con que se jugaron y su `arena` se recoge en la descarga completa periódica (sin `since`).

@@ -1,17 +1,18 @@
 "use client";
-import Link from "next/link";
-import { Fragment, useState } from "react";
+import { useState } from "react";
+import { AccountEventCard } from "@/components/AccountEventCard";
 import { RoundsDetail, type RoundsState } from "@/components/RoundsDetail";
 import type { HistoryItem, RoundItem } from "@/lib/results-view";
 
 type Labels = {
   event: string; date: string; discipline: string; time: string; place: string; verifiedEvent: string;
-  loadMore: string; loadError: string; retry: string; viewRounds: string; hideRounds: string; noRounds: string;
+  loadMore: string; loadError: string; retry: string; viewRounds: string; hideRounds: string; noRounds: string; moreOptions: string;
 };
 
 // Historial del lazador: la página trae la primera tanda; "Ver más" pide las siguientes (de lo más reciente a lo más antiguo) y las
 // rondas de cada resultado se piden solo al abrirlo. Nada de esto se descarga completo de entrada.
-export function ProfileHistory({ roperId, lang, initial, next: initialNext, labels }: { roperId: string; lang: string; initial: HistoryItem[]; next: string | null; labels: Labels }) {
+// `notes`: aviso corto por evento (por su enlace), p. ej. «Pago pendiente» en Mi cuenta.
+export function ProfileHistory({ roperId, lang, initial, next: initialNext, labels, notes = {} }: { roperId: string; lang: "es" | "en"; initial: HistoryItem[]; next: string | null; labels: Labels; notes?: Record<string, string> }) {
   const [rows, setRows] = useState(initial);
   const [next, setNext] = useState(initialNext);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -60,42 +61,30 @@ export function ProfileHistory({ roperId, lang, initial, next: initialNext, labe
 
   return (
     <>
-      <div className="card mt-4 overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-sand label"><tr><th className="p-3">{labels.event}</th><th>{labels.date}</th><th>{labels.discipline}</th><th>{labels.time}</th><th>{labels.place}</th></tr></thead>
-          <tbody>
-            {rows.map((x) => {
-              const state = rounds[x.id];
-              const isOpen = open === x.id;
-              return (
-                <Fragment key={x.id}>
-                  <tr className="border-t border-line">
-                    <td className="p-3 font-medium">
-                      {x.href ? <Link href={x.href} className="hover:text-brand-hot">{x.event}</Link> : x.event}
-                      {x.verified && <span className="ml-1 text-brand" title={labels.verifiedEvent}>✓</span>}
-                      {x.hasRounds && (
-                        <button type="button" onClick={() => toggle(x.id)} aria-expanded={isOpen} className="mt-1 block text-xs font-normal text-muted py-2 underline-offset-2 hover:text-ink hover:underline">
-                          {isOpen ? labels.hideRounds : labels.viewRounds}
-                        </button>
-                      )}
-                    </td>
-                    <td className="tabular-nums">{x.date}</td>
-                    <td>{x.discipline}</td>
-                    <td className="tabular-nums">{x.result}{x.penalty && <span className="text-muted"> ({x.penalty})</span>}</td>
-                    <td className="tabular-nums">{x.place}</td>
-                  </tr>
-                  {isOpen && (
-                    <tr className="bg-sand/40">
-                      <td colSpan={5} className="px-3 py-3">
-                        <RoundsDetail state={state} labels={labels} onRetry={() => void loadRounds(x.id)} />
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
+      {/* KIN-770/780: tarjetas en vez de tabla, igual que los próximos eventos; en celular no hay que deslizar de lado. */}
+      <div className="mt-3 space-y-3">
+        {rows.map((x) => {
+          const state = rounds[x.id];
+          const isOpen = open === x.id;
+          const note = x.href ? notes[x.href] : undefined;
+          return (
+            <AccountEventCard key={x.id} date={x.day} lang={lang} name={`${x.event}${x.verified ? " ✓" : ""}`} href={x.href ?? undefined} meta={`${x.discipline} · ${x.date.slice(-4)}`} menuLabel={labels.moreOptions}
+              status={
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  {x.place !== "–" && <span className={`rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${x.place === "#1" ? "bg-brand text-ink" : "bg-sand"}`} aria-label={`${labels.place} ${x.place}`}>{x.place}</span>}
+                  <span className={`text-sm tabular-nums ${x.dq ? "text-muted" : "font-semibold"}`}><span className="sr-only">{labels.time}: </span>{x.result}{x.penalty && <span className="font-normal text-muted"> ({x.penalty})</span>}</span>
+                  {note && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900">{note}</span>}
+                </div>
+              }>
+              {x.hasRounds && (
+                <button type="button" onClick={() => toggle(x.id)} aria-expanded={isOpen} className="mt-1 py-2 text-sm font-medium text-muted underline-offset-2 hover:text-ink hover:underline">
+                  {isOpen ? labels.hideRounds : labels.viewRounds}
+                </button>
+              )}
+              {isOpen && <div className="rounded-xl bg-sand/40 p-3 text-sm"><RoundsDetail state={state} labels={labels} onRetry={() => void loadRounds(x.id)} /></div>}
+            </AccountEventCard>
+          );
+        })}
       </div>
       {next !== null && (
         <div className="mt-6 text-center">

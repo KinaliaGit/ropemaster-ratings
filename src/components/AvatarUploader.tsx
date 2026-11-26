@@ -9,7 +9,7 @@ import type { PhotoError } from "@/lib/storage";
 type Labels = { add: string; change: string; remove: string; saving: string; tooBig: string; error: string };
 
 // Foto de perfil: recorte cuadrado y reducción en el navegador, y subida a Supabase Storage por una acción del servidor.
-export function AvatarUploader({ url, initials, name, l }: { url: string | null; initials: string; name: string; l: Labels }) {
+export function AvatarUploader({ url, initials, name, l, compact = false, badge }: { url: string | null; initials: string; name: string; l: Labels; compact?: boolean; badge?: React.ReactNode }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null | undefined>(undefined); // undefined = usar la del servidor
@@ -45,17 +45,21 @@ export function AvatarUploader({ url, initials, name, l }: { url: string | null;
   }
 
   return (
-    <div className="flex w-fit flex-col items-center gap-3">
-      <button type="button" onClick={() => input.current?.click()} disabled={busy} aria-label={shown ? l.change : l.add}
-        className="group relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-xl font-semibold text-white transition hover:ring-2 hover:ring-ink hover:ring-offset-2 disabled:opacity-60">
-        {shown
-          // eslint-disable-next-line @next/next/no-img-element
-          ? <img src={shown} alt={name} className="size-full object-cover" />
-          : <span aria-hidden>{initials}</span>}
-      </button>
+    <div className={`flex w-fit flex-col items-center ${compact ? (badge ? "gap-2.5" : "gap-1") : "gap-3"}`}>
+      <div className="relative">
+        <button type="button" onClick={() => input.current?.click()} disabled={busy} aria-label={shown ? l.change : l.add}
+          className={`group relative grid shrink-0 place-items-center overflow-hidden rounded-full bg-ink font-semibold text-white transition hover:ring-2 hover:ring-ink hover:ring-offset-2 disabled:opacity-60 ${compact ? "size-14 text-base" : "size-20 text-xl"}`}>
+          {shown
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img src={shown} alt={name} className="size-full object-cover" />
+            : <span aria-hidden>{initials}</span>}
+        </button>
+        {badge && <span className="pointer-events-none absolute -bottom-2 left-1/2 -translate-x-1/2">{badge}</span>}
+      </div>
       <div className="flex flex-wrap items-center justify-center gap-1">
-        <button type="button" onClick={() => input.current?.click()} disabled={busy} className="rounded-full border border-line px-4 py-1.5 text-sm font-medium transition hover:border-ink disabled:opacity-60">{busy ? l.saving : shown ? l.change : l.add}</button>
-        {shown && <button type="button" onClick={onRemove} disabled={busy} className="rounded-full px-3 py-1.5 text-sm text-muted transition hover:text-ink disabled:opacity-60">{l.remove}</button>}
+        {/* Compacto: la foto misma es el botón para ponerla o cambiarla; debajo solo queda el aviso de guardado o «Quitar». */}
+        {compact ? busy && <span className="text-xs text-muted">{l.saving}</span> : <button type="button" onClick={() => input.current?.click()} disabled={busy} className="rounded-full border border-line px-4 py-1.5 text-sm font-medium transition hover:border-ink disabled:opacity-60">{busy ? l.saving : shown ? l.change : l.add}</button>}
+        {shown && !(compact && busy) && <button type="button" onClick={onRemove} disabled={busy} className={`rounded-full text-muted transition hover:text-ink disabled:opacity-60 ${compact ? "px-2 py-2 text-xs" : "px-3 py-1.5 text-sm"}`}>{l.remove}</button>}
       </div>
       {error && <p role="alert" className="max-w-[14rem] text-center text-xs text-red-700">{error === "tooBig" ? l.tooBig : l.error}</p>}
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => onPick(e.target.files?.[0])} />

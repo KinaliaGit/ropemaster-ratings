@@ -90,7 +90,7 @@ export const en: Dict = {
     changed: "You changed your password. We signed out your other sessions.",
   },
   notifications: {
-    title: "Notifications", empty: "You have no notifications.", markAll: "Mark all as read", markRead: "Mark as read", new: "New", reason: "Reason:", eventOn: "event on",
+    title: "Notifications", empty: "You have no notifications.", markAll: "Mark all as read", markRead: "Mark as read", new: "New", viewAll: "View all notifications", refundShort: "Refund pending", reason: "Reason:", eventOn: "event on",
     removedTitle: (e: string) => `You were removed from ${e}`, deletedTitle: (e: string) => `${e} was canceled`,
     refund: "Your payment was already recorded. There is no automatic refund: contact the organizer to get it back.",
     promotedTitle: (e: string) => `You are now registered for ${e}`, promotedText: "A spot opened up and the organizer moved you from the waitlist to registered. Your registration is pending payment: in My account you can see the amount and how to pay.", bell: "Notifications", bannerOne: "You have 1 new notification", bannerMany: (n: number) => `You have ${n} new notifications`, bannerLink: "View",

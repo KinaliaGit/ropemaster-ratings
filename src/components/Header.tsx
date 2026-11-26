@@ -2,15 +2,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { getSession } from "@/lib/session";
-import { countMyUnread } from "@/lib/data/notifications";
+import { getMyBell, type NotificationItem } from "@/lib/data/notifications";
 import { logout } from "@/lib/auth-actions";
 import { NoticeBanner } from "@/components/NoticeBanner";
+import { NotificationBell } from "@/components/NotificationBell";
 import { NavLinks, type NavItem } from "@/components/NavLinks";
 import { AccountMenu } from "@/components/AccountMenu";
 import { GuestMenu } from "@/components/GuestMenu";
 import { initials, publicAvatarUrl } from "@/lib/people";
 import type { Dict } from "@/dictionaries/es";
-import type { Lang } from "@/lib/format";
+import { fmtDate, type Lang } from "@/lib/format";
 
 async function Account({ lang, t }: { lang: Lang; t: Dict }) {
   const s = await getSession();
@@ -23,16 +24,23 @@ async function Account({ lang, t }: { lang: Lang; t: Dict }) {
     </div>
   );
   const org = s.role === "organizador";
-  const unread = await countMyUnread();
+  const bell = await getMyBell(); // los últimos 5 avisos para el menú de la campana (null si la consulta falla: queda el enlace a Avisos)
+  const nt = t.notifications;
+  const titleOf = (i: NotificationItem) => (i.kind === "removed" ? nt.removedTitle(i.eventName) : i.kind === "promoted" ? nt.promotedTitle(i.eventName) : nt.deletedTitle(i.eventName));
   const base = `/${lang}/organizador`;
   // En celular la barra se guarda aquí: estos enlaces solo salen en el menú en pantallas chicas. «Mi panel» ya es el primero del menú.
   const phone = barItems(lang, t, org).filter((i) => i.href !== base).map((i) => ({ href: i.href, label: i.label, className: "sm:hidden" }));
   return (
     <>
-    <Link href={`/${lang}/notificaciones`} aria-label={unread > 0 ? `${t.notifications.bell} (${unread})` : t.notifications.bell} className="relative mr-2 grid size-9 place-items-center rounded-full hover:bg-sand">
-      <svg aria-hidden viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
-      {unread > 0 && <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-brand-hot px-1 text-[10px] font-semibold leading-4 text-white">{unread > 9 ? "9+" : unread}</span>}
-    </Link>
+    {bell ? (
+      <NotificationBell lang={lang} userId={s.id} href={`/${lang}/notificaciones`} total={bell.total} unread={bell.unread.count} latest={bell.unread.latest}
+        items={bell.items.map((i) => ({ id: i.id, title: titleOf(i), dateLabel: fmtDate(i.createdAt.slice(0, 10), lang), reason: i.kind === "promoted" ? null : i.reason || null, read: i.read, refundPending: i.refundPending }))}
+        labels={{ bell: nt.bell, title: nt.title, empty: nt.empty, markAll: nt.markAll, markRead: nt.markRead, isNew: nt.new, viewAll: nt.viewAll, refund: nt.refundShort, reason: nt.reason }} />
+    ) : (
+      <Link href={`/${lang}/notificaciones`} aria-label={nt.bell} className="relative mr-2 grid size-9 place-items-center rounded-full hover:bg-sand">
+        <svg aria-hidden viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
+      </Link>
+    )}
     <AccountMenu
       initials={initials(s.name)} photo={publicAvatarUrl(s.avatarPath)} name={s.name} roleLabel={org ? t.org.accountType : t.account.type} lang={lang}
       dashboardHref={`/${lang}/${org ? "organizador" : "mi-cuenta"}`} dashboardLabel={org ? t.nav.myPanel : t.nav.myAccount}

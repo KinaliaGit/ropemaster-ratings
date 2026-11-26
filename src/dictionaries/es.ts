@@ -153,6 +153,9 @@ export const es = {
       errors: { invalid: "Revisa el nombre de la arena.", duplicate: "Ya tienes una arena con ese nombre (no se distinguen mayúsculas, acentos ni signos). Si están repetidas, únelas.", failed: "No se pudo guardar. Intenta de nuevo.", mergeFailed: "No se pudieron unir las arenas.", inUse: "No se puede borrar: tiene eventos o series." },
     },
     pays: {
+      noneInArena: "Esta arena aún no tiene cobros.",
+      owing: "Con adeudos", completeTab: "Completos", noneOwing: "Nadie te debe: todo está cobrado.", allPayments: "Todos los pagos", seeEvent: "Ver el evento", ofTotal: (m: string) => `de ${m}`,
+      ringLabel: "cobrado", byEvent: "Por evento", complete: "Completo", paidOf: (a: number, b: number) => `${a} de ${b} pagados`, missing: (m: string) => `Faltan ${m}`,
       title: "Pagos", blurb: "Todo lo que cobras en un solo lugar: cuánto se espera, cuánto ya pagó y quién debe, evento por evento.",
       expected: "Esperado", collected: "Pagado", pending: "Pendiente", events: "Mis eventos", noEvents: "Aún no hay inscripciones con pago que mostrar.", registered: "inscripciones", payments: "pagos", pendings: "pendientes", open: "Ver quién debe",
       filters: "Filtros", event: "Evento", allEvents: "Todos los eventos", status: "Estado", statusPending: "Pendientes", statusPaid: "Pagados", statusAll: "Todos", search: "Buscar por nombre", apply: "Filtrar", clear: "Quitar filtros",

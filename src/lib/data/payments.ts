@@ -5,9 +5,9 @@ import type { PaymentFilters } from "@/lib/payment-filters";
 // propias inscripciones en eventos de otros (cuando además compite), y eso no es dinero que él cobre (KIN-627).
 // Solo cuentan las inscripciones pendientes y pagadas (una reembolsada ya no es dinero esperado).
 
-export type PaymentEventTotals = { slug: string; name: string; date: string | null; expectedCents: number; paidCents: number; pendingCents: number; paidCount: number; pendingCount: number };
+export type PaymentEventTotals = { slug: string; name: string; date: string | null; venue: string; expectedCents: number; paidCents: number; pendingCents: number; paidCount: number; pendingCount: number };
 
-type TotalsRow = { payment_status: string; amount_cents: number; events: { slug: string | null; name: string; event_date: string | null } | null; event_id: string };
+type TotalsRow = { payment_status: string; amount_cents: number; events: { slug: string | null; name: string; event_date: string | null; venue: string | null } | null; event_id: string };
 
 const PAGE = 1000; // tope de filas por consulta de la API
 const MAX_PAGES = 50; // 50 000 inscripciones: más que cualquier organizador; evita un ciclo sin fin si algo falla
@@ -18,13 +18,13 @@ export async function listPaymentTotals(organizerId: string): Promise<PaymentEve
   const byEvent = new Map<string, PaymentEventTotals>();
   for (let page = 0; page < MAX_PAGES; page++) {
     const { data, error } = await supabase.from("registrations")
-      .select("event_id, payment_status, amount_cents, events!inner(slug, name, event_date)")
+      .select("event_id, payment_status, amount_cents, events!inner(slug, name, event_date, venue)")
       .eq("events.organizer_id", organizerId).in("payment_status", ["pendiente", "pagado"]).order("id").range(page * PAGE, page * PAGE + PAGE - 1);
     if (error) throw new Error(`No se pudieron leer los pagos: ${error.message}`);
     const rows = (data ?? []) as unknown as TotalsRow[];
     for (const r of rows) {
       if (!r.events?.slug) continue;
-      const t = byEvent.get(r.event_id) ?? { slug: r.events.slug, name: r.events.name, date: r.events.event_date, expectedCents: 0, paidCents: 0, pendingCents: 0, paidCount: 0, pendingCount: 0 };
+      const t = byEvent.get(r.event_id) ?? { slug: r.events.slug, name: r.events.name, date: r.events.event_date, venue: r.events.venue ?? "", expectedCents: 0, paidCents: 0, pendingCents: 0, paidCount: 0, pendingCount: 0 };
       t.expectedCents += r.amount_cents;
       if (r.payment_status === "pagado") { t.paidCents += r.amount_cents; t.paidCount++; } else { t.pendingCents += r.amount_cents; t.pendingCount++; }
       byEvent.set(r.event_id, t);

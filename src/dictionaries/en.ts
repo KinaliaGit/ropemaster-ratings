@@ -153,6 +153,9 @@ export const en: Dict = {
       errors: { invalid: "Check the arena name.", duplicate: "You already have an arena with that name (case, accents and punctuation are ignored). If they are duplicates, merge them.", failed: "Could not save. Try again.", mergeFailed: "The arenas could not be merged.", inUse: "It can't be deleted: it has events or series." },
     },
     pays: {
+      noneInArena: "This arena has no payments yet.",
+      owing: "Still owing", completeTab: "Paid up", noneOwing: "Nobody owes you: everything is collected.", allPayments: "All payments", seeEvent: "See the event", ofTotal: (m: string) => `of ${m}`,
+      ringLabel: "collected", byEvent: "By event", complete: "Complete", paidOf: (a: number, b: number) => `${a} of ${b} paid`, missing: (m: string) => `${m} to go`,
       title: "Payments", blurb: "Everything you collect in one place: how much is expected, how much has been paid and who owes, event by event.",
       expected: "Expected", collected: "Paid", pending: "Pending", events: "My events", noEvents: "There are no registrations with payments to show yet.", registered: "registrations", payments: "paid", pendings: "pending", open: "See who owes",
       filters: "Filters", event: "Event", allEvents: "All events", status: "Status", statusPending: "Pending", statusPaid: "Paid", statusAll: "All", search: "Search by name", apply: "Filter", clear: "Clear filters",

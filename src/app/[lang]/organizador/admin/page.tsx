@@ -14,7 +14,7 @@ function Table({ rows, lang, a, verify }: { rows: OrganizerRow[]; lang: Lang; a:
   const button = (o: OrganizerRow) => (
     <form action={setOrganizerVerified}>
       <input type="hidden" name="lang" value={lang} /><input type="hidden" name="target" value={o.userId} /><input type="hidden" name="value" value={verify ? "true" : "false"} />
-      <button className={verify ? "rounded-full bg-brand px-4 py-1.5 text-xs font-medium text-white hover:bg-brand-hot" : "rounded-full border border-line px-4 py-1.5 text-xs font-medium hover:border-ink"}>{verify ? a.verify : a.revoke}</button>
+      <button className={verify ? "min-h-9 rounded-full bg-brand px-4 text-xs font-medium text-white hover:bg-brand-hot" : "min-h-9 rounded-full border border-line px-4 text-xs font-medium hover:border-ink"}>{verify ? a.verify : a.revoke}</button>
     </form>
   );
   return (
@@ -43,7 +43,7 @@ function Table({ rows, lang, a, verify }: { rows: OrganizerRow[]; lang: Lang; a:
               <td className="pr-3 text-right">
                 <form action={setOrganizerVerified}>
                   <input type="hidden" name="lang" value={lang} /><input type="hidden" name="target" value={o.userId} /><input type="hidden" name="value" value={verify ? "true" : "false"} />
-                  <button className={verify ? "rounded-full bg-brand px-4 py-1.5 text-xs font-medium text-white hover:bg-brand-hot" : "rounded-full border border-line px-4 py-1.5 text-xs font-medium hover:border-ink"}>{verify ? a.verify : a.revoke}</button>
+                  <button className={verify ? "min-h-9 rounded-full bg-brand px-4 text-xs font-medium text-white hover:bg-brand-hot" : "min-h-9 rounded-full border border-line px-4 text-xs font-medium hover:border-ink"}>{verify ? a.verify : a.revoke}</button>
                 </form>
               </td>
             </tr>

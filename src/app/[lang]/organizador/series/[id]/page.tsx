@@ -92,11 +92,11 @@ async function Manage({ s, id, lang, t, flags, shareUrl }: { s: Session; id: str
                   <PhaseBadge phase={phases[i]} label={t.series.phase[phases[i]]} />
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <Link href={`/${lang}/organizador/eventos/${e.id}`} className="rounded-full bg-ink px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-hot">{ev.manage}</Link>
-                  {e.status !== "finalizado" && <Link href={`/${lang}/organizador/eventos/${e.id}/editar`} className="rounded-full bg-sand px-3 py-1.5 text-xs font-medium hover:bg-line">{ev.edit}</Link>}
+                  <Link href={`/${lang}/organizador/eventos/${e.id}`} className="inline-flex min-h-10 items-center rounded-full bg-ink px-4 text-xs font-medium text-white hover:bg-brand-hot">{ev.manage}</Link>
+                  {e.status !== "finalizado" && <Link href={`/${lang}/organizador/eventos/${e.id}/editar`} className="inline-flex min-h-10 items-center rounded-full bg-sand px-4 text-xs font-medium hover:bg-line">{ev.edit}</Link>}
                   {e.status !== "finalizado" && e.enrolled === 0 && (
                     <details className="ml-auto">
-                      <summary className="cursor-pointer list-none rounded-full px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50">{ev.delete}</summary>
+                      <summary className="flex min-h-10 cursor-pointer list-none items-center rounded-full px-3 text-xs font-medium text-red-700 hover:bg-red-50">{ev.delete}</summary>
                       <form action={deleteSeriesEvent} className="mt-2 rounded-xl bg-red-50 p-3 text-sm">
                         <input type="hidden" name="lang" value={lang} /><input type="hidden" name="slug" value={x.id} /><input type="hidden" name="id" value={e.uuid} />
                         <p className="font-medium text-red-900">{ev.deleteTitle}</p>

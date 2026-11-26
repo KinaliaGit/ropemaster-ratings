@@ -88,3 +88,21 @@ rediseños. **Sustituye a las tablas anteriores** donde difieran. A 768 y 1280 p
 | Detalle de arena | «Mis arenas» de 17 px | Edgar | Pendiente |
 
 **No cubierto:** cuenta de solo participante, diálogos abiertos y prueba en un teléfono físico (la hace una persona).
+
+### Segunda pasada (26 nov 2026, sobre `main` en `c4ab4f0`)
+Con los cambios ya integrados: 90 mediciones (8 vistas públicas sin sesión y 22 con sesión de organizador, a 375, 768 y 1280 px). **Sin
+desbordes ni textos cortados** en ningún ancho. **Sustituye a la tabla anterior.** Prueba física del mismo día: iPhone y computadora (Ana).
+
+| Pantalla | Ancho | Defecto (alto en px) | Responsable | Estado |
+|---|---|---|---|---|
+| Vistas públicas, paneles, Pagos, entrar e inscripción | Todos | Ninguno | Anita | Correcto |
+| Detalle de serie | Todos | «Gestionar» 28 y «+ Agregar otro evento» 20 | Sin dueño | Corregido |
+| Nuevo y editar evento; nueva y editar serie | Todos | «+ Agregar categoría» 20 | Edgar | Corregido por Ana. Avisar a Edgar |
+| Evento del organizador | Todos | Nombre 20, «Efectivo» y «Transferencia» 24, «Sacar del evento» y «Volver a bloquear» 26 | Emiliano | Corregido por Ana. Avisar a Emiliano |
+| Participantes del organizador (sin enlace en la barra) | Todos | Nombres 24 | Emiliano | Corregido por Ana. Avisar a Emiliano |
+| Administración (retirada de la navegación) | Todos | «Verificar» y «Revocar» 28 a 30 | — | Corregido |
+
+Después de corregir, las siete pantallas afectadas se volvieron a medir en los tres anchos (21 mediciones): sin desbordes ni controles de
+menos de 32 px.
+
+**No cubierto:** cuenta de solo participante (se probó a mano en KIN-770), diálogos abiertos y la vista en vivo (KIN-558, aún sin integrar).

@@ -19,7 +19,7 @@ export function CopyId({ id, label, copy, copied }: Props) {
     <p className="mt-2 flex flex-wrap items-center gap-2 text-sm" data-testid="roper-short-id">
       <span className="text-muted">{label}</span>
       <span className="rounded-full bg-sand px-3 py-1 font-medium tabular-nums">{id}</span>
-      <button type="button" onClick={onCopy} aria-label={`${copy} ${id}`} className="rounded-full border border-line px-3 py-1 text-xs font-medium transition hover:border-ink">
+      <button type="button" onClick={onCopy} aria-label={`${copy} ${id}`} className="rounded-full border border-line px-3 py-2 text-xs font-medium transition hover:border-ink">
         {done ? `${copied} ✓` : copy}
       </button>
     </p>

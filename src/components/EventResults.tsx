@@ -79,7 +79,7 @@ export function EventResults({ slug, lang, sets, labels }: { slug: string; lang:
                 <p className="truncate font-medium">{r.href ? <Link href={r.href} className="hover:text-brand-hot">{r.name}</Link> : r.name}</p>
                 {r.sub && <p className="text-sm text-muted">{r.sub}</p>}
                 {r.hasRounds && (
-                  <button type="button" onClick={() => toggle(r.id)} aria-expanded={open === r.id} className="mt-0.5 text-xs text-muted underline-offset-2 hover:text-ink hover:underline">
+                  <button type="button" onClick={() => toggle(r.id)} aria-expanded={open === r.id} className="mt-0.5 text-xs text-muted py-2 underline-offset-2 hover:text-ink hover:underline">
                     {open === r.id ? labels.hideRounds : labels.viewRounds}
                   </button>
                 )}

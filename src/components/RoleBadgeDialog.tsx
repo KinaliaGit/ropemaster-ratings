@@ -22,9 +22,9 @@ export function RoleBadgeDialog({ action, lang, initial, text, l }: {
           <h3 id="rol-dialogo" className="text-lg font-semibold">{l.title}</h3>
           <input type="hidden" name="lang" value={lang} />
           <div className="mt-4 space-y-4"><RoleFields labels={l.fields} initial={initial} /></div>
-          <div className="mt-5 flex justify-end gap-2">
-            <button type="button" onClick={() => ref.current?.close()} className="rounded-full bg-sand px-4 py-2 text-sm font-medium hover:bg-line">{l.cancel}</button>
-            <button className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white hover:bg-brand-hot">{l.save}</button>
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <button type="button" onClick={() => ref.current?.close()} className="rounded-full bg-sand px-4 min-h-11 py-2 text-sm sm:min-h-0 font-medium hover:bg-line">{l.cancel}</button>
+            <button className="rounded-full bg-ink px-5 min-h-11 py-2 text-sm sm:min-h-0 font-medium text-white hover:bg-brand-hot">{l.save}</button>
           </div>
         </form>
       </dialog>

@@ -74,7 +74,7 @@ export function ProfileHistory({ roperId, lang, initial, next: initialNext, labe
                       {x.href ? <Link href={x.href} className="hover:text-brand-hot">{x.event}</Link> : x.event}
                       {x.verified && <span className="ml-1 text-brand" title={labels.verifiedEvent}>✓</span>}
                       {x.hasRounds && (
-                        <button type="button" onClick={() => toggle(x.id)} aria-expanded={isOpen} className="mt-1 block text-xs font-normal text-muted underline-offset-2 hover:text-ink hover:underline">
+                        <button type="button" onClick={() => toggle(x.id)} aria-expanded={isOpen} className="mt-1 block text-xs font-normal text-muted py-2 underline-offset-2 hover:text-ink hover:underline">
                           {isOpen ? labels.hideRounds : labels.viewRounds}
                         </button>
                       )}

@@ -8,11 +8,11 @@ export function Footer({ t, lang }: { t: Dict; lang: "es" | "en" }) {
     <footer className="mt-16 border-t border-line">
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-5 pb-28 pt-8 text-sm text-muted sm:flex-row sm:pb-8 sm:items-center sm:justify-between">
         <p>{t.footer.tagline}</p>
-        <nav className="flex flex-wrap gap-x-5 gap-y-2">
-          <Link href={`/${lang}/terminos`} className="hover:text-ink">{t.footer.terms}</Link>
-          <Link href={`/${lang}/privacidad`} className="hover:text-ink">{t.footer.privacy}</Link>
-          <a href={productUrl(lang)} target="_blank" rel="noopener noreferrer" className="hover:text-ink">{t.footer.product} ↗</a>
-          <a href={licensesUrl(lang)} target="_blank" rel="noopener noreferrer" className="hover:text-ink">{t.footer.licenses} ↗</a>
+        <nav className="flex flex-wrap gap-x-5 gap-y-1">
+          <Link href={`/${lang}/terminos`} className="py-1.5 hover:text-ink">{t.footer.terms}</Link>
+          <Link href={`/${lang}/privacidad`} className="py-1.5 hover:text-ink">{t.footer.privacy}</Link>
+          <a href={productUrl(lang)} target="_blank" rel="noopener noreferrer" className="py-1.5 hover:text-ink">{t.footer.product} ↗</a>
+          <a href={licensesUrl(lang)} target="_blank" rel="noopener noreferrer" className="py-1.5 hover:text-ink">{t.footer.licenses} ↗</a>
         </nav>
         {/* Celular: el selector de idioma va aquí (flotando se encimaría con las barras fijas de abajo). */}
         <div className="sm:hidden"><LangSwitch lang={lang} label={t.nav.language} inline /></div>

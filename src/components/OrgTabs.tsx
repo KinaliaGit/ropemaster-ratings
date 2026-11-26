@@ -22,7 +22,7 @@ function Bar({ tabs, current, publicHref, publicLabel }: { tabs: Tab[]; current:
           const active = current === t.href || (t.match ?? []).some((m) => current === m || current.startsWith(`${m}/`));
           return (
             <Link key={t.href} href={t.href} aria-current={active ? "page" : undefined}
-              className={`flex-1 whitespace-nowrap rounded-full px-2 py-2 text-center text-[13px] font-medium transition sm:flex-none sm:px-4 sm:text-sm ${active ? "bg-white text-ink shadow-[0_1px_3px_rgba(20,19,17,0.12)]" : "text-ink/65 hover:bg-white/60 hover:text-ink"}`}>{t.short ? <><span className="sm:hidden">{t.short}</span><span className="hidden sm:inline">{t.label}</span></> : t.label}</Link>
+              className={`flex-1 whitespace-nowrap rounded-full px-2 py-2.5 text-center text-[13px] font-medium transition sm:flex-none sm:px-4 sm:py-2 sm:text-sm ${active ? "bg-white text-ink shadow-[0_1px_3px_rgba(20,19,17,0.12)]" : "text-ink/65 hover:bg-white/60 hover:text-ink"}`}>{t.short ? <><span className="sm:hidden">{t.short}</span><span className="hidden sm:inline">{t.label}</span></> : t.label}</Link>
           );
         })}
       </div>

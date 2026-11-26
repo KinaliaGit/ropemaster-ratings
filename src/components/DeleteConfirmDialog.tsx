@@ -40,9 +40,9 @@ export function DeleteConfirmDialog({ action, lang, fields, id, summary, needRea
           <label className="mt-4 block text-sm font-medium" htmlFor={`dw-${id}`}>{l.typePrompt}</label>
           <input id={`dw-${id}`} name="confirmWord" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" autoCapitalize="off" spellCheck={false}
             className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm outline-none focus:border-red-700" />
-          <div className="mt-5 flex justify-end gap-2">
-            <button type="button" onClick={close} className="rounded-full bg-sand px-4 py-2 text-sm font-medium hover:bg-line">{l.cancel}</button>
-            <button disabled={!wordOk || !reasonOk} className="rounded-full bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-40">{l.confirm}</button>
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <button type="button" onClick={close} className="rounded-full bg-sand px-4 min-h-11 py-2 text-sm sm:min-h-0 font-medium hover:bg-line">{l.cancel}</button>
+            <button disabled={!wordOk || !reasonOk} className="rounded-full bg-red-700 px-4 min-h-11 py-2 text-sm sm:min-h-0 font-medium text-white hover:bg-red-800 disabled:opacity-40">{l.confirm}</button>
           </div>
         </form>
       </dialog>

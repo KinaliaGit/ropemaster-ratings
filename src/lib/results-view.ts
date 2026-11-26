@@ -7,14 +7,14 @@ import type { HistoryRow, Round } from "@/lib/results-history";
 // "ver rondas", para que todo se vea igual venga de donde venga.
 
 export type HistoryItem = {
-  id: string; event: string; href: string | null; verified: boolean; date: string; discipline: string;
+  id: string; event: string; href: string | null; verified: boolean; date: string; day: string; discipline: string;
   result: string; penalty: string | null; dq: boolean; place: string; hasRounds: boolean;
 };
 
 export function toHistoryItem(r: HistoryRow, lang: Lang, t: Dict): HistoryItem {
   const discipline = (t.disc as Record<string, { label: string }>)[r.discipline]?.label ?? r.discipline;
   return {
-    id: r.id, event: r.event, href: r.eventSlug ? `/${lang}/eventos/${r.eventSlug}` : null, verified: r.eventVerified, date: fmtDate(r.date, lang), discipline,
+    id: r.id, event: r.event, href: r.eventSlug ? `/${lang}/eventos/${r.eventSlug}` : null, verified: r.eventVerified, date: fmtDate(r.date, lang), day: r.date, discipline,
     result: r.disqualified ? t.people.dq : fmtTime(r.timeMs), penalty: !r.disqualified && r.penaltyMs > 0 ? `+${fmtTime(r.penaltyMs)}` : null,
     dq: r.disqualified, place: r.place != null ? `#${r.place}` : "–", hasRounds: r.hasRounds,
   };

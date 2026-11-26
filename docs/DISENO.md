@@ -116,9 +116,9 @@ type EventPaymentSummary = {
 - **Misma suma que la pantalla de Pagos.** Los totales salen de `listPaymentTotals`, la consulta de la pantalla; no hay una segunda lógica financiera.
 - **Una fila por evento del organizador con slug**, también los que no tienen inscripciones (todo en cero). Orden: fecha más reciente primero, sin fecha
   al final, luego nombre. Los montos van en **centavos** (enteros).
-- **Filtro por arena.** `arenaId` es el `id` de una arena del propio organizador (catálogo `arenas`, KIN-751); con `null` no se filtra. La pantalla de
-  Pagos usa `?arena=<llave>` (la misma llave que `arenaKey()` de `src/lib/arena.ts`), la resuelve contra el catálogo del organizador y descarta una llave
-  que no sea suya (se ven todos los eventos). Con menos de dos arenas el selector no aparece. El filtro acota totales, tabla de eventos, lista y espera.
+- **Filtro por arena.** `arenaId` es el `id` de una arena del propio organizador (catálogo `arenas`, KIN-751; es el `arena.id` que devuelve
+  `getOrganizerOverview`, ver `docs/PANEL_ARENAS.md`); con `null` no se filtra y solo trae los eventos de esa arena (y su lista de espera). La pantalla de
+  Pagos filtra por su lado con `?arena=<llave>` (chips por arena, KIN-765/KIN-751) y no usa este parámetro.
 - **Privacidad.** Todo se lee con la sesión del organizador y SIEMPRE se filtra por `events.organizer_id`; además las reglas de la base (RLS) no dejan
   leer inscripciones, lista de espera ni arenas de otro organizador. Cubierto en `supabase/tests/permisos.mjs` (sección «Resumen de pagos por evento y arena»).
 - **Tope.** Los eventos se leen con el tope de 1000 de la API; las inscripciones y la espera se leen por páginas.

@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
-import { OrgNav } from "@/components/OrgNav";
 import { setOrganizerVerified } from "@/lib/admin-actions";
 import { listOrganizersForAdmin, type OrganizerRow } from "@/lib/data/directory";
 import { fmtDate } from "@/lib/format";
@@ -15,7 +14,7 @@ function Table({ rows, lang, a, verify }: { rows: OrganizerRow[]; lang: Lang; a:
   const button = (o: OrganizerRow) => (
     <form action={setOrganizerVerified}>
       <input type="hidden" name="lang" value={lang} /><input type="hidden" name="target" value={o.userId} /><input type="hidden" name="value" value={verify ? "true" : "false"} />
-      <button className={verify ? "rounded-full bg-brand px-4 py-1.5 text-xs font-medium text-white hover:bg-brand-hot" : "rounded-full border border-line px-4 py-1.5 text-xs font-medium hover:border-ink"}>{verify ? a.verify : a.revoke}</button>
+      <button className={verify ? "min-h-9 rounded-full bg-brand px-4 text-xs font-medium text-white hover:bg-brand-hot" : "min-h-9 rounded-full border border-line px-4 text-xs font-medium hover:border-ink"}>{verify ? a.verify : a.revoke}</button>
     </form>
   );
   return (
@@ -44,7 +43,7 @@ function Table({ rows, lang, a, verify }: { rows: OrganizerRow[]; lang: Lang; a:
               <td className="pr-3 text-right">
                 <form action={setOrganizerVerified}>
                   <input type="hidden" name="lang" value={lang} /><input type="hidden" name="target" value={o.userId} /><input type="hidden" name="value" value={verify ? "true" : "false"} />
-                  <button className={verify ? "rounded-full bg-brand px-4 py-1.5 text-xs font-medium text-white hover:bg-brand-hot" : "rounded-full border border-line px-4 py-1.5 text-xs font-medium hover:border-ink"}>{verify ? a.verify : a.revoke}</button>
+                  <button className={verify ? "min-h-9 rounded-full bg-brand px-4 text-xs font-medium text-white hover:bg-brand-hot" : "min-h-9 rounded-full border border-line px-4 text-xs font-medium hover:border-ink"}>{verify ? a.verify : a.revoke}</button>
                 </form>
               </td>
             </tr>
@@ -68,8 +67,7 @@ async function Page(props: PageProps<"/[lang]/organizador/admin">) {
         const { organizers, audit } = await listOrganizersForAdmin();
         return (
           <>
-            <OrgNav lang={lang} t={t} admin />
-            <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
+            <div className="page">
               <h1 className="text-3xl font-semibold">{a.title}</h1>
               <p className="mt-1 text-sm text-muted">{a.blurb}</p>
               {sp.error === "1" && <p role="alert" className="mt-4 rounded-2xl bg-sand p-4 text-sm font-medium">{a.error}</p>}

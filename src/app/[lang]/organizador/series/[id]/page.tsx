@@ -1,10 +1,10 @@
+import { BackLink } from "@/components/BackLink";
 import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
-import { OrgNav } from "@/components/OrgNav";
 import { CopyLink } from "@/components/CopyLink";
 import { PhaseBadge } from "@/components/PhaseBadge";
 import { SeriesEventsForm } from "@/components/SeriesEventsForm";
@@ -35,9 +35,8 @@ async function Manage({ s, id, lang, t, flags, shareUrl }: { s: Session; id: str
   const addError = flags.error && !flags.error.startsWith("del_") ? errorMsg : null;
   return (
     <>
-      <OrgNav lang={lang} t={t} admin={s.isAdmin} />
-      <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
-        <Link href={`/${lang}/organizador/series`} className="text-sm text-muted hover:text-ink">← {m.back}</Link>
+      <div className="page">
+        <BackLink href={`/${lang}/organizador?ver=series`}>{m.back}</BackLink>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-3xl font-semibold">{x.name}</h1>
@@ -93,11 +92,11 @@ async function Manage({ s, id, lang, t, flags, shareUrl }: { s: Session; id: str
                   <PhaseBadge phase={phases[i]} label={t.series.phase[phases[i]]} />
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <Link href={`/${lang}/organizador/eventos/${e.id}`} className="rounded-full bg-ink px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-hot">{ev.manage}</Link>
-                  {e.status !== "finalizado" && <Link href={`/${lang}/organizador/eventos/${e.id}/editar`} className="rounded-full bg-sand px-3 py-1.5 text-xs font-medium hover:bg-line">{ev.edit}</Link>}
+                  <Link href={`/${lang}/organizador/eventos/${e.id}`} className="inline-flex min-h-10 items-center rounded-full bg-ink px-4 text-xs font-medium text-white hover:bg-brand-hot">{ev.manage}</Link>
+                  {e.status !== "finalizado" && <Link href={`/${lang}/organizador/eventos/${e.id}/editar`} className="inline-flex min-h-10 items-center rounded-full bg-sand px-4 text-xs font-medium hover:bg-line">{ev.edit}</Link>}
                   {e.status !== "finalizado" && e.enrolled === 0 && (
                     <details className="ml-auto">
-                      <summary className="cursor-pointer list-none rounded-full px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50">{ev.delete}</summary>
+                      <summary className="flex min-h-10 cursor-pointer list-none items-center rounded-full px-3 text-xs font-medium text-red-700 hover:bg-red-50">{ev.delete}</summary>
                       <form action={deleteSeriesEvent} className="mt-2 rounded-xl bg-red-50 p-3 text-sm">
                         <input type="hidden" name="lang" value={lang} /><input type="hidden" name="slug" value={x.id} /><input type="hidden" name="id" value={e.uuid} />
                         <p className="font-medium text-red-900">{ev.deleteTitle}</p>

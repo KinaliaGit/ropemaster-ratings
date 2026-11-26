@@ -86,7 +86,7 @@ export async function updateSeries(formData: FormData) {
 
   const supabase = await createServerSupabase();
   const { data: s } = await supabase.from("event_series").select("id").eq("slug", seriesSlug).eq("organizer_id", session.id).maybeSingle();
-  if (!s) redirect(`/${l}/organizador/series`);
+  if (!s) redirect(`/${l}/organizador?ver=series`);
   const { error } = await supabase.from("event_series").update({ name: p.name, description: p.description, start_date: p.startDate, end_date: p.endDate, timezone: p.timezone }).eq("id", s.id);
   if (error) return back(error.message.includes("events_outside_range") ? "outsideRange" : "1");
   const arena = await resolveArena(supabase, session.id, formData);
@@ -111,7 +111,7 @@ export async function deleteSeries(formData: FormData) {
   const { error } = await supabase.rpc("delete_series", { p_series: found.id });
   if (error) return back(["has_events", "not_found"].find((k) => error.message.includes(k)) ?? "failed");
   updateTag("events");
-  redirect(`/${l}/organizador/series?borrada=1`);
+  redirect(`/${l}/organizador?ver=series&serieBorrada=1`);
 }
 
 async function ownSeries(supabase: Supabase, seriesSlug: string, organizerId: string) {
@@ -128,7 +128,7 @@ export async function addSeriesEvents(formData: FormData) {
   const back = (error: string) => redirect(`/${l}/organizador/series/${seriesSlug}?error=${error}#agregar`);
   const supabase = await createServerSupabase();
   const s = await ownSeries(supabase, seriesSlug, session.id);
-  if (!s) redirect(`/${l}/organizador/series`);
+  if (!s) redirect(`/${l}/organizador?ver=series`);
 
   const names = formData.getAll("evName").map((v) => text(v, 120));
   const dates = formData.getAll("evDate").map((v) => text(v, 10));
@@ -171,7 +171,7 @@ export async function publishSeriesDrafts(formData: FormData) {
   const session = await organizer(l);
   const supabase = await createServerSupabase();
   const s = await ownSeries(supabase, seriesSlug, session.id);
-  if (!s) redirect(`/${l}/organizador/series`);
+  if (!s) redirect(`/${l}/organizador?ver=series`);
   // Solo se publican los borradores completos (KIN-659): los subidos desde la app llegan sin ciudad ni cupo y se completan a mano.
   const { data: drafts } = await supabase.from("events").select("id, city, venue, capacity, event_categories(id)").eq("series_id", s.id).eq("status", "borrador").eq("organizer_id", session.id);
   const ready = (drafts ?? []).filter((d) => missingForPublish({ city: d.city, venue: d.venue, capacity: d.capacity, categories: d.event_categories?.length ?? 0 }).length === 0);

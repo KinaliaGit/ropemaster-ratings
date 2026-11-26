@@ -4,7 +4,7 @@ import { buildPaymentSummary } from "../src/lib/payment-summary.ts";
 
 const ARENA = { id: "ar-1", name: "Lienzo Charro del Norte" };
 const ev = (id, name, date, arena = null) => ({ id, slug: `s-${id}`, name, date, status: "publicado", arena });
-const tot = (eventId, o) => ({ eventId, slug: `s-${eventId}`, name: "", date: null, expectedCents: 0, paidCents: 0, pendingCents: 0, paidCount: 0, pendingCount: 0, ...o });
+const tot = (eventId, o) => ({ slug: `s-${eventId}`, expectedCents: 0, paidCents: 0, pendingCents: 0, paidCount: 0, pendingCount: 0, ...o });
 
 test("junta pagadas, pendientes y lista de espera de cada evento", () => {
   const out = buildPaymentSummary([ev("a", "Final", "2026-12-01", ARENA)], [tot("a", { paidCount: 2, pendingCount: 1, paidCents: 200000, pendingCents: 100000, expectedCents: 300000 })], new Map([["a", 3]]));

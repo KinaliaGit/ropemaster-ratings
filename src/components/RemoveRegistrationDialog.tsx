@@ -17,7 +17,7 @@ export function RemoveRegistrationDialog({ action, lang, slug, id, name, categor
   const ok = reason.trim().length >= 3;
   return (
     <>
-      <button type="button" onClick={() => ref.current?.showModal()} className="rounded-full border border-line px-3 py-1 text-xs font-medium text-red-700 hover:border-red-700">{l.button}</button>
+      <button type="button" onClick={() => ref.current?.showModal()} className="min-h-9 rounded-full border border-line px-3 text-xs font-medium text-red-700 hover:border-red-700">{l.button}</button>
       <dialog ref={ref} aria-labelledby={`rm-${id}`} className="m-auto w-[min(92vw,28rem)] rounded-2xl p-0 backdrop:bg-black/40">
         <form action={action} className="p-6">
           <h3 id={`rm-${id}`} className="text-lg font-semibold">{l.title}</h3>
@@ -36,9 +36,9 @@ export function RemoveRegistrationDialog({ action, lang, slug, id, name, categor
           <textarea id={`rt-${id}`} name="reason" required minLength={3} maxLength={500} rows={3} value={reason} placeholder={l.reasonPlaceholder}
             onChange={(e) => { setReason(e.target.value); if (preset && e.target.value !== preset) setPreset(""); }} className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm outline-none focus:border-ink" />
           {!ok && <p className="mt-1 text-xs text-muted">{l.minChars}</p>}
-          <div className="mt-5 flex justify-end gap-2">
-            <button type="button" onClick={() => ref.current?.close()} className="rounded-full bg-sand px-4 py-2 text-sm font-medium hover:bg-line">{l.cancel}</button>
-            <button disabled={!ok} className="rounded-full bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-40">{l.confirm}</button>
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <button type="button" onClick={() => ref.current?.close()} className="rounded-full bg-sand px-4 min-h-11 py-2 text-sm sm:min-h-0 font-medium hover:bg-line">{l.cancel}</button>
+            <button disabled={!ok} className="rounded-full bg-red-700 px-4 min-h-11 py-2 text-sm sm:min-h-0 font-medium text-white hover:bg-red-800 disabled:opacity-40">{l.confirm}</button>
           </div>
         </form>
       </dialog>

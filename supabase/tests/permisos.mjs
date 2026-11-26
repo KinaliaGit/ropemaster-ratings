@@ -1947,6 +1947,81 @@ console.log("- Resultados de un evento (0030)");
   await as("authenticated", A, `delete from arenas where id = 'a7510000-0000-0000-0000-0000000000c1'`, "una arena sin uso SÍ se borra", "some");
 }
 
+// Resumen del organizador por arena (KIN-762, migración 0054): el panel filtra por la llave de la arena y solo ve lo de sus propias arenas.
+{
+  console.log("\n— Resumen del organizador por arena");
+  const num = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const verify = (label, ok) => { if (!ok) failures++; console.log(`${ok ? "✔" : "✘ FALLO"}  ${label}`); };
+  const NORTE = "Arena Norte KIN762", SUR = "Arena Sur KIN762", KNORTE = "arena norte kin762", KSUR = "arena sur kin762";
+  const SER762 = "5e762000-0000-0000-0000-000000000001";
+  const EN1 = "e7620000-0000-0000-0000-000000000001", EN2 = "e7620000-0000-0000-0000-000000000002", ES1 = "e7620000-0000-0000-0000-000000000003", EB1 = "e7620000-0000-0000-0000-0000000000b1";
+  const ANA = "11111111-0000-0000-0000-000000000001", MATEO = "22222222-0000-0000-0000-000000000002";
+  const overview = async (who, arg) => {
+    await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${who}', false); set role authenticated`);
+    try { return (arg === undefined ? await db.query("select public.organizer_overview() as o") : await db.query("select public.organizer_overview($1) as o", [arg])).rows[0].o; }
+    finally { await db.exec("reset role"); }
+  };
+  await db.exec(`update profiles set license_valid_until = 'infinity' where user_id in ('${A}', '${B}')`);
+  // El organizador A crea eventos en dos arenas (se enlazan solos por el lugar); B tiene su propia arena con otro nombre y un evento.
+  await db.exec(`
+    insert into event_series (id, slug, organizer_id, name, start_date, end_date) values ('${SER762}', 'serie-762', '${A}', 'Serie 762', '2099-01-01', '2099-12-31');
+    insert into events (id, name, organizer_id, status, slug, event_date, venue, city, series_id) values
+      ('${EN1}', 'Norte uno', '${A}', 'publicado', 'norte-uno-762', '2099-06-01', '${NORTE}', 'Monterrey', '${SER762}'),
+      ('${EN2}', 'Norte borrador', '${A}', 'borrador', 'norte-borrador-762', '2099-06-02', 'ARENA  norte kin762.', 'Monterrey', null),
+      ('${ES1}', 'Sur uno', '${A}', 'publicado', 'sur-uno-762', '2099-07-01', '${SUR}', 'Saltillo', null),
+      ('${EB1}', 'Evento de B', '${B}', 'publicado', 'b-uno-762', '2099-08-01', 'Arena de B 762', 'Puebla', null);
+    insert into registrations (event_id, roper_id, amount_cents, payment_status, payment_method) values
+      ('${EN1}', '${ANA}', 50000, 'pagado', 'efectivo'), ('${EN1}', '${MATEO}', 30000, 'pendiente', null),
+      ('${ES1}', '${ANA}', 10000, 'pendiente', null), ('${EB1}', '${ANA}', 99000, 'pagado', 'efectivo');
+  `);
+  verify("cada evento quedó con su arena correcta (los dos de Norte en la misma, el de Sur en otra)", await num(`select count(*) n from events e join arenas a on a.id = e.arena_id where e.organizer_id = '${A}' and ((e.id in ('${EN1}', '${EN2}') and a.key = '${KNORTE}') or (e.id = '${ES1}' and a.key = '${KSUR}'))`) === 3);
+  verify("las dos arenas de A son distintas y solo de A", await num(`select count(distinct id) n from arenas where organizer_id = '${A}' and key in ('${KNORTE}', '${KSUR}')`) === 2 && await num(`select count(*) n from arenas where organizer_id = '${B}' and key in ('${KNORTE}', '${KSUR}')`) === 0);
+  await as("authenticated", B, `select id from arenas where key in ('${KNORTE}', '${KSUR}')`, "otro organizador NO ve esas arenas", "deny");
+  await as("authenticated", B, `update events set venue = 'Robado' where id = '${EN1}'`, "otro organizador NO edita sus eventos", "deny");
+
+  // Permisos de la función, con y sin filtro
+  await as("anon", null, `select public.organizer_overview('${KNORTE}')`, "anónimo NO pide el resumen por arena", "deny");
+  await as("authenticated", C, `select public.organizer_overview('${KNORTE}')`, "un participante NO pide el resumen por arena", "deny");
+  await as("authenticated", A, `select public.organizer_overview('${KNORTE}')`, "el organizador SÍ pide el resumen de su arena", "some");
+  await as("authenticated", A, `select public.organizer_overview()`, "y sin filtro sigue funcionando igual que antes", "some");
+
+  // Con filtro, todo el resumen sale solo de esa arena
+  const norte = await overview(A, KNORTE), sur = await overview(A, KSUR);
+  verify("el resumen dice de qué arena es (id, nombre, ciudad y llave)", norte.arena?.key === KNORTE && norte.arena?.name === NORTE && norte.arena?.city === "Monterrey" && typeof norte.arena?.id === "string");
+  const pagos = (o, pending, paid, pendingCents, collectedCents) => o.payments.pending === pending && o.payments.paid === paid && o.payments.pending_cents === pendingCents && o.payments.collected_cents === collectedCents;
+  verify("Norte: pagos solo de sus eventos (1 pagado, 1 pendiente)", pagos(norte, 1, 1, 30000, 50000));
+  verify("Norte: estados (1 abierto, 1 borrador) y su próximo evento", norte.states.open === 1 && norte.states.draft === 1 && norte.states.finished === 0 && norte.next_event?.slug === "norte-uno-762" && norte.next_event?.enrolled === 2);
+  verify("Norte: la actividad y los pendientes son solo de Norte", norte.activity.length === 2 && norte.activity.every((x) => x.event === "Norte uno") && norte.todo.unpaid.length === 1 && norte.todo.unpaid[0].slug === "norte-uno-762");
+  verify("Norte: la próxima serie es la que tiene eventos ahí", norte.series?.slug === "serie-762" && norte.series?.events === 1 && norte.series?.enrolled === 2);
+  verify("Sur: pagos solo de su evento (1 pendiente)", sur.arena?.key === KSUR && pagos(sur, 1, 0, 10000, 0));
+  verify("Sur: su próximo evento y sin serie (ninguna serie tiene eventos ahí)", sur.next_event?.slug === "sur-uno-762" && sur.states.open === 1 && sur.states.draft === 0 && sur.series === null);
+  verify("ningún resumen filtrado incluye el evento de otra arena ni de otro organizador", !JSON.stringify(norte).includes("Sur uno") && !JSON.stringify(sur).includes("Norte") && !JSON.stringify([norte, sur]).includes("Evento de B"));
+
+  // La llave se entiende escrita de cualquier forma, como en la web
+  const escrita = await overview(A, "  ARENA   Norte  KIN762. ");
+  verify("«  ARENA   Norte  KIN762. » es la misma arena que su llave", escrita.arena?.id === norte.arena.id && pagos(escrita, 1, 1, 30000, 50000));
+
+  // Sin filtro, o con una llave vacía o sin letras, es lo de siempre (no filtra)
+  const todo = await overview(A), sinArgumento = await overview(A, null), vacio = await overview(A, ""), signos = await overview(A, " ... ");
+  verify("sin filtro: la respuesta trae arena null y las secciones de siempre", todo.arena === null && ["series", "next_event", "payments", "states", "activity", "todo"].every((k) => k in todo));
+  verify("null, vacío o solo signos NO filtran (igual que sin argumento)", [sinArgumento, vacio, signos].every((o) => JSON.stringify(o) === JSON.stringify(todo)));
+  verify("sin filtro cuenta los eventos de todas sus arenas (Norte + Sur de más)", todo.payments.pending >= norte.payments.pending + sur.payments.pending && todo.payments.paid >= norte.payments.paid + sur.payments.paid && todo.states.open >= norte.states.open + sur.states.open);
+
+  // Una llave que no es suya, que no existe o que se renombró no revela nada: resumen vacío y arena null
+  const ajena = await overview(B, KNORTE), inexistente = await overview(A, "no existe esta arena 762");
+  const vacioEsperado = (o) => o.arena === null && o.series === null && o.next_event === null && o.payments.pending === 0 && o.payments.paid === 0 && o.states.open + o.states.scheduled + o.states.finished + o.states.draft === 0 && o.activity.length === 0 && o.todo.unpaid.length === 0;
+  verify("B pidiendo la llave de una arena de A recibe el resumen vacío (sin error ni datos de A)", vacioEsperado(ajena) && !JSON.stringify(ajena).includes("Norte"));
+  verify("una llave que no existe da el resumen vacío", vacioEsperado(inexistente));
+  const deB = await overview(B, "arena de b 762");
+  verify("B filtrando por su propia arena ve solo lo suyo", deB.arena?.name === "Arena de B 762" && deB.payments.collected_cents === 99000 && !JSON.stringify(deB).includes("Norte"));
+  // Consultar el resumen es solo lectura: el lugar escrito y la arena de cada evento siguen exactamente igual
+  verify("consultar el resumen no cambia ningún evento ni arena", await num(`select count(*) n from events where (id = '${EN1}' and venue = '${NORTE}') or (id = '${EN2}' and venue = 'ARENA  norte kin762.') or (id = '${ES1}' and venue = '${SUR}')`) === 3);
+
+  // Al renombrar la arena cambia su llave: la vieja ya no coincide y la nueva sí
+  await db.exec(`update arenas set name = 'Arena Norte Renombrada KIN762' where organizer_id = '${A}' and key = '${KNORTE}'`);
+  verify("si la arena se renombra, la llave vieja ya no coincide y la nueva sí", vacioEsperado(await overview(A, KNORTE)) && (await overview(A, "arena norte renombrada kin762")).payments.paid === 1);
+}
+
 // Relleno de la 0052: las arenas salen de los lugares que ya existían, sin cambiar el texto de los eventos ni su fecha de actualización.
 {
   console.log("\n— Arenas: relleno de los eventos existentes");
@@ -2072,6 +2147,110 @@ console.log("— Resumen de pagos por evento y arena (KIN-765)");
   check("filtrar con la arena de OTRO organizador no devuelve nada", (await totals(U1, AR_OTRO)).length === 0 && (await waiting(U1, AR_OTRO)).length === 0);
   check("otro organizador NO ve las arenas de este", (await rows(U2, `select id from arenas where id in ('${AR1}','${AR2}')`)).length === 0);
   check("un organizador sin arenas ni eventos recibe todo vacío, sin error", (await rows(U3, "select id from arenas")).length === 0 && (await totals(U3, null)).length === 0 && (await waiting(U3, null)).length === 0);
+}
+
+console.log("- Pagos que sube la app (0053)");
+{
+  const example = (name) => JSON.parse(readFileSync(fileURLToPath(new URL(`../../docs/sync-examples/${name}`, import.meta.url)), "utf8"));
+  const request = example("pagos.request.json"), expected = example("pagos.response.json");
+  const EVP = request.payments[0].event_id, EVP_OTHER = "f8d1b9a0-1111-4222-8333-444455556666";
+  const [P1, P2x, P3, P4] = request.payments.map((p) => p.roper_global_id);
+  const P5 = "4abe9196-6666-4777-8888-9999aaaabbbb";
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug) values ('${EVP}','Evento pagos','${A}','publicado','pagos-0053'), ('${EVP_OTHER}','Evento de otro','${B}','publicado','otro-0053') on conflict do nothing;
+    insert into ropers (id, full_name) values ('${P1}','Pagador Uno'), ('${P2x}','Pagador Dos'), ('${P3}','Pagador Tres'), ('${P4}','Pagador Cuatro'), ('${P5}','Sin inscribir') on conflict do nothing;
+    insert into registrations (event_id, roper_id) values ('${EVP}','${P1}'), ('${EVP}','${P2x}'), ('${EVP}','${P3}'), ('${EVP}','${P4}');
+    update registrations set payment_status = 'pagado', payment_method = 'stripe', provider_payment_id = 'pi_test_0053', paid_at = now() where event_id = '${EVP}' and roper_id = '${P4}';
+  `);
+  const sqlText = (value) => `'${String(value).replace(/'/g, "''")}'`;
+  const asServer = async (sql) => {
+    await db.exec("reset role; set role service_role");
+    try { return (await db.query(sql)).rows; } finally { await db.exec("reset role"); }
+  };
+  const pay = (organizer, payments) => asServer(`select * from public.app_upload_payments('${organizer}', ${sqlText(JSON.stringify(payments))}::jsonb, null)`);
+  const one = (overrides) => ({ ...request.payments[0], id: "b2d3f4a5-0000-4000-8000-0000000000ff", ...overrides });
+  const reg = async (roper) => (await db.query(`select payment_status, payment_method, amount_paid_cents, payment_note, paid_by_roper_id, payment_revision, paid_at from registrations where event_id = '${EVP}' and roper_id = '${roper}'`)).rows[0];
+
+  // 1) El ejemplo del contrato: lo que la base responde es lo que el ejemplo dice (por pago y en orden).
+  const first = await pay(A, request.payments);
+  await check("ejemplo del contrato: estado y motivo de cada pago", JSON.stringify(first.map((r) => [r.r_id, r.r_status, r.r_code ?? null, r.r_revision, r.r_retry]))
+    === JSON.stringify(expected.payments.map((r) => [r.id, r.status, r.code ?? null, r.revision ?? null, r.retry ?? false])));
+  const r1 = await reg(P1), r2 = await reg(P2x), r3 = await reg(P3), r4 = await reg(P4);
+  await check("efectivo: queda pagado con monto, forma y fecha", r1.payment_status === "pagado" && r1.payment_method === "efectivo" && r1.amount_paid_cents === 30000 && r1.paid_at !== null);
+  await check("un abono parcial sigue pendiente pero guarda lo pagado y la nota", r2.payment_status === "pendiente" && r2.amount_paid_cents === 10000 && r2.payment_note === "Abonó 100, faltan 200" && r2.paid_at === null);
+  await check("pagar por otra persona deja ligado a quien pagó", r3.payment_status === "pagado" && r3.payment_method === "transferencia" && r3.paid_by_roper_id === P1);
+  await check("un pago en línea NO se deshace desde la app", r4.payment_status === "pagado" && r4.payment_method === "stripe" && r4.payment_revision === 0);
+
+  // 2) Idempotencia, correcciones y revisiones.
+  const again = await pay(A, request.payments);
+  await check("reenviar el mismo lote: unchanged y nada nuevo (el de Stripe sigue rechazado)", JSON.stringify(again.map((r) => r.r_status)) === JSON.stringify(["unchanged", "unchanged", "unchanged", "rejected"]));
+  const fix = await pay(A, [{ ...request.payments[1], revision: 2, status: "pagado", method: "transferencia", paid_cents: 30000, note: "Completó el pago" }]);
+  await check("corrección con revisión mayor: updated", fix[0].r_status === "updated" && fix[0].r_revision === 2 && (await reg(P2x)).payment_status === "pagado");
+  const stale = await pay(A, [{ ...request.payments[1], revision: 2, status: "pendiente", method: null, paid_cents: 0 }]);
+  await check("revisión menor o igual con datos distintos: stale_revision", stale[0].r_status === "rejected" && stale[0].r_code === "stale_revision" && (await reg(P2x)).payment_status === "pagado");
+  const undo = await pay(A, [{ ...request.payments[1], revision: 3, status: "pendiente", method: null, paid_cents: 0, note: null }]);
+  await check("deshacer un pago manual con revisión mayor: vuelve a pendiente sin fecha", undo[0].r_status === "updated" && (await reg(P2x)).payment_status === "pendiente" && (await reg(P2x)).paid_at === null);
+  const sameStripe = await pay(A, [one({ roper_global_id: P4, status: "pagado", method: "transferencia", paid_cents: 30000 })]);
+  await check("si la app también dice pagado a quien pagó en línea: unchanged", sameStripe[0].r_status === "unchanged");
+
+  // 3) Rechazos con su motivo.
+  const rejects = await pay(A, [
+    one({ id: "b2d3f4a5-0000-4000-8000-0000000000a1", roper_global_id: P5 }),
+    one({ id: "b2d3f4a5-0000-4000-8000-0000000000a2", event_id: EVP_OTHER }),
+    one({ id: "b2d3f4a5-0000-4000-8000-0000000000a3", paid_by_global_id: "99999999-9999-4999-8999-999999999999" }),
+    one({ id: "b2d3f4a5-0000-4000-8000-0000000000a4", method: "stripe" }),
+    one({ id: "b2d3f4a5-0000-4000-8000-0000000000a5", status: "pendiente", method: "efectivo" }),
+    one({ id: "b2d3f4a5-0000-4000-8000-0000000000a6", paid_cents: -1 }),
+    one({ id: "b2d3f4a5-0000-4000-8000-0000000000a7", revision: 0 }),
+  ]);
+  await check("rechazos: persona sin inscribir, evento ajeno, quien pagó desconocido y campos inválidos", JSON.stringify(rejects.map((r) => r.r_code))
+    === JSON.stringify(["registration_not_found", "event_not_found", "roper_unknown", "invalid_field", "invalid_field", "invalid_field", "invalid_field"]));
+  await db.exec(`update registrations set payment_status = 'reembolsado' where event_id = '${EVP}' and roper_id = '${P3}'`);
+  const refunded = await pay(A, [{ ...request.payments[2], revision: 5, paid_cents: 1 }]);
+  await check("una inscripción reembolsada no se toca desde la app", refunded[0].r_code === "refunded");
+  await check("otro organizador no puede escribir pagos de un evento ajeno", (await pay(B, [request.payments[0]]))[0].r_code === "event_not_found");
+
+  // Varias inscripciones de la misma persona en el evento (p. ej. rol "Ambos"): el pago es el total de la persona.
+  const K = "ca000000-0000-0000-0000-000000005301";
+  const [M1, M2, M3] = ["53000000-0000-4000-8000-000000000001", "53000000-0000-4000-8000-000000000002", "53000000-0000-4000-8000-000000000003"];
+  await db.exec(`
+    reset role;
+    insert into event_categories (id, event_id, name, fee_cents) values ('${K}','${EVP}','Doble',20000);
+    insert into ropers (id, full_name) values ('${M1}','Doble Uno'), ('${M2}','Doble En Linea'), ('${M3}','Doble Reembolso');
+    insert into registrations (event_id, roper_id, category_id, role, amount_cents, created_at)
+      select '${EVP}', p::uuid, '${K}', x.role, 20000, x.at::timestamptz
+      from unnest(array['${M1}','${M2}','${M3}']) p, (values ('header','2026-01-01'), ('heeler','2026-01-02')) x(role, at);
+    update registrations set payment_status = 'pagado', payment_method = 'stripe', provider_payment_id = 'pi_test_0053_m2', paid_at = now() where roper_id = '${M2}' and role = 'header';
+    update registrations set payment_status = 'reembolsado' where roper_id = '${M3}' and role = 'header';
+  `);
+  const both = async (roper) => (await db.query(`select payment_status s, payment_method m, amount_paid_cents c, payment_revision v from registrations where event_id = '${EVP}' and roper_id = '${roper}' order by created_at`)).rows;
+  const shape = (rows) => JSON.stringify(rows.map((r) => [r.s, r.m, r.c, r.v]));
+  const multi = (n, roper, extra) => one({ id: `b2d3f4a5-0000-4000-8000-00000000530${n}`, roper_global_id: roper, paid_by_global_id: null, note: null, ...extra });
+
+  const part = multi(1, M1, { status: "pendiente", method: null, paid_cents: 25000 });
+  await pay(A, [part]);
+  await check("dos inscripciones, abono parcial: ambas pendientes y el monto repartido sin duplicarse", shape(await both(M1)) === JSON.stringify([["pendiente", null, 20000, 1], ["pendiente", null, 5000, 1]]));
+  await check("reenviar ese abono: unchanged", (await pay(A, [part]))[0].r_status === "unchanged");
+  const full = await pay(A, [{ ...part, revision: 2, status: "pagado", method: "efectivo", paid_cents: 40000 }]);
+  await check("dos inscripciones, pago completo: las dos quedan pagadas", full[0].r_status === "updated" && shape(await both(M1)) === JSON.stringify([["pagado", "efectivo", 20000, 2], ["pagado", "efectivo", 20000, 2]]));
+  await pay(A, [{ ...part, revision: 3, status: "pagado", method: "efectivo", paid_cents: 45000 }]);
+  await check("si paga de más, el sobrante queda en la última", (await both(M1)).map((r) => r.c).join() === "20000,25000");
+
+  const mixed = await pay(A, [multi(2, M2, { status: "pagado", method: "efectivo", paid_cents: 40000 })]);
+  await check("una en línea y otra no: la de Stripe queda intacta y la otra se paga solo con lo restante", mixed[0].r_status === "accepted" && shape(await both(M2)) === JSON.stringify([["pagado", "stripe", null, 0], ["pagado", "efectivo", 20000, 1]]));
+
+  const withRefund = await pay(A, [multi(3, M3, { status: "pagado", method: "transferencia", paid_cents: 20000 })]);
+  await check("una reembolsada y otra no: la reembolsada no se toca y la otra se paga", withRefund[0].r_status === "accepted" && shape(await both(M3)) === JSON.stringify([["reembolsado", null, null, 0], ["pagado", "transferencia", 20000, 1]]));
+
+  // 4) Permisos: solo el servidor escribe; la bitácora es del organizador.
+  for (const [role, uid, label] of [["anon", null, "anónimo"], ["authenticated", A, "un organizador"], ["authenticated", C, "un participante"]]) {
+    await as(role, uid, `select * from public.app_upload_payments('${A}', '[]'::jsonb, null)`, `${label} NO sube pagos por la API pública`, "deny");
+  }
+  await as("authenticated", A, `update registrations set payment_note = 'x', payment_revision = 99 where event_id = '${EVP}'`, "un organizador NO edita la revisión ni la nota directo", "deny");
+  await as("authenticated", A, "select id from payment_uploads", "el organizador ve sus subidas de pagos", "some");
+  await as("authenticated", B, "select id from payment_uploads where organizer_id = '" + A + "'", "otro organizador NO ve esas subidas", "deny");
+  await as("anon", null, "select id from payment_uploads", "anónimo NO ve las subidas de pagos", "deny");
+  await check("el servidor SÍ ejecuta la función", (await pay(A, [request.payments[0]])).length === 1);
 }
 
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");

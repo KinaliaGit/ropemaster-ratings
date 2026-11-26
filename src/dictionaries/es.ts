@@ -5,7 +5,7 @@ export const es = {
   meta: { title: "Rope Master Ratings", description: "El registro global de lazadores: rating, historial y resultados de cada evento." },
   common: { brand: "Rope Master", ratings: "Ratings", loading: "Cargando…", back: "Volver", of: "de" },
   roles: { legend: "¿Con qué rol sueles competir?", header: "Cabecero", heeler: "Pialador", both: "Ambos", favoriteLegend: "¿Cuál es tu rol favorito, el que usas más?", favorite: "favorito", undefined: "Sin definir" },
-  nav: { myLazador: "Mi perfil de lazador", createLazador: "Crear mi perfil de lazador", events: "Eventos", participants: "Participantes", signIn: "Entrar", myPanel: "Mi panel", myAccount: "Mi cuenta", signOut: "Salir", publicSite: "Sitio público", language: "Idioma" },
+  nav: { panel: "Mi panel", payments: "Pagos", series: "Series", arenas: "Arenas", myLazador: "Mi perfil de lazador", createLazador: "Crear mi perfil de lazador", events: "Eventos", participants: "Participantes", myPanel: "Mi panel de organizador", signInOrUp: "Entrar / Registro", signIn: "Entrar", menu: "Menú", localApp: "App local", myAccount: "Mi cuenta", signOut: "Salir", publicSite: "Ver sitio público", language: "Idioma" },
   promo: {
     label: "Rope Master", title: "El software para organizar tu evento de lazo.",
     text: "Rope Master es la aplicación con la que se gestionan series y eventos de lazo: equipos, tiempos, jueces y resultados en un solo sistema, sincronizado en tiempo real.",
@@ -26,6 +26,7 @@ export const es = {
   },
   status: { open: "Inscripciones abiertas", full: "Cupo lleno", finished: "Finalizado", draft: "Borrador", published: "Publicado", paid: "Pagado", pending: "Pendiente" },
   home: {
+    phase: { draft: "Borrador", upcoming: "Próximo", open: "Abierto", full: "Lleno", closed: "Cerrado", finished: "Finalizado" }, tabEmpty: "No hay eventos en esta pestaña.", live: "En vivo", searchLabel: "Buscar eventos", searchPlaceholder: "Nombre, arena, ciudad o mes", searchBtn: "Buscar", searchEmpty: (q: string) => `No encontramos eventos con «${q}». Prueba con otro nombre, la ciudad o el mes.`,
     empty: "Aún no hay eventos publicados.",
     title: "Eventos", subtitle: "Encuentra tu próximo evento, inscríbete y sigue tu rating.",
     openEvents: "eventos abiertos", registered: "inscritos", participants: "participantes", upcoming: "Próximos", finished: "Finalizados",
@@ -33,7 +34,7 @@ export const es = {
   event: {
     from: "Desde", 
     organizedBy: "Organiza", photos: "Fotos", noPhotos: "El organizador aún no ha subido fotos.", enrolled: "Inscritos", noEnrolled: "Aún no hay inscritos.",
-    results: "Resultados", resultsClosed: "Resultados cerrados", resultsInReview: "Resultados en corrección", noResults: "Aún no hay resultados.",
+    findRoper: "Buscar un lazador", showAll: "Ver todos los resultados", noRoper: "Nadie con ese nombre tiene resultados aquí. Revisa cómo se escribe.", results: "Resultados", resultsClosed: "Resultados cerrados", resultsInReview: "Resultados en corrección", noResults: "Aún no hay resultados.",
     joinWaitlist: "Entrar a lista de espera", waitlistCount: (n: number) => (n === 1 ? "1 persona en lista de espera" : `${n} personas en lista de espera`), enrollment: "Inscripción", enroll: "Inscribirme", needAccount: "Necesitas una cuenta de participante.", eventFinished: "Evento finalizado", full: "Cupo lleno", closesOn: "Cierra el", drawType: "Tipo de sorteo", roundRobin: "Round Robin", lazadaSorteada: "Lazada Sorteada", shotsPerPackage: "Tiros por paquete", roundsWord: "rondas", maxTeamRating: "Rating máximo por equipo", packageFee: "por paquete", maxRating: "Rating máximo para inscribirse", registrationClosed: "Inscripciones cerradas", opensOn: "Las inscripciones abren el", notYetOpen: "Inscripciones próximamente",
   },
   series: {
@@ -58,7 +59,7 @@ export const es = {
     initialRating: "Rating inicial · aún sin eventos",
     empty: "Aún no hay participantes con rating en esta modalidad.", dq: "Descalificado",
     title: "Participantes", subtitle: "Lazadores y barrileras con su rating e historial. Público, sin necesidad de cuenta.",
-    search: "Buscar por nombre o ID (RM-0001)", idLabel: "ID", copyId: "Copiar", idCopied: "Copiado", noResults: "Sin resultados para", noRating: "Sin eventos en esta modalidad",
+    noMatches: "Nadie coincide con esa búsqueda.", position: "Posición", allRopers: "Todos", headers: "Cabeceros", heelers: "Pialadores", search: "Buscar por nombre o ID (RM-0001)", idLabel: "ID", copyId: "Copiar", idCopied: "Copiado", noResults: "Sin resultados para", noRating: "Sin eventos en esta modalidad",
     verified: "Perfil verificado", unclaimed: "Perfil sin reclamar", rating: "Rating", eventsWord: "eventos", winsWord: "victorias", resultsWord: "resultados",
     history: "Historial de eventos", noHistory: "Aún no hay resultados registrados.", event: "Evento", date: "Fecha", discipline: "Modalidad", time: "Tiempo", place: "Lugar",
     contactNote: "Los datos de contacto no son públicos. ¿No eres tú o es un error?", report: "Reportar", verifiedEvent: "Evento verificado",
@@ -97,12 +98,13 @@ export const es = {
   account: {
     createTitle: "Crea tu perfil de lazador", createText: "Tu cuenta es de organizador. Si también compites, crea tu perfil de lazador: tendrás tu rating, tu historial y podrás inscribirte a eventos. Si otro organizador ya te registró con tu correo, reclamas ese perfil.", createBtn: "Crear mi perfil de lazador", profileCreated: "¡Listo! Tu perfil de lazador está creado.", typeOrganizer: "Organizador · perfil de lazador",
     photo: { add: "Agregar foto", change: "Cambiar foto", remove: "Quitar", saving: "Guardando…", tooBig: `La foto pesa más de ${MAX_UPLOAD_MB} MB. Elige una más ligera.`, error: "No se pudo guardar la foto. Usa una imagen JPG, PNG o WebP." },
-    type: "Cuenta de participante", roleTitle: "Mi rol", roleUndefined: "Aún no has elegido con qué rol compites. Elígelo para que los organizadores lo vean; no te bloquea nada mientras tanto.", roleSave: "Guardar rol", roleCancel: "Cancelar", roleChoose: "+ Elegir rol", roleEdit: "Cambiar mi rol", roleSaved: "Listo, guardamos tu rol.", upcoming: "Próximos eventos", payHow: "Cómo pagar (transferencia o efectivo)", ratingEvolution: "Evolución del rating", noRatingChanges: "Aún no hay cambios de rating. Aquí verás cómo evoluciona cuando cambie.", afterEvent: "tras", pendingPayments: "Pagos pendientes", noPending: "No tienes pagos pendientes.", pendingTotal: "Total por pagar:", pastEvents: "Eventos pasados", noPast: "Aún no tienes eventos pasados.", currentRating: "Rating actual", alreadyVerified: "Tu cuenta ya está verificada. Aquí está tu espacio.", notFoundTitle: "No encontramos esa página", notFoundText: "Puede que el enlace esté mal escrito o que ya no exista.", notFoundBack: "Volver al inicio", myRegistrations: "Mis inscripciones",
-    noRegistrations: "Aún no te has inscrito a ningún evento.", available: "Eventos disponibles", noneAvailable: "No hay eventos nuevos por ahora.",
+    type: "Cuenta de participante", roleTitle: "Mi rol", roleUndefined: "Aún no has elegido con qué rol compites. Elígelo para que los organizadores lo vean; no te bloquea nada mientras tanto.", roleSave: "Guardar rol", roleCancel: "Cancelar", roleChoose: "+ Elegir rol", roleEdit: "Cambiar mi rol", roleSaved: "Listo, guardamos tu rol.", moreOptions: "Más opciones", noUpcoming: "No tienes próximos eventos.", seeEvents: "Ver eventos", refunded: "Reembolsado", upcoming: "Próximos eventos", ratingEvolution: "Evolución del rating", noRatingChanges: "Aún no hay cambios de rating. Aquí verás cómo evoluciona cuando cambie.", afterEvent: "tras", pendingTotal: "por pagar", pastEvents: "Eventos pasados", noPast: "Aún no tienes eventos pasados.", currentRating: "Rating actual", alreadyVerified: "Tu cuenta ya está verificada. Aquí está tu espacio.", notFoundTitle: "No encontramos esa página", notFoundText: "Puede que el enlace esté mal escrito o que ya no exista.", notFoundBack: "Volver al inicio", myRegistrations: "Mis inscripciones",
+    
     enrolledOk: "¡Listo! Tu lugar quedó apartado. Abajo ves cómo pagar.", regRole: "Rol en este evento:", changeRole: "Cambiar rol", roleChanged: "Listo: cambiamos el rol de tu inscripción.", noRole: "Sin definir", canceledOk: "Inscripción cancelada.", waitlistTitle: "En lista de espera", waitlistPlace: (n: number) => `Lugar ${n} en la fila`, waitlistHint: "No ocupas lugar ni pagas nada. Si se abre uno, el organizador te pasa a inscrito y te avisamos.", waitlistLeave: "Salir de la lista", waitlistJoined: "Quedaste en la lista de espera. Te avisamos si se abre un lugar.", waitlistLeft: "Saliste de la lista de espera.", removedTitle: "Eventos de los que te sacaron", removedOn: "Te sacaron el", removedReason: "Motivo:", removedRefund: "Ya habías pagado: el organizador te devolverá el dinero manualmente (reembolso pendiente).", removedRefundDone: "El organizador ya marcó tu reembolso como hecho.", removedCanReturn: "El organizador permite que te vuelvas a inscribir.", removedBlocked: "Para volver a inscribirte, pídeselo al organizador.", cancel: "Cancelar",
-    ranking: "Ranking", seeAll: "Ver todos", publicProfile: "Ver mi perfil público e historial", paid: "Pagado", pending: "Pago pendiente",
+    publicProfile: "Ver mi perfil público e historial", paid: "Pagado", pending: "Pago pendiente",
   },
   org: {
+    panel: { hello: "Hola,", toCollect: "por cobrar", tabs: { proximos: "Próximos", pasados: "Pasados", borradores: "Borradores", series: "Series" }, seriesEvents: (n: number) => `${n} ${n === 1 ? "evento" : "eventos"}`, seriesOpen: (n: number) => `${n} ${n === 1 ? "abierto" : "abiertos"}`, tabEmpty: "No hay eventos en esta pestaña.", noEnrolled: "Sin inscripciones", paidOf: (a: number, b: number) => `${a} de ${b} pagados`, spots: (a: number, b: number) => `${a}/${b} lugares`, waiting: (n: number) => `${n} en espera` },
     overview: {
       title: "Resumen", nextSeries: "Próxima serie", nextEvent: "Siguiente evento", events: "eventos", enrolledInSeries: "inscritos en la serie", inDays: (n: number) => n === 0 ? "es hoy" : n === 1 ? "mañana" : `en ${n} días`,
       noNextEvent: "No tienes un evento próximo publicado.", enrolled: "Inscritos", capacity: "cupo", spotsLeft: (n: number) => `${n} lugares libres`, full: "Cupo lleno",
@@ -135,7 +137,7 @@ export const es = {
     },
     welcome: "¡Cuenta creada! Ya puedes crear tu primer evento.", noEvents: "Aún no tienes eventos. Crea una serie y agrega el primero dentro de ella.", noParticipants: "Todavía no hay participantes registrados.",
     accountType: "Cuenta de organizador", newSeries: "+ Serie nueva", newEvent: "+ Evento individual", events: "Eventos", enrolled: "Inscritos", collected: "Cobrado", myEvents: "Mis eventos", manage: "Gestionar",
-    tabs: { series: "Series", appShort: "App", adminShort: "Admin", admin: "Administración", summary: "Resumen", participants: "Participantes", payments: "Pagos", arenas: "Arenas", app: "App local" },
+    tabs: { series: "Series", adminShort: "Admin", admin: "Administración", summary: "Resumen", participants: "Participantes", payments: "Pagos", arenas: "Arenas" },
     arenas: {
       title: "Arenas", blurb: "Los lugares donde haces tus eventos. Guárdalos una vez y reutilízalos al crear eventos y series; cada arena tiene su historial.",
       newTitle: "Agregar arena", name: "Nombre", city: "Ciudad", notes: "Datos básicos (dirección, contacto, notas)", add: "Agregar arena",
@@ -151,9 +153,12 @@ export const es = {
       errors: { invalid: "Revisa el nombre de la arena.", duplicate: "Ya tienes una arena con ese nombre (no se distinguen mayúsculas, acentos ni signos). Si están repetidas, únelas.", failed: "No se pudo guardar. Intenta de nuevo.", mergeFailed: "No se pudieron unir las arenas.", inUse: "No se puede borrar: tiene eventos o series." },
     },
     pays: {
+      noneInArena: "Esta arena aún no tiene cobros.",
+      owing: "Con adeudos", completeTab: "Completos", noneOwing: "Nadie te debe: todo está cobrado.", allPayments: "Todos los pagos", seeEvent: "Ver el evento", ofTotal: (m: string) => `de ${m}`,
+      ringLabel: "cobrado", byEvent: "Por evento", complete: "Completo", paidOf: (a: number, b: number) => `${a} de ${b} pagados`, missing: (m: string) => `Faltan ${m}`,
       title: "Pagos", blurb: "Todo lo que cobras en un solo lugar: cuánto se espera, cuánto ya pagó y quién debe, evento por evento.",
       expected: "Esperado", collected: "Pagado", pending: "Pendiente", events: "Mis eventos", noEvents: "Aún no hay inscripciones con pago que mostrar.", registered: "inscripciones", payments: "pagos", pendings: "pendientes", open: "Ver quién debe",
-      filters: "Filtros", arena: "Arena", allArenas: "Todas las arenas", event: "Evento", allEvents: "Todos los eventos", status: "Estado", statusPending: "Pendientes", statusPaid: "Pagados", statusAll: "Todos", search: "Buscar por nombre", apply: "Filtrar", clear: "Quitar filtros",
+      filters: "Filtros", event: "Evento", allEvents: "Todos los eventos", status: "Estado", statusPending: "Pendientes", statusPaid: "Pagados", statusAll: "Todos", search: "Buscar por nombre", apply: "Filtrar", clear: "Quitar filtros",
       listTitle: "Quién debe y quién pagó", empty: "Nada que mostrar con estos filtros.", showing: "Mostrando", of: "de", refine: "Afina los filtros para ver el resto.",
       person: "Persona", category: "Categoría", amount: "Monto", since: "Debe desde", paidOn: "Pagó el", method: "Método", action: "Acción", eventCol: "Evento", paidState: "Pagado", pendingState: "Pendiente",
       loadError: "No pudimos cargar los pagos. Intenta de nuevo.", unverified: "Necesitas una licencia vigente o la aprobación de un administrador para ver los pagos.",

@@ -17,7 +17,7 @@ async function Form({ props }: { props: PageProps<"/[lang]/entrar"> }) {
   const q = (r: string) => `/${lang}/entrar?role=${r}${next ? `&next=${encodeURIComponent(next)}` : ""}`;
   const errors: Record<string, string> = { invalid: a.errorInvalid, role: a.errorRoleOrganizer, unconfirmed: a.errorUnconfirmed, confirm: a.errorConfirm };
   return (
-    <div className="mx-auto max-w-md px-5 pb-10 pt-14">
+    <div className="page-narrow">
       <h1 className="text-3xl font-semibold">{a.signInTitle}</h1>
       {typeof sp.error === "string" && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{errors[sp.error] ?? a.errorGeneric}</p>}
       {next && !sp.error && <p className="mt-4 rounded-xl bg-brand-soft p-3 text-sm">{a.needAccount}</p>}
@@ -31,7 +31,7 @@ async function Form({ props }: { props: PageProps<"/[lang]/entrar"> }) {
         <label className="block text-sm font-medium">{a.email}<input required type="email" name="email" autoComplete="email" className={field} /></label>
         <label className="block text-sm font-medium">{a.password}<input required type="password" name="password" autoComplete="current-password" className={field} /></label>
         <button className="w-full rounded-full bg-ink py-3 text-sm font-medium text-white transition hover:bg-brand-hot">{a.signInBtn}</button>
-        <p className="text-center text-sm"><Link href={`/${lang}/recuperar?role=${role}`} className="font-medium text-brand-hot underline">{t.recovery.forgot}</Link></p>
+        <p className="text-center text-sm"><Link href={`/${lang}/recuperar?role=${role}`} className="inline-block py-2 font-medium text-brand-hot underline">{t.recovery.forgot}</Link></p>
       </form>
       <p className="mt-6 text-center text-sm text-muted">{a.firstTime} <Link href={`/${lang}/registro?role=${role}`} className="font-medium text-brand-hot underline">{a.createAccount}</Link></p>
     </div>

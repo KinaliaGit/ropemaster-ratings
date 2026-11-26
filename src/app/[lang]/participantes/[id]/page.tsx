@@ -1,3 +1,4 @@
+import { BackLink } from "@/components/BackLink";
 import { connection } from "next/server";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -22,21 +23,21 @@ async function PerfilInner({ params }: { params: PageProps<"/[lang]/participante
   if (!r) notFound();
   const modes = ACTIVE_DISCIPLINES.filter((d) => r.stats[d.id]);
   return (
-    <div className="mx-auto max-w-4xl px-5 pb-10 pt-12">
-      <div className="flex flex-wrap items-center gap-5">
-        <Avatar name={r.name} initials={initials(r.name)} url={publicAvatarUrl(r.avatarPath)} className="size-20 text-2xl" />
-        <div className="flex-1">
-          <h1 className="text-4xl font-semibold">{r.name}</h1>
-          {r.shortId && <CopyId id={r.shortId} label={t.people.idLabel} copy={t.people.copyId} copied={t.people.idCopied} />}
-          {r.role && <p className="mt-2"><span className="rounded-full bg-sand px-3 py-1 text-sm font-medium">{roleText(r.role, t.roles)}</span></p>}
+    <div className="page">
+      <BackLink href={`/${lang}/participantes`}>{t.people.title}</BackLink>
+      {/* Mismo encabezado que «Mi cuenta»: foto con el rating encima, nombre y etiquetas. */}
+      <div className="mt-3 flex items-start gap-3 sm:gap-4">
+        <div className="relative shrink-0">
+          <Avatar name={r.name} initials={initials(r.name)} url={publicAvatarUrl(r.avatarPath)} className="size-14 text-base sm:size-16 sm:text-lg" />
+          {modes[0] && <span role="img" aria-label={`${t.people.rating}: ${fmtRating(r.stats[modes[0].id]!.rating)}`} className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border-2 border-cream bg-brand px-2 text-xs font-semibold tabular-nums text-ink">{fmtRating(r.stats[modes[0].id]!.rating)}</span>}
         </div>
-        <div className="flex gap-8 text-right">
-          {modes.map((d) => (
-            <div key={d.id}>
-              <p className="text-6xl font-semibold leading-none tabular-nums">{fmtRating(r.stats[d.id]!.rating)}<span className="text-2xl text-muted">/10</span></p>
-              <p className="label mt-2">{modes.length > 1 ? t.disc[d.id].label : t.people.rating}</p>
-            </div>
-          ))}
+        <div className="min-w-0 flex-1">
+          <h1 className="break-words text-xl font-semibold leading-tight sm:text-3xl">{r.name}</h1>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 sm:gap-2">
+            {r.role && <span className="inline-flex min-h-8 items-center rounded-full bg-sand px-2.5 text-[13px] font-medium sm:px-3 sm:text-sm">{r.role.role === "both" && r.role.favorite ? `${t.roles.both} · ${t.roles[r.role.favorite]}` : roleText(r.role, t.roles)}</span>}
+            {r.shortId && <CopyId chip id={r.shortId} label={t.people.idLabel} copy={t.people.copyId} copied={t.people.idCopied} />}
+            {modes.slice(1).map((d) => <span key={d.id} className="inline-flex min-h-8 items-center rounded-full bg-sand px-3 text-sm tabular-nums">{t.disc[d.id].label} {fmtRating(r.stats[d.id]!.rating)}</span>)}
+          </div>
         </div>
       </div>
 

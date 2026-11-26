@@ -96,6 +96,13 @@ export async function getEventWaitlistCount(eventUuid: string): Promise<number> 
   return Number((data ?? []).find((r: { event_id: string; n: number }) => r.event_id === eventUuid)?.n ?? 0);
 }
 
+// Cuántos esperan en cada evento, de una sola lectura (panel del organizador, KIN-763). Solo números; la misma función pública de arriba.
+export async function listWaitlistCounts(): Promise<Record<string, number>> {
+  const { data, error } = await createPublicClient().rpc("event_waitlist_counts");
+  if (error) throw new Error(`No se pudo leer la lista de espera: ${error.message}`);
+  return Object.fromEntries((data ?? []).map((r: { event_id: string; n: number }) => [r.event_id, Number(r.n)]));
+}
+
 export type MyWaitlistEntry = { id: string; place: number; role: string | null; packages: number; category: string; event: { slug: string | null; name: string; date: string | null; city: string | null; status: string } | null };
 
 // Mis lugares en listas de espera, con mi lugar en la fila de cada evento (la base solo devuelve los míos y un número: no revela a nadie).
@@ -163,14 +170,14 @@ export async function listEventRemovals(eventUuid: string): Promise<Removal[]> {
   }));
 }
 
-export type MyRemoval = { id: string; event: { slug: string | null; name: string } | null; category: string; reason: string; removedAt: string; refundPending: boolean; canReenroll: boolean };
+export type MyRemoval = { id: string; event: { slug: string | null; name: string; event_date: string | null } | null; category: string; reason: string; removedAt: string; refundPending: boolean; canReenroll: boolean };
 
 // Eventos de los que me sacaron, con el motivo (filtrado por mi perfil: un organizador también puede leer las bajas de sus eventos). El evento
 // puede no verse si volvió a borrador.
 export async function listMyRemovals(roperId: string): Promise<MyRemoval[]> {
   const { data, error } = await ownRows(await createServerSupabase(), "registration_removals",
-    "id, category_name, reason, removed_at, refund_pending, can_reenroll, events(slug, name)", roperId, "removed_at");
+    "id, category_name, reason, removed_at, refund_pending, can_reenroll, events(slug, name, event_date)", roperId, "removed_at");
   if (error) throw new Error(`No se pudieron leer tus bajas: ${error.message}`);
-  type Row = { id: string; category_name: string; reason: string; removed_at: string; refund_pending: boolean; can_reenroll: boolean; events: { slug: string | null; name: string } | null };
+  type Row = { id: string; category_name: string; reason: string; removed_at: string; refund_pending: boolean; can_reenroll: boolean; events: { slug: string | null; name: string; event_date: string | null } | null };
   return (data as unknown as Row[]).map((r) => ({ id: r.id, event: r.events, category: r.category_name, reason: r.reason, removedAt: r.removed_at, refundPending: r.refund_pending, canReenroll: r.can_reenroll }));
 }

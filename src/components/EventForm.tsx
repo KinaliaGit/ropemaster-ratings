@@ -65,18 +65,18 @@ export function EventForm({ lang, labels: l, disciplines, error, initial, arenas
         <legend className="text-sm font-medium">{l.disciplines}</legend>
         {disciplines.map((d) => <label key={d.id} className="mr-4 text-sm"><input type="checkbox" name="discipline" value={d.id} defaultChecked={initial ? initial.disciplines.includes(d.id) : true} className="mr-1 accent-brand" />{d.label}</label>)}
       </fieldset>
-      <fieldset>
+      <fieldset className="min-w-0">
         <legend className="text-sm font-medium">{l.categories}</legend>
         <p className="mt-0.5 text-xs text-muted">{l.costHint}</p>
-        <div className="mt-3 grid grid-cols-[1fr_9.5rem] gap-2 text-xs font-medium text-muted">
+        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_8rem] sm:grid-cols-[minmax(0,1fr)_9.5rem] gap-2 text-xs font-medium text-muted">
           <span>{l.categoryName}</span><span>{l.cost}</span>
         </div>
         {cats.map((c, i) => (
-          <div key={i} className="mt-1.5 grid grid-cols-[1fr_9.5rem] gap-2">
+          <div key={i} className="mt-1.5 grid grid-cols-[minmax(0,1fr)_8rem] sm:grid-cols-[minmax(0,1fr)_9.5rem] gap-2">
             <input type="hidden" name="catId" value={c.id} />
             <input name="catName" required value={c.name} placeholder={l.categoryNamePlaceholder} aria-label={l.categoryName}
               onChange={(e) => setCats(cats.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
-              className="rounded-xl border border-line bg-white px-4 py-2 outline-none focus:border-ink" />
+              className="min-w-0 rounded-xl border border-line bg-white px-4 py-2 outline-none focus:border-ink" />
             <div className="flex items-center rounded-xl border border-line bg-white px-3 focus-within:border-ink">
               <span aria-hidden className="text-muted">$</span>
               <input name="catFee" required type="number" min={0} inputMode="numeric" value={c.fee} aria-label={`${l.cost} (MXN)`}
@@ -86,7 +86,7 @@ export function EventForm({ lang, labels: l, disciplines, error, initial, arenas
             </div>
           </div>
         ))}
-        <button type="button" onClick={() => setCats([...cats, { id: "", name: "", fee: 0 }])} className="mt-3 text-sm font-medium text-brand-hot">{l.addCategory}</button>
+        <button type="button" onClick={() => setCats([...cats, { id: "", name: "", fee: 0 }])} className="mt-3 min-h-10 text-sm font-medium text-brand-hot">{l.addCategory}</button>
       </fieldset>
       <label className="block text-sm font-medium">{l.paymentInfo}
         <textarea name="paymentInfo" rows={3} maxLength={1000} defaultValue={initial?.paymentInfo} placeholder={l.paymentInfoPlaceholder} className={input} />

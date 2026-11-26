@@ -45,13 +45,13 @@ export function SeriesForm({ lang, labels: l, disciplines, error, initial, arena
           <legend className="text-sm font-medium">{l.disciplines}</legend>
           {disciplines.map((d) => <label key={d.id} className="mr-4 text-sm"><input type="checkbox" name="discipline" value={d.id} defaultChecked={initial ? initial.disciplines.includes(d.id) : true} className="mr-1 accent-brand" />{d.label}</label>)}
         </fieldset>
-        <fieldset className="mt-4">
+        <fieldset className="mt-4 min-w-0">
           <legend className="text-sm font-medium">{l.categories}</legend>
           <p className="mt-0.5 text-xs text-muted">{l.costHint}</p>
-          <div className="mt-3 grid grid-cols-[1fr_9.5rem] gap-2 text-xs font-medium text-muted"><span>{l.categoryName}</span><span>{l.cost}</span></div>
+          <div className="mt-3 grid grid-cols-[minmax(0,1fr)_8rem] sm:grid-cols-[minmax(0,1fr)_9.5rem] gap-2 text-xs font-medium text-muted"><span>{l.categoryName}</span><span>{l.cost}</span></div>
           {cats.map((c, i) => (
-            <div key={i} className="mt-1.5 grid grid-cols-[1fr_9.5rem] gap-2">
-              <input name="catName" required value={c.name} aria-label={l.categoryName} onChange={(e) => setCats(cats.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} className="rounded-xl border border-line bg-white px-4 py-2 outline-none focus:border-ink" />
+            <div key={i} className="mt-1.5 grid grid-cols-[minmax(0,1fr)_8rem] sm:grid-cols-[minmax(0,1fr)_9.5rem] gap-2">
+              <input name="catName" required value={c.name} aria-label={l.categoryName} onChange={(e) => setCats(cats.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} className="min-w-0 rounded-xl border border-line bg-white px-4 py-2 outline-none focus:border-ink" />
               <div className="flex items-center rounded-xl border border-line bg-white px-3 focus-within:border-ink">
                 <span aria-hidden className="text-muted">$</span>
                 <input name="catFee" required type="number" min={0} inputMode="numeric" value={c.fee} aria-label={`${l.cost} (MXN)`} onChange={(e) => setCats(cats.map((x, j) => j === i ? { ...x, fee: Number(e.target.value) } : x))} className="w-full min-w-0 bg-transparent px-1.5 py-2 text-right tabular-nums outline-none" />
@@ -59,7 +59,7 @@ export function SeriesForm({ lang, labels: l, disciplines, error, initial, arena
               </div>
             </div>
           ))}
-          <button type="button" onClick={() => setCats([...cats, { name: "", fee: 0 }])} className="mt-3 text-sm font-medium text-brand-hot">{l.addCategory}</button>
+          <button type="button" onClick={() => setCats([...cats, { name: "", fee: 0 }])} className="mt-3 min-h-10 text-sm font-medium text-brand-hot">{l.addCategory}</button>
         </fieldset>
         <label className="mt-4 block text-sm font-medium">{l.paymentInfo}
           <textarea name="paymentInfo" rows={3} maxLength={1000} defaultValue={initial?.paymentInfo} className={input} />

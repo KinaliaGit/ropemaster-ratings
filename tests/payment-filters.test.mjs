@@ -5,10 +5,10 @@ import { parsePaymentFilters, paymentFiltersQuery, sanitizePaymentsQuery } from 
 const from = (o) => (k) => o[k];
 
 test("sin parámetros: todos los eventos, pendientes y sin búsqueda", () => {
-  assert.deepEqual(parsePaymentFilters(from({})), { event: null, status: "pendiente", q: "", arena: "" });
+  assert.deepEqual(parsePaymentFilters(from({})), { event: null, status: "pendiente", q: "" });
 });
 test("acepta evento, estado y búsqueda válidos", () => {
-  assert.deepEqual(parsePaymentFilters(from({ evento: "gran-final-ab12", estado: "pagado", q: "Ana" })), { event: "gran-final-ab12", status: "pagado", q: "Ana", arena: "" });
+  assert.deepEqual(parsePaymentFilters(from({ evento: "gran-final-ab12", estado: "pagado", q: "Ana" })), { event: "gran-final-ab12", status: "pagado", q: "Ana" });
   assert.equal(parsePaymentFilters(from({ estado: "todos" })).status, "todos");
 });
 test("un estado desconocido vuelve a pendiente y un evento con caracteres raros se ignora", () => {
@@ -29,16 +29,4 @@ test("la consulta que vuelve del formulario solo conserva parámetros conocidos"
 });
 test("si falló el cambio se marca el error", () => {
   assert.equal(sanitizePaymentsQuery("estado=pendiente", true), "estado=pendiente&pagoError=1");
-});
-
-test("el filtro por arena acepta una llave válida y descarta lo demás (KIN-765)", () => {
-  assert.equal(parsePaymentFilters(from({ arena: "lienzo charro del norte" })).arena, "lienzo charro del norte");
-  assert.equal(parsePaymentFilters(from({ arena: "  arena 2 " })).arena, "arena 2");
-  for (const bad of ["Lienzo Charro", "a--b", "../x", "a;drop", ""]) assert.equal(parsePaymentFilters(from({ arena: bad })).arena, "", bad);
-  assert.equal(parsePaymentFilters(from({ arena: "x".repeat(200) })).arena.length, 120); // se recorta, igual que parseArenaParam
-});
-test("la arena viaja en la URL y sobrevive al volver de marcar un pago", () => {
-  assert.equal(paymentFiltersQuery({ event: null, status: "pendiente", q: "", arena: "arena 2" }), "arena=arena+2&estado=pendiente");
-  assert.equal(sanitizePaymentsQuery("arena=arena+2&estado=pagado&evento=a-1&otro=1"), "evento=a-1&arena=arena+2&estado=pagado");
-  assert.equal(sanitizePaymentsQuery("arena=Mala%20Llave&estado=pagado"), "estado=pagado");
 });

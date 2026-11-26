@@ -1,3 +1,4 @@
+import { BackLink } from "@/components/BackLink";
 import Link from "next/link";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
@@ -11,7 +12,6 @@ import { enrollByOrganizer, promoteWaitlistEntry, removeRegistration, removeWait
 import { RemoveRegistrationDialog } from "@/components/RemoveRegistrationDialog";
 import { fmtDeadline, isNotOpenYet, isRegistrationOpen } from "@/lib/event-time";
 import { Gate } from "@/components/Gate";
-import { OrgNav } from "@/components/OrgNav";
 import { listEventRegistrations, listEventRemovals, listEventWaitlist } from "@/lib/data/registrations";
 import { setRegistrationPayment } from "@/lib/payment-actions";
 import { EventPhotos } from "@/components/EventPhotos";
@@ -52,7 +52,7 @@ function PayForm({ lang, slug, id, method, label, tone }: { lang: Lang; slug: st
   return (
     <form action={setRegistrationPayment}>
       <input type="hidden" name="lang" value={lang} /><input type="hidden" name="slug" value={slug} /><input type="hidden" name="id" value={id} /><input type="hidden" name="method" value={method} />
-      <button className={tone === "solid" ? "rounded-full bg-ink px-3 py-1 text-xs font-medium text-white hover:bg-brand-hot" : "rounded-full border border-line px-3 py-1 text-xs font-medium text-muted hover:border-ink hover:text-ink"}>{label}</button>
+      <button className={tone === "solid" ? "min-h-9 rounded-full bg-ink px-3 text-xs font-medium text-white hover:bg-brand-hot" : "min-h-9 rounded-full border border-line px-3 text-xs font-medium text-muted hover:border-ink hover:text-ink"}>{label}</button>
     </form>
   );
 }
@@ -81,9 +81,8 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
   const field = "rounded-xl border border-line bg-white px-3 py-2 text-sm outline-none focus:border-ink";
   return (
           <>
-            <OrgNav lang={lang} t={t} admin={s.isAdmin} />
-            <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
-              <Link href={`/${lang}/organizador`} className="text-sm text-muted hover:text-ink">← {t.org.ev.back}</Link>
+            <div className="page">
+              <BackLink href={`/${lang}/organizador`}>{t.org.ev.back}</BackLink>
               <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h1 className="text-3xl font-semibold">{e.name}</h1>
@@ -176,7 +175,7 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                 {rows.length === 0 && <p className="rounded-2xl bg-sand p-4 text-muted">{t.org.ev.noneEnrolled}</p>}
                 {rows.map((r) => (
                   <div key={r.id} className="card p-4">
-                    <Link href={`/${lang}/participantes/${r.roperId}`} className="font-semibold hover:text-brand-hot">{r.name}</Link>
+                    <Link href={`/${lang}/participantes/${r.roperId}`} className="-my-1.5 inline-block py-1.5 font-semibold hover:text-brand-hot">{r.name}</Link>
                     <p className="mt-0.5 text-sm text-muted">{r.category}{r.role ? ` · ${t.roles[r.role as "header" | "heeler"]}` : ""}{r.email ? ` · ${r.email}` : ""}</p>
                     <div className="mt-3"><PaymentCell r={r} lang={lang} slug={e.id} t={t} /></div>
                     <div className="mt-3">{removeButton(r)}</div>
@@ -190,7 +189,7 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                     {rows.map((r) => {
                       return (
                         <tr key={r.id} className="border-t border-line">
-                          <td className="p-3 font-medium"><Link href={`/${lang}/participantes/${r.roperId}`} className="hover:text-brand-hot">{r.name}</Link></td>
+                          <td className="p-3 font-medium"><Link href={`/${lang}/participantes/${r.roperId}`} className="-my-1.5 inline-block py-1.5 hover:text-brand-hot">{r.name}</Link></td>
                           <td className="text-muted">{r.email ?? "–"}</td><td>{r.category}</td><td>{r.role ? t.roles[r.role as "header" | "heeler"] : "–"}</td>
                           <td className="py-2 pr-3"><PaymentCell r={r} lang={lang} slug={e.id} t={t} /></td>
                           <td className="py-2 pr-3 text-right">{removeButton(r)}</td>
@@ -211,7 +210,7 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                     {waitlist.map((w) => (
                       <div key={w.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
                         <div className="min-w-[14rem] flex-1">
-                          <p><span className="mr-2 rounded-full bg-sand px-2 py-0.5 text-xs font-medium tabular-nums" title={wl.place}>#{w.place}</span><Link href={`/${lang}/participantes/${w.roperId}`} className="font-semibold hover:text-brand-hot">{w.name}</Link></p>
+                          <p><span className="mr-2 rounded-full bg-sand px-2 py-0.5 text-xs font-medium tabular-nums" title={wl.place}>#{w.place}</span><Link href={`/${lang}/participantes/${w.roperId}`} className="-my-1.5 inline-block py-1.5 font-semibold hover:text-brand-hot">{w.name}</Link></p>
                           <p className="mt-0.5 text-sm text-muted">{w.category}{w.role ? ` · ${t.roles[w.role as "header" | "heeler"]}` : ""}{e.drawType === "lazada_sorteada" ? ` · ${w.packages} ${t.enroll.packages.toLowerCase()}` : ""}{w.email ? ` · ${w.email}` : ""} · {wl.joined} {fmtDate(w.joinedAt.slice(0, 10), lang)}</p>
                         </div>
                         {e.status === "publicado" && (
@@ -240,7 +239,7 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                     <div key={x.id} className="card p-4">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
-                          <Link href={`/${lang}/participantes/${x.roperId}`} className="font-semibold hover:text-brand-hot">{x.name}</Link>
+                          <Link href={`/${lang}/participantes/${x.roperId}`} className="-my-1.5 inline-block py-1.5 font-semibold hover:text-brand-hot">{x.name}</Link>
                           <p className="text-sm text-muted">{x.category} · {rm.on} {fmtDate(x.removedAt.slice(0, 10), lang)}</p>
                         </div>
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${x.paymentStatus === "pagado" ? (x.refundPending ? "bg-amber-100 text-amber-900" : "bg-brand-soft text-brand-hot") : "bg-sand text-muted"}`}>
@@ -253,12 +252,12 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                         {x.paymentStatus === "pagado" && (
                           <form action={setRemovalRefunded}>
                             <input type="hidden" name="lang" value={lang} /><input type="hidden" name="slug" value={e.id} /><input type="hidden" name="id" value={x.id} /><input type="hidden" name="done" value={x.refundPending ? "true" : "false"} />
-                            <button className="rounded-full bg-ink px-3 py-1 text-xs font-medium text-white hover:bg-brand-hot">{x.refundPending ? rm.markRefunded : rm.undoRefund}</button>
+                            <button className="min-h-9 rounded-full bg-ink px-3 text-xs font-medium text-white hover:bg-brand-hot">{x.refundPending ? rm.markRefunded : rm.undoRefund}</button>
                           </form>
                         )}
                         <form action={setRemovalReenroll}>
                           <input type="hidden" name="lang" value={lang} /><input type="hidden" name="slug" value={e.id} /><input type="hidden" name="id" value={x.id} /><input type="hidden" name="allow" value={x.canReenroll ? "false" : "true"} />
-                          <button className="rounded-full border border-line px-3 py-1 text-xs font-medium text-muted hover:border-ink hover:text-ink">{x.canReenroll ? rm.block : rm.allow}</button>
+                          <button className="min-h-9 rounded-full border border-line px-3 text-xs font-medium text-muted hover:border-ink hover:text-ink">{x.canReenroll ? rm.block : rm.allow}</button>
                         </form>
                         <span className="text-xs text-muted">{x.canReenroll ? rm.allowed : rm.blocked}</span>
                       </div>

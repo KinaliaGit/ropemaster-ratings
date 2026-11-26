@@ -45,7 +45,7 @@ export function SeriesEventsForm({ lang, slug, seriesName, startDate, endDate, e
           </div>
         ))}
       </div>
-      <button type="button" onClick={add} disabled={rows.length >= 30 - existing} className="mt-3 text-sm font-medium text-brand-hot disabled:opacity-40">{l.addRow}</button>
+      <button type="button" onClick={add} disabled={rows.length >= 30 - existing} className="mt-3 min-h-10 text-sm font-medium text-brand-hot disabled:opacity-40">{l.addRow}</button>
       <p className="mt-2 text-xs text-muted">{l.range} {startDate} → {endDate}</p>
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
         <button name="intent" value="draft" className="flex-1 rounded-full bg-sand py-3 text-sm font-medium transition hover:bg-line">{l.createDraft}</button>

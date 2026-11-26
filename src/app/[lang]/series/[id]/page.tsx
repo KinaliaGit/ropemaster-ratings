@@ -19,7 +19,7 @@ async function SerieInner({ params }: { params: PageProps<"/[lang]/series/[id]">
   if (!found) notFound();
   const { series: x, events } = found;
   return (
-    <div className="mx-auto max-w-4xl px-5 pb-12 pt-8">
+    <div className="page">
       <p className="label">{t.series.label}</p>
       <h1 className="mt-1 text-3xl font-semibold sm:text-4xl">{x.name}</h1>
       <p className="mt-2 text-muted">{t.series.dates} {fmtDate(x.startDate, lang)} {t.series.to} {fmtDate(x.endDate, lang)} · <span className="tabular-nums">{events.length}</span> {t.series.eventsCount}</p>

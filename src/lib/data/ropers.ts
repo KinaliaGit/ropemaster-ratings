@@ -6,6 +6,7 @@ import { INITIAL_RATING } from "@/lib/rating";
 import { roleFromRow } from "@/lib/roles";
 import { RANKING_PAGE_SIZE, toRankingPage, type RankingPage } from "@/lib/ranking";
 import { HISTORY_PAGE_SIZE, decodeHistoryCursor, toHistoryPage, toRounds, toSummary, type HistoryPage, type Round, type Summary } from "@/lib/results-history";
+import { DIRECTORY_PAGE_SIZE, directorySearch, toDirectoryPage, wordStartPattern, type DirectoryDbRow, type DirectoryPage, type DirectoryQuery } from "@/lib/roper-directory";
 
 // Lecturas PÚBLICAS de participantes. Las columnas siempre se piden por nombre: user_id y el celular están
 // ocultos a propósito (el celular vive en roper_contacts, solo para organizadores verificados).
@@ -37,6 +38,30 @@ export async function listRankingPage(discipline: DisciplineId, after: number | 
 
 // Con búsqueda no se guarda en caché: cada texto distinto sería una entrada nueva.
 export const searchRankingPage = fetchRankingPage;
+
+// Directorio por nombre con filtro de posición (KIN-768). Lee columnas que ya son públicas, sin funciones nuevas en la base. La primera
+// página sin filtros va en caché; con búsqueda o filtros se consulta directo.
+export async function listDirectoryPage(query: DirectoryQuery & { discipline: DisciplineId }): Promise<DirectoryPage> {
+  if (!query.search && !query.role && query.offset === 0) return firstDirectoryPage(query.discipline);
+  return fetchDirectoryPage(query);
+}
+async function firstDirectoryPage(discipline: DisciplineId): Promise<DirectoryPage> {
+  "use cache";
+  cacheTag("ropers");
+  cacheLife("minutes");
+  return fetchDirectoryPage({ discipline, search: "", role: null, offset: 0 });
+}
+async function fetchDirectoryPage(q: DirectoryQuery): Promise<DirectoryPage> {
+  let select = createPublicClient().from("ropers").select("id, full_name, avatar_path, primary_role, roper_ratings(rating)")
+    .is("merged_into", null).eq("roper_ratings.discipline", q.discipline);
+  if (q.role) select = select.in("primary_role", [q.role, "both"]); // quien compite en ambos sale en las dos posiciones
+  const search = directorySearch(q.search);
+  if ("rm" in search) select = select.eq("rm_number", search.rm);
+  else for (const word of search.words) select = select.filter("full_name", "imatch", wordStartPattern(word));
+  const { data, error } = await select.order("full_name", { ascending: true }).order("id", { ascending: true }).range(q.offset, q.offset + DIRECTORY_PAGE_SIZE);
+  if (error) throw new Error(`No se pudo leer el directorio: ${error.message}`);
+  return toDirectoryPage((data ?? []) as unknown as DirectoryDbRow[], DIRECTORY_PAGE_SIZE, q.offset, INITIAL_RATING);
+}
 
 // Un participante con todos sus ratings. null si no existe o el id no es válido.
 export async function getPublicRoper(id: string): Promise<Roper | null> {

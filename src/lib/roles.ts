@@ -25,3 +25,10 @@ export function roleText(choice: RoleChoice | null, l: RoleLabels): string {
   if (choice.role !== "both") return l[choice.role];
   return `${l.both} · ${l.favorite}: ${l[choice.favorite ?? "header"]}`;
 }
+
+type EnrolledIn = { id: string; category: string; event: { slug: string | null } | null };
+
+/** KIN-746: quien entró con los dos roles tiene dos inscripciones en la misma categoría y no hay a qué cambiar (la base responde `already`). */
+export function canChangeRole(reg: EnrolledIn, mine: EnrolledIn[]): boolean {
+  return !mine.some((o) => o.id !== reg.id && o.category === reg.category && o.event?.slug === reg.event?.slug);
+}

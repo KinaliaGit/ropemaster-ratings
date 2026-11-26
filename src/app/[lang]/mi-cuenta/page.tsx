@@ -21,7 +21,7 @@ import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { createMyRoperProfile, setMyRole } from "@/lib/profile-actions";
 import { RoleFields } from "@/components/RoleFields";
 import { RoleBadgeDialog } from "@/components/RoleBadgeDialog";
-import { roleText } from "@/lib/roles";
+import { canChangeRole, roleText } from "@/lib/roles";
 import { PayButton } from "@/components/PayButton";
 import { listPublicEvents } from "@/lib/data/events";
 import { fmtDeadline } from "@/lib/event-time";
@@ -77,7 +77,10 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                 <p className="label">{s.role === "organizador" ? t.account.typeOrganizer : t.account.type}</p>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <h1 className="min-w-0 break-words text-3xl font-semibold">{s.name}</h1>
-                  <RoleBadgeDialog action={setMyRole} lang={lang} initial={s.roleChoice ?? null} text={roleText(s.roleChoice ?? null, t.roles)} l={{ fields: t.roles, title: t.account.roleTitle, save: t.account.roleSave, cancel: t.account.roleCancel, choose: t.account.roleChoose, edit: t.account.roleEdit }} />
+                  <span className="inline-flex min-w-0 items-center gap-2">
+                    <span className="text-sm text-muted">{t.account.myRole}</span>
+                    <RoleBadgeDialog action={setMyRole} lang={lang} initial={s.roleChoice ?? null} text={roleText(s.roleChoice ?? null, t.roles)} l={{ fields: t.roles, title: t.account.roleTitle, save: t.account.roleSave, cancel: t.account.roleCancel, choose: t.account.roleChoose, edit: t.account.roleEdit }} />
+                  </span>
                 </div>
                 {me?.shortId && <CopyId id={me.shortId} label={t.people.idLabel} copy={t.people.copyId} copied={t.people.idCopied} />}
               </div>
@@ -135,7 +138,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                         </form>
                       )}
                     </div>
-                    {s.roleChoice?.role === "both" && m.event && m.event.status === "publicado" && isRegistrationOpen({ closesAt: m.event.closesAt, closed: m.event.registrationClosed }) && (
+                    {s.roleChoice?.role === "both" && canChangeRole(m, mine) && m.event && m.event.status === "publicado" && isRegistrationOpen({ closesAt: m.event.closesAt, closed: m.event.registrationClosed }) && (
                       <form action={changeRegistrationRole} className="mt-3 flex flex-wrap items-center gap-2 text-sm">
                         <input type="hidden" name="lang" value={lang} /><input type="hidden" name="id" value={m.id} />
                         <label htmlFor={`role-${m.id}`} className="text-muted">{t.account.regRole}</label>

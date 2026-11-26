@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
     ],
   },
   // Las fotos llegan reducidas (<1.5 MB) por una acción del servidor; el límite por defecto es 1 MB.
-  experimental: { serverActions: { bodySizeLimit: "2mb" } },
+  experimental: { serverActions: { bodySizeLimit: "2mb" }, globalNotFound: true },
   partialPrefetching: true,
   turbopack: {
     rules: {

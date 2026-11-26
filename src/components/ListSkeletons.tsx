@@ -22,16 +22,9 @@ export function EventsSkeleton() {
 export function RankingSkeleton() {
   return (
     <div className="animate-pulse" aria-hidden>
-      <div className="mt-6 h-11 max-w-lg rounded-full bg-sand" />
-      <div className="mt-6 border-t border-line">
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="flex items-center gap-4 border-b border-line py-4 sm:px-2">
-            <span className="h-4 w-6 rounded bg-sand" />
-            <span className="size-10 rounded-full bg-sand" />
-            <div className="flex-1 space-y-2"><div className="h-4 w-40 rounded bg-sand" /><div className="h-3 w-28 rounded bg-sand/70" /></div>
-            <span className="h-7 w-10 rounded bg-sand" />
-          </div>
-        ))}
+      <div className="mt-4 h-12 rounded-full bg-sand" />
+      <div className="card mt-4 divide-y divide-line px-3">
+        {[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="flex h-14 items-center gap-3"><span className="size-9 rounded-full bg-sand" /><span className="h-4 w-40 rounded bg-sand" /></div>)}
       </div>
     </div>
   );

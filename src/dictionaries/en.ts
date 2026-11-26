@@ -59,7 +59,7 @@ export const en: Dict = {
     initialRating: "Starting rating · no events yet",
     empty: "There are no participants with a rating in this discipline yet.", dq: "Disqualified",
     title: "Participants", subtitle: "Ropers and barrel racers with their rating and history. Public, no account needed.",
-    search: "Search by name or ID (RM-0001)", idLabel: "ID", copyId: "Copy", idCopied: "Copied", noResults: "No results for", noRating: "No events in this discipline",
+    noMatches: "Nobody matches that search.", position: "Position", allRopers: "All", headers: "Headers", heelers: "Heelers", search: "Search by name or ID (RM-0001)", idLabel: "ID", copyId: "Copy", idCopied: "Copied", noResults: "No results for", noRating: "No events in this discipline",
     verified: "Verified profile", unclaimed: "Unclaimed profile", rating: "Rating", eventsWord: "events", winsWord: "wins", resultsWord: "results",
     history: "Event history", noHistory: "No results recorded yet.", event: "Event", date: "Date", discipline: "Discipline", time: "Time", place: "Place",
     contactNote: "Contact details are not public. Not you, or something's wrong?", report: "Report", verifiedEvent: "Verified event",

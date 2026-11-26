@@ -2019,5 +2019,109 @@ console.log("— Organizador que además compite");
   await as("authenticated", U1, solo(`e.organizer_id = '${U1}'`, 100), "filtrando por sus eventos: solo lo que él cobra", "some");
 }
 
+console.log("- Pagos que sube la app (0053)");
+{
+  const example = (name) => JSON.parse(readFileSync(fileURLToPath(new URL(`../../docs/sync-examples/${name}`, import.meta.url)), "utf8"));
+  const request = example("pagos.request.json"), expected = example("pagos.response.json");
+  const EVP = request.payments[0].event_id, EVP_OTHER = "f8d1b9a0-1111-4222-8333-444455556666";
+  const [P1, P2x, P3, P4] = request.payments.map((p) => p.roper_global_id);
+  const P5 = "4abe9196-6666-4777-8888-9999aaaabbbb";
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug) values ('${EVP}','Evento pagos','${A}','publicado','pagos-0053'), ('${EVP_OTHER}','Evento de otro','${B}','publicado','otro-0053') on conflict do nothing;
+    insert into ropers (id, full_name) values ('${P1}','Pagador Uno'), ('${P2x}','Pagador Dos'), ('${P3}','Pagador Tres'), ('${P4}','Pagador Cuatro'), ('${P5}','Sin inscribir') on conflict do nothing;
+    insert into registrations (event_id, roper_id) values ('${EVP}','${P1}'), ('${EVP}','${P2x}'), ('${EVP}','${P3}'), ('${EVP}','${P4}');
+    update registrations set payment_status = 'pagado', payment_method = 'stripe', provider_payment_id = 'pi_test_0053', paid_at = now() where event_id = '${EVP}' and roper_id = '${P4}';
+  `);
+  const sqlText = (value) => `'${String(value).replace(/'/g, "''")}'`;
+  const asServer = async (sql) => {
+    await db.exec("reset role; set role service_role");
+    try { return (await db.query(sql)).rows; } finally { await db.exec("reset role"); }
+  };
+  const pay = (organizer, payments) => asServer(`select * from public.app_upload_payments('${organizer}', ${sqlText(JSON.stringify(payments))}::jsonb, null)`);
+  const one = (overrides) => ({ ...request.payments[0], id: "b2d3f4a5-0000-4000-8000-0000000000ff", ...overrides });
+  const reg = async (roper) => (await db.query(`select payment_status, payment_method, amount_paid_cents, payment_note, paid_by_roper_id, payment_revision, paid_at from registrations where event_id = '${EVP}' and roper_id = '${roper}'`)).rows[0];
+
+  // 1) El ejemplo del contrato: lo que la base responde es lo que el ejemplo dice (por pago y en orden).
+  const first = await pay(A, request.payments);
+  await check("ejemplo del contrato: estado y motivo de cada pago", JSON.stringify(first.map((r) => [r.r_id, r.r_status, r.r_code ?? null, r.r_revision, r.r_retry]))
+    === JSON.stringify(expected.payments.map((r) => [r.id, r.status, r.code ?? null, r.revision ?? null, r.retry ?? false])));
+  const r1 = await reg(P1), r2 = await reg(P2x), r3 = await reg(P3), r4 = await reg(P4);
+  await check("efectivo: queda pagado con monto, forma y fecha", r1.payment_status === "pagado" && r1.payment_method === "efectivo" && r1.amount_paid_cents === 30000 && r1.paid_at !== null);
+  await check("un abono parcial sigue pendiente pero guarda lo pagado y la nota", r2.payment_status === "pendiente" && r2.amount_paid_cents === 10000 && r2.payment_note === "Abonó 100, faltan 200" && r2.paid_at === null);
+  await check("pagar por otra persona deja ligado a quien pagó", r3.payment_status === "pagado" && r3.payment_method === "transferencia" && r3.paid_by_roper_id === P1);
+  await check("un pago en línea NO se deshace desde la app", r4.payment_status === "pagado" && r4.payment_method === "stripe" && r4.payment_revision === 0);
+
+  // 2) Idempotencia, correcciones y revisiones.
+  const again = await pay(A, request.payments);
+  await check("reenviar el mismo lote: unchanged y nada nuevo (el de Stripe sigue rechazado)", JSON.stringify(again.map((r) => r.r_status)) === JSON.stringify(["unchanged", "unchanged", "unchanged", "rejected"]));
+  const fix = await pay(A, [{ ...request.payments[1], revision: 2, status: "pagado", method: "transferencia", paid_cents: 30000, note: "Completó el pago" }]);
+  await check("corrección con revisión mayor: updated", fix[0].r_status === "updated" && fix[0].r_revision === 2 && (await reg(P2x)).payment_status === "pagado");
+  const stale = await pay(A, [{ ...request.payments[1], revision: 2, status: "pendiente", method: null, paid_cents: 0 }]);
+  await check("revisión menor o igual con datos distintos: stale_revision", stale[0].r_status === "rejected" && stale[0].r_code === "stale_revision" && (await reg(P2x)).payment_status === "pagado");
+  const undo = await pay(A, [{ ...request.payments[1], revision: 3, status: "pendiente", method: null, paid_cents: 0, note: null }]);
+  await check("deshacer un pago manual con revisión mayor: vuelve a pendiente sin fecha", undo[0].r_status === "updated" && (await reg(P2x)).payment_status === "pendiente" && (await reg(P2x)).paid_at === null);
+  const sameStripe = await pay(A, [one({ roper_global_id: P4, status: "pagado", method: "transferencia", paid_cents: 30000 })]);
+  await check("si la app también dice pagado a quien pagó en línea: unchanged", sameStripe[0].r_status === "unchanged");
+
+  // 3) Rechazos con su motivo.
+  const rejects = await pay(A, [
+    one({ id: "b2d3f4a5-0000-4000-8000-0000000000a1", roper_global_id: P5 }),
+    one({ id: "b2d3f4a5-0000-4000-8000-0000000000a2", event_id: EVP_OTHER }),
+    one({ id: "b2d3f4a5-0000-4000-8000-0000000000a3", paid_by_global_id: "99999999-9999-4999-8999-999999999999" }),
+    one({ id: "b2d3f4a5-0000-4000-8000-0000000000a4", method: "stripe" }),
+    one({ id: "b2d3f4a5-0000-4000-8000-0000000000a5", status: "pendiente", method: "efectivo" }),
+    one({ id: "b2d3f4a5-0000-4000-8000-0000000000a6", paid_cents: -1 }),
+    one({ id: "b2d3f4a5-0000-4000-8000-0000000000a7", revision: 0 }),
+  ]);
+  await check("rechazos: persona sin inscribir, evento ajeno, quien pagó desconocido y campos inválidos", JSON.stringify(rejects.map((r) => r.r_code))
+    === JSON.stringify(["registration_not_found", "event_not_found", "roper_unknown", "invalid_field", "invalid_field", "invalid_field", "invalid_field"]));
+  await db.exec(`update registrations set payment_status = 'reembolsado' where event_id = '${EVP}' and roper_id = '${P3}'`);
+  const refunded = await pay(A, [{ ...request.payments[2], revision: 5, paid_cents: 1 }]);
+  await check("una inscripción reembolsada no se toca desde la app", refunded[0].r_code === "refunded");
+  await check("otro organizador no puede escribir pagos de un evento ajeno", (await pay(B, [request.payments[0]]))[0].r_code === "event_not_found");
+
+  // Varias inscripciones de la misma persona en el evento (p. ej. rol "Ambos"): el pago es el total de la persona.
+  const K = "ca000000-0000-0000-0000-000000005301";
+  const [M1, M2, M3] = ["53000000-0000-4000-8000-000000000001", "53000000-0000-4000-8000-000000000002", "53000000-0000-4000-8000-000000000003"];
+  await db.exec(`
+    reset role;
+    insert into event_categories (id, event_id, name, fee_cents) values ('${K}','${EVP}','Doble',20000);
+    insert into ropers (id, full_name) values ('${M1}','Doble Uno'), ('${M2}','Doble En Linea'), ('${M3}','Doble Reembolso');
+    insert into registrations (event_id, roper_id, category_id, role, amount_cents, created_at)
+      select '${EVP}', p::uuid, '${K}', x.role, 20000, x.at::timestamptz
+      from unnest(array['${M1}','${M2}','${M3}']) p, (values ('header','2026-01-01'), ('heeler','2026-01-02')) x(role, at);
+    update registrations set payment_status = 'pagado', payment_method = 'stripe', provider_payment_id = 'pi_test_0053_m2', paid_at = now() where roper_id = '${M2}' and role = 'header';
+    update registrations set payment_status = 'reembolsado' where roper_id = '${M3}' and role = 'header';
+  `);
+  const both = async (roper) => (await db.query(`select payment_status s, payment_method m, amount_paid_cents c, payment_revision v from registrations where event_id = '${EVP}' and roper_id = '${roper}' order by created_at`)).rows;
+  const shape = (rows) => JSON.stringify(rows.map((r) => [r.s, r.m, r.c, r.v]));
+  const multi = (n, roper, extra) => one({ id: `b2d3f4a5-0000-4000-8000-00000000530${n}`, roper_global_id: roper, paid_by_global_id: null, note: null, ...extra });
+
+  const part = multi(1, M1, { status: "pendiente", method: null, paid_cents: 25000 });
+  await pay(A, [part]);
+  await check("dos inscripciones, abono parcial: ambas pendientes y el monto repartido sin duplicarse", shape(await both(M1)) === JSON.stringify([["pendiente", null, 20000, 1], ["pendiente", null, 5000, 1]]));
+  await check("reenviar ese abono: unchanged", (await pay(A, [part]))[0].r_status === "unchanged");
+  const full = await pay(A, [{ ...part, revision: 2, status: "pagado", method: "efectivo", paid_cents: 40000 }]);
+  await check("dos inscripciones, pago completo: las dos quedan pagadas", full[0].r_status === "updated" && shape(await both(M1)) === JSON.stringify([["pagado", "efectivo", 20000, 2], ["pagado", "efectivo", 20000, 2]]));
+  await pay(A, [{ ...part, revision: 3, status: "pagado", method: "efectivo", paid_cents: 45000 }]);
+  await check("si paga de más, el sobrante queda en la última", (await both(M1)).map((r) => r.c).join() === "20000,25000");
+
+  const mixed = await pay(A, [multi(2, M2, { status: "pagado", method: "efectivo", paid_cents: 40000 })]);
+  await check("una en línea y otra no: la de Stripe queda intacta y la otra se paga solo con lo restante", mixed[0].r_status === "accepted" && shape(await both(M2)) === JSON.stringify([["pagado", "stripe", null, 0], ["pagado", "efectivo", 20000, 1]]));
+
+  const withRefund = await pay(A, [multi(3, M3, { status: "pagado", method: "transferencia", paid_cents: 20000 })]);
+  await check("una reembolsada y otra no: la reembolsada no se toca y la otra se paga", withRefund[0].r_status === "accepted" && shape(await both(M3)) === JSON.stringify([["reembolsado", null, null, 0], ["pagado", "transferencia", 20000, 1]]));
+
+  // 4) Permisos: solo el servidor escribe; la bitácora es del organizador.
+  for (const [role, uid, label] of [["anon", null, "anónimo"], ["authenticated", A, "un organizador"], ["authenticated", C, "un participante"]]) {
+    await as(role, uid, `select * from public.app_upload_payments('${A}', '[]'::jsonb, null)`, `${label} NO sube pagos por la API pública`, "deny");
+  }
+  await as("authenticated", A, `update registrations set payment_note = 'x', payment_revision = 99 where event_id = '${EVP}'`, "un organizador NO edita la revisión ni la nota directo", "deny");
+  await as("authenticated", A, "select id from payment_uploads", "el organizador ve sus subidas de pagos", "some");
+  await as("authenticated", B, "select id from payment_uploads where organizer_id = '" + A + "'", "otro organizador NO ve esas subidas", "deny");
+  await as("anon", null, "select id from payment_uploads", "anónimo NO ve las subidas de pagos", "deny");
+  await check("el servidor SÍ ejecuta la función", (await pay(A, [request.payments[0]])).length === 1);
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

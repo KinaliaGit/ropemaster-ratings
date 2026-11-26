@@ -465,6 +465,70 @@ Revisado contra el esquema de la web (`supabase/migrations`) y el de la app (`ro
 4. **Autenticación:** este contrato asume el token de sesión por equipo (KIN-606). El valor fijo `APP_SYNC_TOKEN` solo
    debe existir en desarrollo.
 
+## Subida de pagos (KIN-706)
+
+Estado: **implementada en la web** (`POST /api/app/pagos`, migración `0053_pagos_de_la_app.sql`). La app la usa desde KIN-706 con este mismo formato.
+Bajar los pagos ya existía: `GET /api/app/eventos` trae el estado de pago de cada inscrito (KIN-585) y la app lo registra como un pago "Pagado en la web".
+
+**La app lleva abonos; la web guarda UN estado por inscripción.** Por eso la app sube un **resumen por persona y por evento** (no cada abono):
+cuánto lleva pagado, cuánto debe, la forma del último pago, la fecha, la nota y, si alguien más pagó por esa persona, quién. Mismo
+manejo que los resultados: lote, una respuesta por pago en el mismo orden, `revision` para corregir y reintentos seguros.
+
+### `POST /api/app/pagos`
+Misma autenticación `Authorization: Bearer <token>` y mismos límites que `/api/app/resultados` (200 pagos y 256 KB por lote).
+Cuerpo: `contract_version`, `client_batch_id` (UUID, solo bitácora) y `payments[]`. Cada pago:
+
+| Campo | Qué es |
+|---|---|
+| `id` | UUID estable del pago de esa persona en ese evento (la app lo guarda; se repite en cada reenvío) |
+| `revision` | Entero ≥ 1. Sube cada vez que el pago de esa persona cambia en la app |
+| `event_id` | El `id` del evento en la web |
+| `roper_global_id` | El lazador (debe estar inscrito en ese evento) |
+| `status` | `pagado` o `pendiente`. Un abono parcial es `pendiente` con `paid_cents` > 0 |
+| `method` | `efectivo` o `transferencia` si está pagado; `null` si está pendiente |
+| `paid_cents` | Lo pagado en total, en centavos (≥ 0) |
+| `due_cents` | Lo que debe en total (informativo) |
+| `paid_at` | Cuándo se pagó (ISO-8601); `null` si está pendiente |
+| `note` | Nota libre, hasta 500 caracteres (opcional) |
+| `paid_by_global_id` | Si otra persona pagó por esta: su `roper_global_id` (opcional) |
+
+Respuesta `200`: `{ contract_version, client_batch_id, payments: [{ id, status, revision } | { id, status: "rejected", code, message, retry }] }`.
+Estados: `accepted` (la web cambió), `unchanged` (ya estaba igual), `updated` (corrección con `revision` mayor) o `rejected`.
+
+| `code` del rechazo | Significa | ¿Reintentar? |
+|---|---|---|
+| `invalid_field` | Un campo no cumple las reglas (estado/forma incoherentes, monto negativo, revisión < 1…) | no |
+| `event_not_found` | El evento no existe o no es del organizador (no se distingue) | no |
+| `registration_not_found` | Esa persona no está inscrita en el evento | no (hay que inscribirla en la web primero) |
+| `roper_unknown` | `paid_by_global_id` no existe en la web | no |
+| `paid_online` | Pagó en línea (Stripe) y la app dice otra cosa: **el pago en línea manda**, no se deshace desde la app | no |
+| `refunded` | La inscripción está reembolsada | no |
+| `stale_revision` | Llegó una `revision` menor o igual con datos distintos | no |
+| `temporary_error` | Falla interna | sí |
+
+**Varias inscripciones de la misma persona.** Alguien puede estar inscrito más de una vez en un evento (otra categoría, o como cabecero y
+pialador). La app sigue mandando **un solo resumen por persona y evento**, con sus totales, y la web lo aplica así:
+- `status`, `method`, `note`, `paid_at` y `paid_by_global_id` se aplican a todas sus inscripciones.
+- `paid_cents` se reparte en orden de inscripción hasta el costo de cada una; el sobrante queda en la última. No se duplica.
+- Las pagadas en línea (Stripe) y las reembolsadas **no se tocan**. El costo de las pagadas en línea se descuenta de `paid_cents` antes de
+  repartir, así que `paid_cents` debe incluirlo.
+- `paid_online` solo se responde si todas las no reembolsadas se pagaron en línea y la app no dice `pagado`; `refunded`, si todas están reembolsadas.
+
+**Conflictos web vs app.**
+- Pago **en línea (Stripe)**: gana la web. Si la app también dice `pagado` es `unchanged`; si dice otra cosa, `paid_online`. La app debe dejar el
+  pago como lo bajó de la web y no volver a subirlo.
+- Pago **manual** (efectivo o transferencia): gana la `revision` mayor. Quien marcó pagado en la web a mano y la app aún no lo había subido
+  entra como `revision` 0: el primer envío de la app lo reemplaza. Para no pisar un cambio nuevo hecho a mano en la web, la app baja
+  siempre primero el estado de la web (`GET /api/app/eventos`) y solo sube lo que cambió después.
+- Un pago manual se puede **deshacer** subiendo `pendiente` con `revision` mayor (queda sin fecha de pago).
+
+**Cola y reintentos (lado de la app).** Cada resumen de pago es una fila de la cola (`outbox`, una por persona y evento, con `id` estable);
+`revision` sube cuando el pago cambia. Sin internet todo funciona y se manda solo al volver. Espera creciente con variación aleatoria: 30 s, 1 min,
+2 min, 5 min y luego cada 15 min como máximo; solo se reintenta `413`, `429`, `5xx`, error de red y los `retry: true`.
+
+Ejemplos: [`pagos.request.json`](sync-examples/pagos.request.json) y [`pagos.response.json`](sync-examples/pagos.response.json). La web los usa como
+datos de prueba (`npm run test:db` y `npm run test:unit`) y la app debe poder reproducirlos tal cual.
+
 ## Lado de la app (pendiente)
 - Guardar `events.remote_id` y `ropers.global_id` (columnas **nullable**, migración aditiva según
   `roping-manager-tauri/src-tauri/migrations/MIGRATIONS.md`) para que reimportar actualice y no duplique.

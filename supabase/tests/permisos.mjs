@@ -1592,6 +1592,95 @@ console.log("- Resultados de un evento (0030)");
   verify("app_organizer_events manda packages en cada inscripción", await num(`select count(*) n from public.app_organizer_events('${A}', null, now() + interval '1 minute', null, null, 50) e, jsonb_array_elements(e.registrations) r where e.id = '${EVL}' and (r->>'packages')::int = 3`) === 1);
 }
 
+// ---- Paquetes por lado con rol "Ambos" (KIN-793): cuántos paquetes como cabecero y cuántos como pialador, una inscripción por lado
+{
+  console.log("\n— Paquetes por lado (rol Ambos)");
+  const num = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const verify = (label, ok) => { if (!ok) failures++; console.log(`${ok ? "✔" : "✘ FALLO"}  ${label}`); };
+  const ev793 = (n) => `e7930000-0000-0000-0000-00000000000${n}`, kat793 = (n) => `ca793000-0000-0000-0000-00000000000${n}`;
+  // 1 (2,0)  2 (1,1)  3 (0,3)  4 (0,0) y rechazos  5 round robin  6 cupo de 1 (lista de espera)  7 (2,3)  8 compatibilidad con la firma de siempre
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug, event_date, capacity, draw_type, lazada_shots_per_package) values
+      ('${ev793(1)}','Lado 1','${A}','publicado','lado-793-1','2099-10-01',10,'lazada_sorteada',3),
+      ('${ev793(2)}','Lado 2','${A}','publicado','lado-793-2','2099-10-02',10,'lazada_sorteada',3),
+      ('${ev793(3)}','Lado 3','${A}','publicado','lado-793-3','2099-10-03',10,'lazada_sorteada',3),
+      ('${ev793(4)}','Lado 4','${A}','publicado','lado-793-4','2099-10-04',10,'lazada_sorteada',3),
+      ('${ev793(5)}','Lado round robin','${A}','publicado','lado-793-5','2099-10-05',10,'round_robin',null),
+      ('${ev793(6)}','Lado cupo 1','${A}','publicado','lado-793-6','2099-10-06',1,'lazada_sorteada',3),
+      ('${ev793(7)}','Lado 7','${A}','publicado','lado-793-7','2099-10-07',10,'lazada_sorteada',3),
+      ('${ev793(8)}','Lado compatibilidad','${A}','publicado','lado-793-8','2099-10-08',10,'lazada_sorteada',3);
+    insert into event_categories (id, event_id, name, fee_cents) values
+      ('${kat793(1)}','${ev793(1)}','Libre',10000), ('${kat793(2)}','${ev793(2)}','Libre',10000), ('${kat793(3)}','${ev793(3)}','Libre',10000), ('${kat793(4)}','${ev793(4)}','Libre',10000),
+      ('${kat793(5)}','${ev793(5)}','Libre',10000), ('${kat793(6)}','${ev793(6)}','Libre',10000), ('${kat793(7)}','${ev793(7)}','Libre',10000), ('${kat793(8)}','${ev793(8)}','Libre',10000);
+    update ropers set primary_role = 'both', favorite_role = 'header' where user_id = '${C}';
+    update ropers set primary_role = 'header', favorite_role = null where user_id = '${P2}';
+  `);
+  const side = (e, h, l) => `select public.register_for_event_by_side('${ev793(e)}', '${kat793(e)}', ${h}, ${l})`;
+  const rows = (e) => `select role, packages, amount_cents from registrations where event_id = '${ev793(e)}' and roper_id in (select id from ropers where user_id = '${C}') order by role`;
+
+  // Dos paquetes de cabecero y ninguno de pialador: UNA inscripción
+  await as("authenticated", C, side(1, 2, 0), "Ambos: 2 paquetes de cabecero y 0 de pialador SÍ", "some");
+  verify("queda una sola inscripción, de cabecero, con 2 paquetes y 2 * el costo", JSON.stringify((await db.query(rows(1))).rows) === JSON.stringify([{ role: "header", packages: 2, amount_cents: 20000 }]));
+  // Uno de cada lado: DOS inscripciones, cada una con sus paquetes y su monto; el total a pagar es la suma
+  await as("authenticated", C, side(2, 1, 1), "Ambos: 1 paquete de cada lado SÍ", "some");
+  verify("quedan dos inscripciones (cabecero y pialador), 1 paquete y el costo cada una", JSON.stringify((await db.query(rows(2))).rows) === JSON.stringify([{ role: "header", packages: 1, amount_cents: 10000 }, { role: "heeler", packages: 1, amount_cents: 10000 }]));
+  // Cada lado con su propio número: 0 de cabecero y 3 de pialador
+  await as("authenticated", C, side(3, 0, 3), "Ambos: 0 de cabecero y 3 de pialador SÍ", "some");
+  verify("solo hay inscripción de pialador, con 3 paquetes y 3 * el costo", JSON.stringify((await db.query(rows(3))).rows) === JSON.stringify([{ role: "heeler", packages: 3, amount_cents: 30000 }]));
+  await as("authenticated", C, side(7, 2, 3), "Ambos: 2 de cabecero y 3 de pialador (números distintos) SÍ", "some");
+  verify("cada lado guarda SUS paquetes y el total a pagar es la suma (5 * el costo)", JSON.stringify((await db.query(rows(7))).rows) === JSON.stringify([{ role: "header", packages: 2, amount_cents: 20000 }, { role: "heeler", packages: 3, amount_cents: 30000 }]));
+
+  // Validaciones
+  await as("authenticated", C, side(4, 0, 0), "0 y 0: el total debe ser al menos 1", "deny");
+  await as("authenticated", C, side(4, -1, 2), "un lado negativo se rechaza", "deny");
+  await as("authenticated", C, side(4, 100, 0), "más de 99 en un lado se rechaza", "deny");
+  await as("authenticated", C, side(4, "null", 1), "un lado sin valor se rechaza", "deny");
+  verify("lo rechazado no dejó inscripciones", await num(`select count(*) n from registrations where event_id = '${ev793(4)}'`) === 0);
+  await as("authenticated", C, side(5, 1, 1), "en un evento que no es Lazada Sorteada NO hay paquetes por lado", "deny");
+  // El rol se elige al inscribirse, sin importar el del perfil: un perfil de solo cabecero también puede inscribirse de pialador o de los dos
+  const rowsOf = (e, user) => `select role, packages, amount_cents from registrations where event_id = '${ev793(e)}' and roper_id in (select id from ropers where user_id = '${user}') order by role`;
+  await as("authenticated", P2, side(2, 0, 2), "perfil de solo cabecero: SÍ se inscribe de pialador con 2 paquetes", "some");
+  verify("queda de pialador con 2 paquetes y el perfil NO cambia (sigue cabecero)", JSON.stringify((await db.query(rowsOf(2, P2))).rows) === JSON.stringify([{ role: "heeler", packages: 2, amount_cents: 20000 }]) && await num(`select count(*) n from ropers where user_id = '${P2}' and primary_role = 'header'`) === 1);
+  await as("authenticated", P2, side(3, 1, 2), "perfil de solo cabecero: SÍ se inscribe de los dos lados (1 y 2)", "some");
+  verify("quedan sus dos inscripciones, cada una con SUS paquetes", JSON.stringify((await db.query(rowsOf(3, P2))).rows) === JSON.stringify([{ role: "header", packages: 1, amount_cents: 10000 }, { role: "heeler", packages: 2, amount_cents: 20000 }]));
+  await db.exec(`update ropers set primary_role = 'heeler', favorite_role = null where user_id = '${P2}'`);
+  await as("authenticated", P2, side(1, 3, 0), "perfil de solo pialador: SÍ se inscribe de cabecero", "some");
+  await db.exec(`update ropers set primary_role = null, favorite_role = null where user_id = '${P2}'`);
+  await as("authenticated", P2, side(7, 0, 1), "perfil sin rol definido: SÍ se inscribe eligiendo su lado", "some");
+  verify("y la inscripción lleva el rol elegido", JSON.stringify((await db.query(rowsOf(7, P2))).rows) === JSON.stringify([{ role: "heeler", packages: 1, amount_cents: 10000 }]));
+  await db.exec(`update ropers set primary_role = 'header', favorite_role = null where user_id = '${P2}'`);
+  await as("authenticated", D, side(4, 1, 0), "una cuenta sin perfil de lazador NO se inscribe", "deny");
+  await as("anon", null, side(4, 1, 0), "anónimo NO se inscribe", "deny");
+  await as("authenticated", C, side(1, 1, 0), "repetir el mismo lado en la misma categoría se rechaza (already)", "deny");
+  await as("authenticated", C, side(1, 0, 2), "pero el lado que faltaba SÍ se puede agregar después", "some");
+  verify("y queda cada lado con sus paquetes", JSON.stringify((await db.query(rows(1))).rows) === JSON.stringify([{ role: "header", packages: 2, amount_cents: 20000 }, { role: "heeler", packages: 2, amount_cents: 20000 }]));
+  await as("authenticated", C, side(1, 1, 1), "con los dos lados ya inscritos, repetir se rechaza", "deny");
+
+  // Cupo: el cupo cuenta inscripciones, así que uno de cada lado ocupa 2 lugares y es todo o nada
+  await as("authenticated", C, side(6, 1, 1), "con cupo de 1, dos lados NO caben (full)", "deny");
+  verify("todo o nada: no se creó ninguna", await num(`select count(*) n from registrations where event_id = '${ev793(6)}'`) === 0);
+  await as("authenticated", C, side(6, 0, 2), "con cupo de 1, un solo lado SÍ", "some");
+
+  // Lista de espera: solo si el evento está lleno; una fila por lado con sus paquetes
+  await db.exec(`update ropers set primary_role = 'both', favorite_role = 'header' where user_id = '${P2}'`);
+  const wait = (e, h, l) => `select public.join_waitlist_by_side('${ev793(e)}', '${kat793(e)}', ${h}, ${l})`;
+  await as("authenticated", P2, wait(4, 1, 1), "con lugar en el evento NO entra a espera (not_full)", "deny");
+  await as("authenticated", P2, wait(6, 0, 0), "espera: 0 y 0 se rechaza", "deny");
+  await as("authenticated", P2, wait(6, 2, 3), "espera: 2 de cabecero y 3 de pialador SÍ (evento lleno)", "some");
+  verify("hay una fila de espera por lado con sus paquetes", JSON.stringify((await db.query(`select role, packages from event_waitlist where event_id = '${ev793(6)}' order by role`)).rows) === JSON.stringify([{ role: "header", packages: 2 }, { role: "heeler", packages: 3 }]));
+  await as("authenticated", P2, wait(6, 1, 0), "estar ya en la espera de ese lado se rechaza (already)", "deny");
+  await as("authenticated", C, wait(6, 0, 1), "quien ya está inscrito en ese lado NO entra a la espera", "deny");
+  await as("anon", null, wait(6, 1, 0), "anónimo NO entra a la espera", "deny");
+  await db.exec(`update ropers set primary_role = 'header', favorite_role = null where user_id = '${P2}'`);
+
+  // La app recibe una inscripción por rol, cada una con su role y sus packages (sin cambios en el contrato)
+  verify("app_organizer_events manda una inscripción por rol con su role y packages", await num(`select count(*) n from public.app_organizer_events('${A}', null, now() + interval '1 minute', null, null, 50) e, jsonb_array_elements(e.registrations) r where e.id = '${ev793(7)}' and ((r->>'role' = 'header' and (r->>'packages')::int = 2) or (r->>'role' = 'heeler' and (r->>'packages')::int = 3))`) === 2);
+
+  // Compatibilidad: la función de siempre sigue igual (mismos paquetes en cada rol con "los dos")
+  await as("authenticated", C, `select public.register_for_event('${ev793(8)}', '${kat793(8)}', 'both', 2)`, "la función de siempre con \"los dos\" sigue funcionando", "some");
+  verify("y sigue poniendo los mismos paquetes en cada rol", JSON.stringify((await db.query(rows(8))).rows) === JSON.stringify([{ role: "header", packages: 2, amount_cents: 20000 }, { role: "heeler", packages: 2, amount_cents: 20000 }]));
+}
+
 // ---- Eventos que la app sube a la web (KIN-648, entrega 2)
 {
   console.log("\n— Eventos subidos desde la app");

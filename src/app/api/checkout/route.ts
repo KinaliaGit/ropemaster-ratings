@@ -12,12 +12,12 @@ export async function POST(request: Request) {
   const lang = rawLang === "en" ? "en" : "es";
   const session = await getSession();
   if (!session) return Response.json({ error: "unauthenticated" }, { status: 401 });
-  if (!session.hasRoper) return Response.json({ error: "forbidden" }, { status: 403 });
+  if (!session.hasRoper || !session.roperId) return Response.json({ error: "forbidden" }, { status: 403 });
   if (!registrationId || !UUID.test(registrationId)) return Response.json({ error: "invalid" }, { status: 400 });
 
-  // Las reglas de la base solo devuelven inscripciones propias.
+  // Solo se paga lo propio: las reglas de la base también dejan al organizador leer las inscripciones de sus eventos.
   const { data: reg } = await (await createServerSupabase()).from("registrations")
-    .select("id, payment_status, amount_cents, event_categories(name), events(name)").eq("id", registrationId).maybeSingle();
+    .select("id, payment_status, amount_cents, event_categories(name), events(name)").eq("id", registrationId).eq("roper_id", session.roperId).maybeSingle();
   if (!reg) return Response.json({ error: "invalid" }, { status: 404 });
   if (reg.payment_status !== "pendiente") return Response.json({ error: "already" }, { status: 409 });
 

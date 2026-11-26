@@ -1,5 +1,8 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import type { PaymentFilters } from "@/lib/payment-filters";
+import { buildPaymentSummary, type EventPaymentSummary, type SummaryEvent } from "@/lib/payment-summary";
+
+export type { EventPaymentSummary } from "@/lib/payment-summary";
 
 // Pagos del organizador (KIN-754). Se leen con su sesión y SIEMPRE filtrando por sus eventos: las reglas de la base también le devuelven sus
 // propias inscripciones en eventos de otros (cuando además compite), y eso no es dinero que él cobre (KIN-627).
@@ -63,4 +66,38 @@ export async function listPaymentRows(organizerId: string, f: PaymentFilters): P
     status: r.payment_status, method: r.payment_method, amountCents: r.amount_cents, createdAt: r.created_at, paidAt: r.paid_at,
   }));
   return { rows, total: count ?? rows.length };
+}
+
+type SummaryEventRow = { id: string; slug: string | null; name: string; event_date: string | null; status: string; arenas: { id: string; name: string } | null };
+
+// Resumen de pagos por evento para el panel (KIN-765): una fila por evento del organizador (también los que no tienen inscripciones, con ceros) con
+// inscripciones pagadas, pendientes y en lista de espera. Los números salen de `listPaymentTotals`, la misma suma de la pantalla de Pagos, así que
+// no pueden diferir. Con `arenaId` (id de una arena suya, ver `arena` de `getOrganizerOverview`) solo trae los eventos de esa arena; los totales de
+// los demás se descartan al juntar. Forma documentada en docs/DISENO.md (sección «Resumen de pagos por evento»).
+export async function listEventPaymentSummary(organizerId: string, arenaId: string | null = null): Promise<EventPaymentSummary[]> {
+  const supabase = await createServerSupabase();
+  let evQ = supabase.from("events").select("id, slug, name, event_date, status, arenas(id, name)").eq("organizer_id", organizerId);
+  if (arenaId) evQ = evQ.eq("arena_id", arenaId);
+  const [{ data: evs, error }, totals, waitlist] = await Promise.all([evQ.order("id").limit(PAGE), listPaymentTotals(organizerId), listWaitlistCounts(organizerId, arenaId)]);
+  if (error) throw new Error(`No se pudieron leer los eventos: ${error.message}`);
+  const events: SummaryEvent[] = ((evs ?? []) as unknown as SummaryEventRow[]).filter((e) => e.slug)
+    .map((e) => ({ id: e.id, slug: e.slug!, name: e.name, date: e.event_date, status: e.status, arena: e.arenas ? { id: e.arenas.id, name: e.arenas.name } : null }));
+  return buildPaymentSummary(events, totals, waitlist);
+}
+
+// Personas en lista de espera por evento (tabla aparte de `registrations`: no cuentan en cupo ni en dinero). Las reglas de la base solo dejan leer
+// la lista de los eventos propios; el filtro por organizador se repite aquí porque la persona que también compite ve su propia fila en eventos ajenos.
+async function listWaitlistCounts(organizerId: string, arenaId: string | null): Promise<Map<string, number>> {
+  const supabase = await createServerSupabase();
+  const counts = new Map<string, number>();
+  for (let page = 0; page < MAX_PAGES; page++) {
+    let q = supabase.from("event_waitlist").select("id, event_id, events!inner(organizer_id)").eq("events.organizer_id", organizerId);
+    if (arenaId) q = q.eq("events.arena_id", arenaId);
+    const { data, error } = await q.order("id").range(page * PAGE, page * PAGE + PAGE - 1);
+    if (error) throw new Error(`No se pudo leer la lista de espera: ${error.message}`);
+    const rows = (data ?? []) as unknown as { event_id: string }[];
+    for (const r of rows) counts.set(r.event_id, (counts.get(r.event_id) ?? 0) + 1);
+    if (rows.length < PAGE) break;
+  }
+  return counts;
 }

@@ -56,7 +56,9 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
             </div>
           );
         }
-        const [mine, removed, waiting, me] = await Promise.all([listMyRegistrations(), listMyRemovals(), listMyWaitlist(), s.roperId ? getPublicRoper(s.roperId) : Promise.resolve(null)]);
+        const [mine, removed, waiting, me] = await Promise.all([
+          s.roperId ? listMyRegistrations(s.roperId) : [], s.roperId ? listMyRemovals(s.roperId) : [], listMyWaitlist(), s.roperId ? getPublicRoper(s.roperId) : Promise.resolve(null),
+        ]);
         // KIN-627: las inscripciones se separan en próximas y pasadas (por fecha en la zona del evento); los pagos pendientes son solo los de eventos próximos.
         const isPast = (m: (typeof mine)[number]) => !!m.event && (m.event.status === "finalizado" || hasEventPassed({ date: m.event.date ?? "", timezone: m.event.timezone }));
         const upcoming = mine.filter((m) => !isPast(m));

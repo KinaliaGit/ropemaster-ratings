@@ -2,6 +2,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { INITIAL_RATING } from "@/lib/rating";
+import { ownRows } from "@/lib/data/own-rows";
 import { ENROLLED_PAGE_SIZE, decodeEnrolledCursor, toEnrolledPage, type EnrolledPage } from "@/lib/enrolled";
 
 // ---- Públicas (en caché; se invalidan con updateTag("registrations") al inscribirse o cancelar) ----
@@ -49,10 +50,10 @@ export type MyRegistration = {
   event: { slug: string | null; name: string; date: string | null; city: string | null; paymentInfo: string | null; closesAt: string | null; timezone: string; registrationClosed: boolean; status: string } | null;
 };
 
-export async function listMyRegistrations(): Promise<MyRegistration[]> {
-  const { data, error } = await (await createServerSupabase()).from("registrations")
-    .select("id, payment_status, payment_method, amount_cents, role, event_categories(name), events(slug, name, event_date, city, registration_closes_at, registration_closed, status, timezone, event_payment_info(instructions))")
-    .order("created_at", { ascending: false });
+export async function listMyRegistrations(roperId: string): Promise<MyRegistration[]> {
+  const { data, error } = await ownRows(await createServerSupabase(), "registrations",
+    "id, payment_status, payment_method, amount_cents, role, event_categories(name), events(slug, name, event_date, city, registration_closes_at, registration_closed, status, timezone, event_payment_info(instructions))",
+    roperId, "created_at");
   if (error) throw new Error(`No se pudieron leer tus inscripciones: ${error.message}`);
   type Info = { instructions: string } | { instructions: string }[] | null;
   type Row = { id: string; payment_status: string; payment_method: string | null; amount_cents: number; role: string | null; event_categories: { name: string } | null; events: { slug: string | null; name: string; event_date: string | null; city: string | null; registration_closes_at: string | null; registration_closed: boolean; status: string; timezone: string; event_payment_info: Info } | null };
@@ -164,10 +165,11 @@ export async function listEventRemovals(eventUuid: string): Promise<Removal[]> {
 
 export type MyRemoval = { id: string; event: { slug: string | null; name: string } | null; category: string; reason: string; removedAt: string; refundPending: boolean; canReenroll: boolean };
 
-// Eventos de los que me sacaron, con el motivo. La base solo devuelve los míos; el evento puede no verse si volvió a borrador.
-export async function listMyRemovals(): Promise<MyRemoval[]> {
-  const { data, error } = await (await createServerSupabase()).from("registration_removals")
-    .select("id, category_name, reason, removed_at, refund_pending, can_reenroll, events(slug, name)").order("removed_at", { ascending: false });
+// Eventos de los que me sacaron, con el motivo (filtrado por mi perfil: un organizador también puede leer las bajas de sus eventos). El evento
+// puede no verse si volvió a borrador.
+export async function listMyRemovals(roperId: string): Promise<MyRemoval[]> {
+  const { data, error } = await ownRows(await createServerSupabase(), "registration_removals",
+    "id, category_name, reason, removed_at, refund_pending, can_reenroll, events(slug, name)", roperId, "removed_at");
   if (error) throw new Error(`No se pudieron leer tus bajas: ${error.message}`);
   type Row = { id: string; category_name: string; reason: string; removed_at: string; refund_pending: boolean; can_reenroll: boolean; events: { slug: string | null; name: string } | null };
   return (data as unknown as Row[]).map((r) => ({ id: r.id, event: r.events, category: r.category_name, reason: r.reason, removedAt: r.removed_at, refundPending: r.refund_pending, canReenroll: r.can_reenroll }));

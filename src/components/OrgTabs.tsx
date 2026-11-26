@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Suspense } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
 type Tab = { href: string; label: string; short?: string; match?: string[] }; // short: nombre corto para celular
@@ -15,9 +15,16 @@ function Current(props: { tabs: Tab[]; publicHref: string; publicLabel: string }
 }
 
 function Bar({ tabs, current, publicHref, publicLabel }: { tabs: Tab[]; current: string; publicHref: string; publicLabel: string }) {
+  const scroller = useRef<HTMLDivElement>(null);
+  // KIN-780: en celular las pestañas no caben; se desliza la barra para que la actual no quede cortada (sin mover la página).
+  useEffect(() => {
+    const box = scroller.current;
+    const tab = box?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (box && tab) box.scrollLeft = tab.offsetLeft - (box.clientWidth - tab.offsetWidth) / 2;
+  }, [current]);
   return (
     <nav aria-label="Panel" className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 pt-6">
-      <div className="flex min-w-0 flex-1 gap-0.5 overflow-x-auto rounded-full bg-sand p-1 sm:flex-none sm:gap-1">
+      <div ref={scroller} className="relative flex min-w-0 flex-1 gap-0.5 overflow-x-auto rounded-full bg-sand p-1 sm:flex-initial sm:gap-1">
         {tabs.map((t) => {
           const active = current === t.href || (t.match ?? []).some((m) => current === m || current.startsWith(`${m}/`));
           return (

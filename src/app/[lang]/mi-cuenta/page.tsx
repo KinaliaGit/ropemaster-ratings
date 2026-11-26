@@ -73,12 +73,12 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
           <div className="mx-auto max-w-6xl px-5 pb-10 pt-10">
             <div className="flex flex-wrap items-center gap-5">
               <AvatarUploader url={publicAvatarUrl(s.avatarPath)} initials={initials(s.name)} name={s.name} l={t.account.photo} />
-              <div className="flex-1">
+              <div className="min-w-[15rem] flex-1">
                 <p className="label">{s.role === "organizador" ? t.account.typeOrganizer : t.account.type}</p>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <h1 className="min-w-0 break-words text-3xl font-semibold">{s.name}</h1>
-                  <span className="inline-flex min-w-0 items-center gap-2">
-                    <span className="text-sm text-muted">{t.account.myRole}</span>
+                  <span className="inline-flex max-w-full items-center gap-2">
+                    <span className="shrink-0 whitespace-nowrap text-sm text-muted">{t.account.myRole}</span>
                     <RoleBadgeDialog action={setMyRole} lang={lang} initial={s.roleChoice ?? null} text={roleText(s.roleChoice ?? null, t.roles)} l={{ fields: t.roles, title: t.account.roleTitle, save: t.account.roleSave, cancel: t.account.roleCancel, choose: t.account.roleChoose, edit: t.account.roleEdit }} />
                   </span>
                 </div>
@@ -134,7 +134,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                       {!paid && (
                         <form action={cancelRegistration}>
                           <input type="hidden" name="lang" value={lang} /><input type="hidden" name="id" value={m.id} />
-                          <button className="rounded-full border border-line px-3 py-1.5 text-xs font-medium hover:border-ink">{t.account.cancel}</button>
+                          <button className="rounded-full border border-line px-3 py-2 text-xs font-medium hover:border-ink">{t.account.cancel}</button>
                         </form>
                       )}
                     </div>
@@ -145,7 +145,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                         <select id={`role-${m.id}`} name="role" defaultValue={m.role ?? s.roleChoice.favorite ?? "header"} className="rounded-xl border border-line bg-white px-3 py-1.5 text-sm">
                           <option value="header">{t.roles.header}</option><option value="heeler">{t.roles.heeler}</option>
                         </select>
-                        <button className="rounded-full border border-line px-3 py-1.5 text-xs font-medium hover:border-ink">{t.account.changeRole}</button>
+                        <button className="rounded-full border border-line px-3 py-2 text-xs font-medium hover:border-ink">{t.account.changeRole}</button>
                       </form>
                     )}
                     {!paid && (
@@ -175,7 +175,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                       <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand-hot tabular-nums">{t.account.waitlistPlace(w.place)}</span>
                       <form action={leaveWaitlist}>
                         <input type="hidden" name="lang" value={lang} /><input type="hidden" name="id" value={w.id} />
-                        <button className="rounded-full border border-line px-3 py-1.5 text-xs font-medium hover:border-ink">{t.account.waitlistLeave}</button>
+                        <button className="rounded-full border border-line px-3 py-2 text-xs font-medium hover:border-ink">{t.account.waitlistLeave}</button>
                       </form>
                     </div>
                   ))}
@@ -224,7 +224,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
 
             <div className="mt-12 flex items-end justify-between">
               <h2 className="text-xl font-semibold">{t.account.ranking}</h2>
-              <Link href={`/${lang}/participantes`} className="text-sm font-medium text-brand-hot hover:underline">{t.account.seeAll} →</Link>
+              <Link href={`/${lang}/participantes`} className="py-1.5 text-sm font-medium text-brand-hot hover:underline">{t.account.seeAll} →</Link>
             </div>
             <div className="mt-2">{top.length ? top.map((r, i) => <RoperCard key={r.id} r={r} rank={i + 1} lang={lang} t={t} />) : <p className="pt-3 text-muted">{t.people.empty}</p>}</div>
           </div>

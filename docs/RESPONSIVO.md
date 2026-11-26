@@ -36,7 +36,11 @@ Ejemplo: `DeleteConfirmDialog`.
 
 ## Revisión inicial (2026-11-25)
 Medidas a 375, 768 y 1280 px en: inicio, participantes, perfil público, dos eventos, entrar, registro, recuperar y 404.
-**No se revisaron** las pantallas con sesión ni se probó en un teléfono físico.
+No se probó en un teléfono físico.
+
+Segunda pasada, **con sesión de organizador** (con perfil de lazador y permisos de administrador): panel, tres eventos, crear y editar evento,
+series (lista, detalle y nueva), participantes, pagos, arenas (lista y detalle), administración, App local, «Mi cuenta» y avisos, a 375, 768 y
+1280 px. No se abrieron los diálogos ni se revisó una cuenta de solo participante. A 768 y 1280 px no se detectaron desbordes.
 
 | Pantalla | Defecto | Responsable | Estado |
 |---|---|---|---|
@@ -47,5 +51,14 @@ Medidas a 375, 768 y 1280 px en: inicio, participantes, perfil público, dos eve
 | Resultados, inscritos | Nombres enlazados de ~20 px dentro de la fila | Anita (KIN-768) | Pendiente |
 | Pagos del organizador (`organizador/pagos`) | Tablas sin versión de tarjetas en celular (visto en el código) | Emiliano | Pendiente |
 | Historial del lazador (`ProfileHistory`) | Tabla sin versión de tarjetas en celular (visto en el código) | Anita | Pendiente |
-| Panel del organizador y «Mi cuenta» | Falta revisar con sesión | Anita (KIN-763, KIN-770) | Pendiente |
-| Formulario de evento | Falta revisar | Edgar | Pendiente |
+| Pestañas del organizador | La pestaña actual quedaba cortada a 375 px | Anita | Corregido |
+| Pestañas del organizador | Con la pestaña de administración, entre 640 y ~760 px la página se desbordaba | Anita | Corregido |
+| «Mi cuenta» | A 375 px el nombre se partía en tres líneas y «Mi rol:» en dos | Anita | Corregido |
+| «Mi cuenta» y panel del organizador | Enlaces y botones de 17 a 30 px | Anita (KIN-763, KIN-770) | Corregido en parte |
+| Crear y editar evento, nueva serie | A 375 px la página mide de 420 a 436 px (rejilla de categorías `grid-cols-[1fr_9.5rem]`) | Edgar | Pendiente |
+| Evento del organizador | «Volver», nombres, «Efectivo», «Transferencia», «Sacar del evento» de 17 a 26 px | Emiliano | Pendiente |
+| Pagos | A 375 px las dos tablas se deslizan de lado (429 y 505 px en 333); botones de 24 px | Emiliano | Pendiente |
+| Participantes del organizador | Nombres enlazados de 24 px | Emiliano | Pendiente |
+| Arena (detalle) | «Mis arenas» de 17 px | Edgar | Pendiente |
+| Serie (detalle) | Acciones de 20 a 28 px | Sin dueño asignado en el plan | Pendiente |
+| Administración | «Verificar» y «Revocar» de 28 a 30 px | Sin dueño asignado en el plan | Pendiente |

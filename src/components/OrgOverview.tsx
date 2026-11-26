@@ -41,7 +41,7 @@ export function OrgOverview({ o, lang, t }: { o: Overview; lang: Lang; t: Dict }
               {seriesRoles.map(([l, n]) => <div key={l} className="rounded-xl bg-sand p-2"><dd className="text-lg font-semibold tabular-nums">{n}</dd><dt className="text-[11px] text-muted">{l}</dt></div>)}
             </dl>
             {o.series.next_event && <p className="mt-2 text-sm">{v.nextEvent}: <Link href={`/${lang}/organizador/eventos/${o.series.next_event.slug}`} className={link}>{o.series.next_event.name}</Link> · {fmtDate(o.series.next_event.date, lang)} ({v.inDays(o.series.next_event.days)})</p>}
-            <Link href={`/${lang}/organizador/series/${o.series.slug}`} className={`mt-3 inline-block text-sm ${link}`}>{v.seeSeries} →</Link>
+            <Link href={`/${lang}/organizador/series/${o.series.slug}`} className={`mt-2 inline-block py-1.5 text-sm ${link}`}>{v.seeSeries} →</Link>
           </>
         ) : <p className="mt-1 text-sm text-muted">{v.noNextEvent}</p>}
       </section>
@@ -56,7 +56,7 @@ export function OrgOverview({ o, lang, t }: { o: Overview; lang: Lang; t: Dict }
             <dl className="mt-2 grid grid-cols-4 gap-2 text-center" aria-label={v.roles}>
               {roles.map(([l, n]) => <div key={l} className="rounded-xl bg-sand p-2"><dd className="text-lg font-semibold tabular-nums">{n}</dd><dt className="text-[11px] text-muted">{l}</dt></div>)}
             </dl>
-            <Link href={`/${lang}/organizador/eventos/${ne.slug}`} className={`mt-3 inline-block text-sm ${link}`}>{v.manage} →</Link>
+            <Link href={`/${lang}/organizador/eventos/${ne.slug}`} className={`mt-2 inline-block py-1.5 text-sm ${link}`}>{v.manage} →</Link>
           </>
         ) : <p className="mt-1 text-sm text-muted">{v.noNextEvent}</p>}
       </section>
@@ -69,7 +69,7 @@ export function OrgOverview({ o, lang, t }: { o: Overview; lang: Lang; t: Dict }
           <div><dd className="text-lg font-semibold tabular-nums">{mxn(o.payments.collected_cents / 100, lang)}</dd><dt className="text-sm text-muted">{v.collected}</dt></div>
           <div><dd className="text-lg font-semibold tabular-nums">{mxn(o.payments.pending_cents / 100, lang)}</dd><dt className="text-sm text-muted">{v.toCollect}</dt></div>
         </dl>
-        {o.todo.unpaid[0] && <Link href={`/${lang}/organizador/eventos/${o.todo.unpaid[0].slug}`} className={`mt-3 inline-block text-sm ${link}`}>{v.seePending} →</Link>}
+        {o.todo.unpaid[0] && <Link href={`/${lang}/organizador/eventos/${o.todo.unpaid[0].slug}`} className={`mt-2 inline-block py-1.5 text-sm ${link}`}>{v.seePending} →</Link>}
       </section>
 
       <section aria-labelledby="ov-states" className="card p-5">
@@ -77,16 +77,16 @@ export function OrgOverview({ o, lang, t }: { o: Overview; lang: Lang; t: Dict }
         <dl className="mt-2 grid grid-cols-2 gap-3">
           {states.map(([l, n]) => <div key={l}><dd className="text-2xl font-semibold tabular-nums">{n}</dd><dt className="text-sm text-muted">{l}</dt></div>)}
         </dl>
-        <a href="#mis-eventos" className={`mt-3 inline-block text-sm ${link}`}>{v.seeEvents} →</a>
+        <a href="#mis-eventos" className={`mt-2 inline-block py-1.5 text-sm ${link}`}>{v.seeEvents} →</a>
       </section>
 
       <section aria-labelledby="ov-todo" className="card p-5">
         <h2 id="ov-todo" className="label">{v.todo}</h2>
         {todoCount === 0 ? <p className="mt-2 text-sm text-muted">{v.allClear}</p> : (
           <ul className="mt-2 space-y-1.5 text-sm">
-            {o.todo.unpaid.map((x) => <li key={`u-${x.slug}`}><Link href={`/${lang}/organizador/eventos/${x.slug}`} className={link}>{x.name}</Link> · {v.unpaid(x.count)}</li>)}
-            {o.todo.no_results.map((x) => <li key={`r-${x.slug}`}><Link href={`/${lang}/organizador/eventos/${x.slug}`} className={link}>{x.name}</Link> · {v.noResults}</li>)}
-            {o.todo.no_opening.map((x) => <li key={`o-${x.slug}`}><Link href={`/${lang}/organizador/eventos/${x.slug}`} className={link}>{x.name}</Link> · {v.noOpening}</li>)}
+            {o.todo.unpaid.map((x) => <li key={`u-${x.slug}`}><Link href={`/${lang}/organizador/eventos/${x.slug}`} className={`inline-block py-1.5 ${link}`}>{x.name}</Link> · {v.unpaid(x.count)}</li>)}
+            {o.todo.no_results.map((x) => <li key={`r-${x.slug}`}><Link href={`/${lang}/organizador/eventos/${x.slug}`} className={`inline-block py-1.5 ${link}`}>{x.name}</Link> · {v.noResults}</li>)}
+            {o.todo.no_opening.map((x) => <li key={`o-${x.slug}`}><Link href={`/${lang}/organizador/eventos/${x.slug}`} className={`inline-block py-1.5 ${link}`}>{x.name}</Link> · {v.noOpening}</li>)}
           </ul>
         )}
       </section>

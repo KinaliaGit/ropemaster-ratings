@@ -30,7 +30,7 @@ recargando, volviendo atrás y abriendo el enlace dos veces.
 | Agregar, editar, unir o borrar una arena (`/organizador/arenas`, KIN-751) | La misma pantalla del catálogo (`?agregada=1`, `?borrada=1`) o la de la arena (`?guardada=1`, `?unida=1`); con error, `?error=…` (`duplicate`, `invalid`, `inUse`, `mergeFailed`) |
 | Sacar a un inscrito | La pantalla del evento con el resultado (`?sacado=…`) |
 | Borrar evento | `/organizador?borrado=1`; con error, la pantalla del evento con el motivo (`?borrarError=…`) |
-| Borrar serie | `/organizador/series?borrada=1`; con eventos, la serie con «borra primero los eventos» |
+| Borrar serie | `/organizador?ver=series&serieBorrada=1`; con eventos, la serie con «borra primero los eventos» |
 | Organizador sin licencia que intenta crear | `/organizador` con su aviso de revisión |
 
 ## Participante

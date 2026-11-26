@@ -15,7 +15,7 @@ async function Form({ props }: { props: PageProps<"/[lang]/recuperar"> }) {
   const role = sp.role === "participante" ? "participante" : "organizador";
   const errors: Record<string, string> = { expired: r.errorExpired, email: r.errorEmail };
   return (
-    <div className="mx-auto max-w-md px-5 pb-10 pt-14">
+    <div className="page-narrow">
       <h1 className="text-3xl font-semibold">{r.title}</h1>
       <p className="mt-2 text-muted">{r.intro}</p>
       {typeof sp.error === "string" && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{errors[sp.error] ?? t.auth.errorGeneric}</p>}

@@ -62,7 +62,7 @@ export function ProfileHistory({ roperId, lang, initial, next: initialNext, labe
   return (
     <>
       {/* KIN-770/780: tarjetas en vez de tabla, igual que los próximos eventos; en celular no hay que deslizar de lado. */}
-      <div className="mt-3 space-y-3">
+      <div className="mt-3 grid items-start gap-3 md:grid-cols-2 [&>:only-child]:col-span-full">
         {rows.map((x) => {
           const state = rounds[x.id];
           const isOpen = open === x.id;

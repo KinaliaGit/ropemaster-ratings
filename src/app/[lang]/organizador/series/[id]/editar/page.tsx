@@ -1,5 +1,5 @@
+import { BackLink } from "@/components/BackLink";
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
@@ -24,8 +24,8 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/series/[i
         const { series: x, template: tpl } = found;
         return (
           <>
-            <div className="mx-auto max-w-2xl px-5 pb-10 pt-8">
-              <Link href={`/${lang}/organizador/series/${id}`} className="text-sm text-muted hover:text-ink">← {x.name}</Link>
+            <div className="page">
+              <BackLink href={`/${lang}/organizador/series/${id}`}>{x.name}</BackLink>
               <h1 className="mt-2 text-3xl font-semibold">{f.editTitle}</h1>
               <p className="mt-1 text-sm text-muted">{f.editBlurb}</p>
               <SeriesForm

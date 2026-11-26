@@ -19,7 +19,7 @@ export function RegistroForm({ lang, l, error, checkEmail, initialRole, email, r
   const [role, setRole] = useState<Role>(initialRole);
   const [accepted, setAccepted] = useState(false);
   return (
-    <div className="mx-auto max-w-md px-5 pb-10 pt-14">
+    <div className="page-narrow">
       <h1 className="text-3xl font-semibold">{l.title}</h1>
       {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{l.errors[error] ?? l.errors.generic}</p>}
       {checkEmail && (

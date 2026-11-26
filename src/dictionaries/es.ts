@@ -5,7 +5,7 @@ export const es = {
   meta: { title: "Rope Master Ratings", description: "El registro global de lazadores: rating, historial y resultados de cada evento." },
   common: { brand: "Rope Master", ratings: "Ratings", loading: "Cargando…", back: "Volver", of: "de" },
   roles: { legend: "¿Con qué rol sueles competir?", header: "Cabecero", heeler: "Pialador", both: "Ambos", favoriteLegend: "¿Cuál es tu rol favorito, el que usas más?", favorite: "favorito", undefined: "Sin definir" },
-  nav: { panel: "Mi panel", payments: "Pagos", series: "Series", arenas: "Arenas", myLazador: "Mi perfil de lazador", createLazador: "Crear mi perfil de lazador", events: "Eventos", participants: "Participantes", myPanel: "Mi panel de organizador", signInOrUp: "Entrar / Registro", localApp: "App local", myAccount: "Mi cuenta", signOut: "Salir", publicSite: "Ver sitio público", language: "Idioma" },
+  nav: { panel: "Mi panel", payments: "Pagos", series: "Series", arenas: "Arenas", myLazador: "Mi perfil de lazador", createLazador: "Crear mi perfil de lazador", events: "Eventos", participants: "Participantes", myPanel: "Mi panel de organizador", signInOrUp: "Entrar / Registro", signIn: "Entrar", menu: "Menú", localApp: "App local", myAccount: "Mi cuenta", signOut: "Salir", publicSite: "Ver sitio público", language: "Idioma" },
   promo: {
     label: "Rope Master", title: "El software para organizar tu evento de lazo.",
     text: "Rope Master es la aplicación con la que se gestionan series y eventos de lazo: equipos, tiempos, jueces y resultados en un solo sistema, sincronizado en tiempo real.",
@@ -104,7 +104,7 @@ export const es = {
     publicProfile: "Ver mi perfil público e historial", paid: "Pagado", pending: "Pago pendiente",
   },
   org: {
-    panel: { hello: "Hola,", toCollect: "por cobrar", tabs: { proximos: "Próximos", pasados: "Pasados", borradores: "Borradores" }, tabEmpty: "No hay eventos en esta pestaña.", noEnrolled: "Sin inscripciones", paidOf: (a: number, b: number) => `${a} de ${b} pagados`, spots: (a: number, b: number) => `${a}/${b} lugares`, waiting: (n: number) => `${n} en espera` },
+    panel: { hello: "Hola,", toCollect: "por cobrar", tabs: { proximos: "Próximos", pasados: "Pasados", borradores: "Borradores", series: "Series" }, seriesEvents: (n: number) => `${n} ${n === 1 ? "evento" : "eventos"}`, seriesOpen: (n: number) => `${n} ${n === 1 ? "abierto" : "abiertos"}`, tabEmpty: "No hay eventos en esta pestaña.", noEnrolled: "Sin inscripciones", paidOf: (a: number, b: number) => `${a} de ${b} pagados`, spots: (a: number, b: number) => `${a}/${b} lugares`, waiting: (n: number) => `${n} en espera` },
     overview: {
       title: "Resumen", nextSeries: "Próxima serie", nextEvent: "Siguiente evento", events: "eventos", enrolledInSeries: "inscritos en la serie", inDays: (n: number) => n === 0 ? "es hoy" : n === 1 ? "mañana" : `en ${n} días`,
       noNextEvent: "No tienes un evento próximo publicado.", enrolled: "Inscritos", capacity: "cupo", spotsLeft: (n: number) => `${n} lugares libres`, full: "Cupo lleno",

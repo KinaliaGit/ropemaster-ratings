@@ -18,8 +18,8 @@ export function EnrolledSkeleton() {
 // Página completa mientras llega el evento: cartel 2:3 a la izquierda y los datos a la derecha.
 export function EventSkeleton() {
   return (
-    <div className="mx-auto max-w-6xl animate-pulse px-5 pb-12 pt-8" aria-hidden>
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,380px)_1fr] lg:gap-12">
+    <div className="page animate-pulse" aria-hidden>
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,360px)_1fr] lg:gap-10">
         <div className="mx-auto aspect-[2/3] w-full max-w-sm rounded-[28px] bg-sand lg:max-w-none" />
         <div>
           <div className="h-10 w-3/4 rounded-xl bg-sand" />

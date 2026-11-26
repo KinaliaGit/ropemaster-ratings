@@ -78,12 +78,12 @@ export function RoperGrid({ discipline, lang, initial, labels: l }: { discipline
 
       <div className="mt-4" aria-live="polite" aria-busy={missing && failed !== key}>
         {missing && failed !== key && (
-          <div className="grid animate-pulse grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3" aria-hidden>{[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="card h-36 bg-sand/60" />)}</div>
+          <div className="grid animate-pulse grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-6" aria-hidden>{[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="card h-36 bg-sand/60" />)}</div>
         )}
         {missing && failed === key && <p className="text-muted">{l.loadError}{" "}<button type="button" onClick={() => setFailed(null)} className="underline">{l.retry}</button></p>}
         {entry && entry.rows.length === 0 && <p className="rounded-2xl bg-sand p-6 text-center text-muted">{l.noResults}</p>}
         {entry && entry.rows.length > 0 && (
-          <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3">
+          <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-6">
             {entry.rows.map((r) => (
               <li key={r.id} className="min-w-0">
                 <Link href={`/${lang}/participantes/${r.id}`} className="card card-link group flex h-full flex-col items-center px-1.5 pb-3 pt-4 text-center">

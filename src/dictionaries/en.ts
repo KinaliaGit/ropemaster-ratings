@@ -5,7 +5,7 @@ export const en: Dict = {
   meta: { title: "Rope Master Ratings", description: "The global registry of ropers: rating, history and results from every event." },
   common: { brand: "Rope Master", ratings: "Ratings", loading: "Loading…", back: "Back", of: "of" },
   roles: { legend: "Which role do you usually compete in?", header: "Header", heeler: "Heeler", both: "Both", favoriteLegend: "Which is your favorite role, the one you use most?", favorite: "favorite", undefined: "Not set" },
-  nav: { panel: "My dashboard", payments: "Payments", series: "Series", arenas: "Arenas", myLazador: "My roper profile", createLazador: "Create my roper profile", events: "Events", participants: "Participants", myPanel: "My organizer dashboard", signInOrUp: "Sign in / Sign up", localApp: "Local app", myAccount: "My account", signOut: "Sign out", publicSite: "View public site", language: "Language" },
+  nav: { panel: "My dashboard", payments: "Payments", series: "Series", arenas: "Arenas", myLazador: "My roper profile", createLazador: "Create my roper profile", events: "Events", participants: "Participants", myPanel: "My organizer dashboard", signInOrUp: "Sign in / Sign up", signIn: "Sign in", menu: "Menu", localApp: "Local app", myAccount: "My account", signOut: "Sign out", publicSite: "View public site", language: "Language" },
   promo: {
     label: "Rope Master", title: "The software to run your roping event.",
     text: "Rope Master is the app used to manage roping series and events: teams, times, judges and results in one system, synced in real time.",
@@ -104,7 +104,7 @@ export const en: Dict = {
     publicProfile: "View my public profile and history", paid: "Paid", pending: "Payment pending",
   },
   org: {
-    panel: { hello: "Hi,", toCollect: "to collect", tabs: { proximos: "Upcoming", pasados: "Past", borradores: "Drafts" }, tabEmpty: "No events in this tab.", noEnrolled: "No registrations", paidOf: (a: number, b: number) => `${a} of ${b} paid`, spots: (a: number, b: number) => `${a}/${b} spots`, waiting: (n: number) => `${n} waiting` },
+    panel: { hello: "Hi,", toCollect: "to collect", tabs: { proximos: "Upcoming", pasados: "Past", borradores: "Drafts", series: "Series" }, seriesEvents: (n: number) => `${n} ${n === 1 ? "event" : "events"}`, seriesOpen: (n: number) => `${n} open`, tabEmpty: "No events in this tab.", noEnrolled: "No registrations", paidOf: (a: number, b: number) => `${a} of ${b} paid`, spots: (a: number, b: number) => `${a}/${b} spots`, waiting: (n: number) => `${n} waiting` },
     overview: {
       title: "Overview", nextSeries: "Next series", nextEvent: "Next event", events: "events", enrolledInSeries: "registered in the series", inDays: (n: number) => n === 0 ? "today" : n === 1 ? "tomorrow" : `in ${n} days`,
       noNextEvent: "You have no upcoming published event.", enrolled: "Registered", capacity: "capacity", spotsLeft: (n: number) => `${n} spots left`, full: "Full",

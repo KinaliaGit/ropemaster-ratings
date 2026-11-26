@@ -19,7 +19,7 @@ async function Page({ params }: { params: PageProps<"/[lang]/organizador/partici
         const rows = canSee ? await listDirectory(lang, { verified: d.verified, unclaimed: d.unclaimed }) : [];
         return (
           <>
-            <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
+            <div className="page">
               <h1 className="text-3xl font-semibold">{d.title}</h1>
               <p className="mt-1 text-sm text-muted">{d.blurb}</p>
               {!canSee

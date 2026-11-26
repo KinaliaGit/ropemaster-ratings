@@ -23,7 +23,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/arenas"> 
         const arenas = await listArenas();
         return (
           <>
-            <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
+            <div className="page">
               <h1 className="text-3xl font-semibold">{a.title}</h1>
               <p className="mt-1 max-w-2xl text-sm text-muted">{a.blurb}</p>
               {sp.agregada === "1" && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{a.added}</p>}

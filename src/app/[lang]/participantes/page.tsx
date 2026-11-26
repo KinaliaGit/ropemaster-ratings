@@ -30,7 +30,7 @@ export default async function Participantes({ params }: PageProps<"/[lang]/parti
   const lang = await resolveLang(params);
   const t = getDictionary(lang);
   return (
-    <div className="mx-auto max-w-3xl px-5 pb-10 pt-6 sm:pt-10">
+    <div className="page">
       <h1 className="text-2xl font-semibold sm:text-3xl">{t.people.title}</h1>
       <Suspense fallback={<RankingSkeleton />}>
         <Directory lang={lang} t={t} />

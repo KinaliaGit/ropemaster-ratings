@@ -7,13 +7,21 @@ import { logout } from "@/lib/auth-actions";
 import { NoticeBanner } from "@/components/NoticeBanner";
 import { NavLinks, type NavItem } from "@/components/NavLinks";
 import { AccountMenu } from "@/components/AccountMenu";
+import { GuestMenu } from "@/components/GuestMenu";
 import { initials, publicAvatarUrl } from "@/lib/people";
 import type { Dict } from "@/dictionaries/es";
 import type { Lang } from "@/lib/format";
 
 async function Account({ lang, t }: { lang: Lang; t: Dict }) {
   const s = await getSession();
-  if (!s) return <Link href={`/${lang}/entrar`} className="whitespace-nowrap rounded-full bg-ink px-2.5 py-2 text-xs font-medium text-white transition hover:bg-brand-hot sm:px-4 sm:text-sm">{t.nav.signInOrUp}</Link>;
+  if (!s) return (
+    <div className="flex items-center gap-2">
+      <Link href={`/${lang}/entrar`} className="inline-flex min-h-11 items-center whitespace-nowrap rounded-full bg-ink px-4 text-sm font-medium text-white transition hover:bg-brand-hot sm:min-h-0 sm:py-2">
+        <span className="sm:hidden">{t.nav.signIn}</span><span className="hidden sm:inline">{t.nav.signInOrUp}</span>
+      </Link>
+      <GuestMenu label={t.nav.menu} items={publicItems(lang, t).map(({ href, label }) => ({ href, label }))} />
+    </div>
+  );
   const org = s.role === "organizador";
   const unread = await countMyUnread();
   const base = `/${lang}/organizador`;
@@ -28,13 +36,10 @@ async function Account({ lang, t }: { lang: Lang; t: Dict }) {
     <AccountMenu
       initials={initials(s.name)} photo={publicAvatarUrl(s.avatarPath)} name={s.name} roleLabel={org ? t.org.accountType : t.account.type} lang={lang}
       dashboardHref={`/${lang}/${org ? "organizador" : "mi-cuenta"}`} dashboardLabel={org ? t.nav.myPanel : t.nav.myAccount}
-      // Lo que no está en la barra vive aquí. «App local» (KIN-761) solo la muestra; la página sigue protegida por su cuenta.
+      // Menú corto (KIN-761): las series son una pestaña del panel y «App local» un enlace al final de él.
       extras={[...phone, ...(org ? [
-        { href: `${base}/series`, label: t.nav.series, separated: true },
-        { href: `${base}/arenas`, label: t.nav.arenas },
-        { href: `/${lang}/mi-cuenta`, label: s.hasRoper ? t.nav.myLazador : t.nav.createLazador, separated: true },
-        { href: `${base}/app`, label: t.nav.localApp },
-        { href: `/${lang}`, label: t.nav.publicSite, separated: true },
+        { href: `/${lang}/mi-cuenta`, label: s.hasRoper ? t.nav.myLazador : t.nav.createLazador },
+        { href: `/${lang}`, label: t.nav.publicSite },
       ] : [])]}
       signOutLabel={t.nav.signOut} signOut={logout}
     />
@@ -59,11 +64,10 @@ function barItems(lang: Lang, t: Dict, organizer: boolean): NavItem[] {
   ];
 }
 
-// Sin sesión, los enlaces se ven siempre. Con sesión, en celular se guardan en el menú de la cuenta.
+// En celular los enlaces van en un menú: el de la cuenta con sesión, o el ☰ sin ella.
 async function Links({ lang, t }: { lang: Lang; t: Dict }) {
   const s = await getSession();
-  if (!s) return <NavLinks items={publicItems(lang, t)} />;
-  return <div className="hidden sm:block"><NavLinks items={barItems(lang, t, s.role === "organizador")} /></div>;
+  return <div className="hidden sm:block"><NavLinks items={s ? barItems(lang, t, s.role === "organizador") : publicItems(lang, t)} /></div>;
 }
 
 // El logo lleva al inicio de cada quien: el panel para el organizador y la portada para los demás.
@@ -85,9 +89,9 @@ function Logo({ href, t }: { href: string; t: Dict }) {
 export function Header({ lang, t }: { lang: Lang; t: Dict }) {
   return (
     <header className="fixed inset-x-0 top-0 z-50 bg-cream/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-5 sm:gap-3 md:grid md:grid-cols-[1fr_auto_1fr]">
+      <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-2 px-5 sm:gap-3 md:grid md:grid-cols-[1fr_auto_1fr]">
         <Suspense fallback={<Logo href={`/${lang}`} t={t} />}><Brand lang={lang} t={t} /></Suspense>
-        <div className="md:justify-self-center"><Suspense fallback={<NavLinks items={publicItems(lang, t)} />}><Links lang={lang} t={t} /></Suspense></div>
+        <div className="md:justify-self-center"><Suspense fallback={<div className="hidden sm:block"><NavLinks items={publicItems(lang, t)} /></div>}><Links lang={lang} t={t} /></Suspense></div>
         <div className="flex items-center justify-end">
           <Suspense fallback={<span className="size-9" />}><Account lang={lang} t={t} /></Suspense>
         </div>

@@ -1,5 +1,5 @@
+import { BackLink } from "@/components/BackLink";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
@@ -20,8 +20,8 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/series/nu
         const arenas = await listArenas();
         return (
           <>
-            <div className="mx-auto max-w-2xl px-5 pb-10 pt-8">
-              <Link href={`/${lang}/organizador/series`} className="text-sm text-muted hover:text-ink">← {t.org.series.back}</Link>
+            <div className="page">
+              <BackLink href={`/${lang}/organizador?ver=series`}>{t.org.series.back}</BackLink>
               <h1 className="mt-2 text-3xl font-semibold">{f.newTitle}</h1>
               <p className="mt-1 text-sm text-muted">{f.newBlurb}</p>
               {sp.primero === "1" && <p role="status" data-testid="series-first" className="mt-4 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{f.firstSeries}</p>}

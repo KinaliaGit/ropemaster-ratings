@@ -19,16 +19,18 @@ export function EventSearch({ action, query, arena, view, arenas, labels: l }: {
             <svg aria-hidden viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M3 6h9M16 6h1M3 14h1M8 14h9" /><circle cx="14" cy="6" r="2" /><circle cx="6" cy="14" r="2" /></svg>
           </summary>
           <div className="absolute inset-x-0 top-full z-20 mt-2 rounded-2xl border border-line bg-white p-3 shadow-[0_12px_32px_-12px_rgba(20,19,17,0.25)] sm:left-auto sm:w-72">
-            <label className="block text-sm font-medium">{l.arena}
-              <span className="relative mt-1 block">
-                {/* La flecha del navegador queda pegada al borde: se oculta y se dibuja una con aire. */}
-                <select name="arena" defaultValue={arena} className="min-h-11 w-full appearance-none truncate rounded-xl border border-line bg-white pl-3 pr-10 text-sm font-normal outline-none focus:border-ink">
-                  <option value="">{l.allArenas}</option>
-                  {arenas.map((o) => <option key={o.key} value={o.key}>{o.name} ({o.count})</option>)}
-                </select>
-                <svg aria-hidden viewBox="0 0 20 20" className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m5 8 5 5 5-5" /></svg>
-              </span>
-            </label>
+            {/* Opciones a la vista en lugar del desplegable del navegador, que se veía distinto en cada equipo. Son radios: funcionan sin JavaScript. */}
+            <fieldset>
+              <legend className="text-sm font-medium">{l.arena}</legend>
+              <div className="mt-2 flex max-h-56 flex-wrap gap-1.5 overflow-y-auto p-0.5">
+                {[{ key: "", name: l.allArenas, count: null as number | null }, ...arenas].map((o) => (
+                  <label key={`o:${o.key}`} className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-full bg-sand px-3.5 text-sm font-medium text-muted transition hover:text-ink has-checked:bg-ink has-checked:text-white has-focus-visible:ring-2 has-focus-visible:ring-brand">
+                    <input type="radio" name="arena" value={o.key} defaultChecked={arena === o.key} className="sr-only" />
+                    {o.name}{o.count !== null && <span className="text-xs tabular-nums opacity-70">{o.count}</span>}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <button className="mt-3 min-h-11 w-full rounded-full bg-brand text-sm font-medium text-white hover:bg-brand-hot">{l.apply}</button>
           </div>
         </details>

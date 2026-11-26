@@ -1,3 +1,4 @@
+import { BackLink } from "@/components/BackLink";
 import { connection } from "next/server";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -22,8 +23,8 @@ async function PerfilInner({ params }: { params: PageProps<"/[lang]/participante
   if (!r) notFound();
   const modes = ACTIVE_DISCIPLINES.filter((d) => r.stats[d.id]);
   return (
-    <div className="mx-auto max-w-3xl px-5 pb-10 pt-6 sm:pt-10">
-      <Link href={`/${lang}/participantes`} className="inline-block py-1.5 text-sm text-muted hover:text-ink">← {t.people.title}</Link>
+    <div className="page">
+      <BackLink href={`/${lang}/participantes`}>{t.people.title}</BackLink>
       {/* Mismo encabezado que «Mi cuenta»: foto con el rating encima, nombre y etiquetas. */}
       <div className="mt-3 flex items-start gap-3 sm:gap-4">
         <div className="relative shrink-0">

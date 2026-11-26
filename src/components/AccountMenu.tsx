@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 type Props = {
   initials: string; photo?: string | null; name: string; roleLabel: string; lang: "es" | "en";
-  dashboardHref: string; dashboardLabel: string; extras?: { href: string; label: string; className?: string; separated?: boolean }[]; signOutLabel: string;
+  dashboardHref: string; dashboardLabel: string; extras?: { href: string; label: string; className?: string }[]; signOutLabel: string;
   signOut: (formData: FormData) => void | Promise<void>;
 };
 
@@ -40,7 +40,8 @@ export function AccountMenu({ initials, photo, name, roleLabel, lang, dashboardH
           </div>
           <div className="my-1 h-px bg-line" />
           <Link role="menuitem" href={dashboardHref} onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-sand">{dashboardLabel}</Link>
-          {extras.map((x) => <Link key={x.href} role="menuitem" href={x.href} onClick={() => setOpen(false)} className={`block rounded-xl px-3 py-2 text-sm hover:bg-sand ${x.separated ? "mt-1 border-t border-line" : ""} ${x.className ?? ""}`}>{x.label}</Link>)}
+          {extras.map((x) => <Link key={x.href} role="menuitem" href={x.href} onClick={() => setOpen(false)} className={`block rounded-xl px-3 py-2 text-sm hover:bg-sand ${x.className ?? ""}`}>{x.label}</Link>)}
+          <div className="my-1 h-px bg-line" />
           <form action={signOut}>
             <input type="hidden" name="lang" value={lang} />
             <button role="menuitem" className="block w-full rounded-xl px-3 py-2 text-left text-sm text-muted hover:bg-sand hover:text-ink">{signOutLabel}</button>

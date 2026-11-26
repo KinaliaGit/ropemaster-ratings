@@ -34,11 +34,12 @@ export async function getPublicSeries(slug: string): Promise<{ series: SeriesIte
 
 // ---- Del organizador (con su sesión; sin caché: ve también sus borradores) ----
 
-export async function listOrganizerSeries(organizerId: string): Promise<{ series: SeriesItem; events: EventItem[] }[]> {
+/** `loaded`: los eventos del organizador si quien llama ya los está pidiendo, para no leerlos dos veces. */
+export async function listOrganizerSeries(organizerId: string, loaded?: Promise<EventItem[]>): Promise<{ series: SeriesItem; events: EventItem[] }[]> {
   const supabase = await createServerSupabase();
   const [{ data, error }, events] = await Promise.all([
     supabase.from("event_series").select(COLUMNS).eq("organizer_id", organizerId).order("start_date", { ascending: false }),
-    listOrganizerEvents(organizerId),
+    loaded ?? listOrganizerEvents(organizerId),
   ]);
   if (error) throw new Error(`No se pudieron leer tus series: ${error.message}`);
   return ((data ?? []) as Row[]).map((r) => ({ series: toItem(r), events: events.filter((e) => e.series?.slug === r.slug).sort(byDate) }));

@@ -69,7 +69,7 @@ export default async function Home({ params, searchParams }: PageProps<"/[lang]"
   const lang = await resolveLang(params);
   const t = getDictionary(lang);
   return (
-    <div className="mx-auto max-w-6xl px-5 pb-10 pt-6 sm:pt-10">
+    <div className="page">
       <h1 className="text-2xl font-semibold sm:text-3xl">{t.home.title}</h1>
       <Suspense fallback={<EventsSkeleton />}>
         <Events lang={lang} t={t} searchParams={searchParams} />

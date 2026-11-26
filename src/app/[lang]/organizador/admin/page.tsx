@@ -67,7 +67,7 @@ async function Page(props: PageProps<"/[lang]/organizador/admin">) {
         const { organizers, audit } = await listOrganizersForAdmin();
         return (
           <>
-            <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
+            <div className="page">
               <h1 className="text-3xl font-semibold">{a.title}</h1>
               <p className="mt-1 text-sm text-muted">{a.blurb}</p>
               {sp.error === "1" && <p role="alert" className="mt-4 rounded-2xl bg-sand p-4 text-sm font-medium">{a.error}</p>}

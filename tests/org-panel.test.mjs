@@ -13,10 +13,12 @@ test("KIN-763: cada evento en su pestaña y en su orden", () => {
 });
 
 test("sin elegir pestaña se abre la primera que tenga eventos", () => {
-  const empty = { proximos: [], pasados: [], borradores: [] };
+  const empty = { proximos: [], pasados: [], borradores: [], series: [] };
   assert.equal(pickOrgTab(undefined, empty), "proximos");
   assert.equal(pickOrgTab(undefined, { ...empty, borradores: [1] }), "borradores");
   assert.equal(pickOrgTab("pasados", empty), "pasados");
+  assert.equal(pickOrgTab("series", empty), "series");
+  assert.equal(pickOrgTab(undefined, { ...empty, series: [1] }), "series"); // solo tiene una serie sin eventos: que se vea
   assert.equal(pickOrgTab("otra", { ...empty, pasados: [1] }), "pasados");
 });
 

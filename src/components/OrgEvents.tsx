@@ -12,7 +12,7 @@ export type OrgEventInfo = { paid: number; pending: number; waiting: number; not
 export function OrgEvents({ events, info, lang, t }: { events: EventItem[]; info: (e: EventItem) => OrgEventInfo; lang: Lang; t: Dict }) {
   const o = t.org.panel;
   return (
-    <div className="mt-3 space-y-3">
+    <div className="mt-3 grid gap-3 md:grid-cols-2 [&>:only-child]:col-span-full">
       {events.map((e) => {
         const { paid, pending, waiting, notes } = info(e);
         const charged = paid + pending;

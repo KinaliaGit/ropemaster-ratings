@@ -1,15 +1,18 @@
 // KIN-763: en qué pestaña de «Mis eventos» va cada evento y cuántos se muestran. Recibe el estado ya calculado por fecha.
-export const ORG_TABS = ["proximos", "pasados", "borradores"] as const;
+// Las series van en una cuarta pestaña (KIN-761): no necesitan una lista aparte.
+const EVENT_TABS = ["proximos", "pasados", "borradores"] as const;
+export const ORG_TABS = [...EVENT_TABS, "series"] as const;
 export type OrgTab = (typeof ORG_TABS)[number];
+export type EventTab = (typeof EVENT_TABS)[number];
 export const ORG_PAGE_SIZE = 20; // «Ver más» suma otra tanda
 
-export const orgTabOf = (status: string): OrgTab => (status === "borrador" ? "borradores" : status === "finalizado" ? "pasados" : "proximos");
+export const orgTabOf = (status: string): EventTab => (status === "borrador" ? "borradores" : status === "finalizado" ? "pasados" : "proximos");
 
 /** Reparte los eventos: próximos del más cercano al más lejano; pasados y borradores, del más reciente al más antiguo. */
-export function groupOrgEvents<E extends { status: string; date: string }>(events: E[]): Record<OrgTab, E[]> {
-  const groups: Record<OrgTab, E[]> = { proximos: [], pasados: [], borradores: [] };
+export function groupOrgEvents<E extends { status: string; date: string }>(events: E[]): Record<EventTab, E[]> {
+  const groups: Record<EventTab, E[]> = { proximos: [], pasados: [], borradores: [] };
   for (const e of events) groups[orgTabOf(e.status)].push(e);
-  for (const tab of ORG_TABS) groups[tab].sort((a, b) => (tab === "proximos" ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date)));
+  for (const tab of EVENT_TABS) groups[tab].sort((a, b) => (tab === "proximos" ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date)));
   return groups;
 }
 

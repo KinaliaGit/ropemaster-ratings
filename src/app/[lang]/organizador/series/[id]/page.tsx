@@ -1,3 +1,4 @@
+import { BackLink } from "@/components/BackLink";
 import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
@@ -34,8 +35,8 @@ async function Manage({ s, id, lang, t, flags, shareUrl }: { s: Session; id: str
   const addError = flags.error && !flags.error.startsWith("del_") ? errorMsg : null;
   return (
     <>
-      <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
-        <Link href={`/${lang}/organizador/series`} className="text-sm text-muted hover:text-ink">← {m.back}</Link>
+      <div className="page">
+        <BackLink href={`/${lang}/organizador?ver=series`}>{m.back}</BackLink>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-3xl font-semibold">{x.name}</h1>

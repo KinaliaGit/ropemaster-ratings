@@ -23,7 +23,7 @@ export async function PastEvents({ id, registrations, lang, t }: { id: string; r
   return (
     <>
       {waiting.length > 0 && (
-        <div className="mt-3 space-y-3">
+        <div className="mt-3 grid items-start gap-3 md:grid-cols-2 [&>:only-child]:col-span-full">
           {waiting.map((m) => (
             <AccountEventCard key={m.id} date={m.event?.date} lang={lang} name={m.event?.name ?? "—"} href={m.event?.slug ? `/${lang}/eventos/${m.event.slug}` : undefined}
               meta={[m.role ? t.roles[m.role as "header" | "heeler"] : "", m.category].filter(Boolean).join(" · ")} menuLabel={t.account.moreOptions}

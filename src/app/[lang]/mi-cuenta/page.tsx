@@ -39,7 +39,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
         if (!s.hasRoper) {
           // Cuenta sin perfil de lazador (p. ej. un organizador): se crea con un botón; reclama el que otro organizador haya registrado con su correo.
           return (
-            <div className="mx-auto max-w-lg px-5 pb-10 pt-14">
+            <div className="page">
               <h1 className="text-3xl font-semibold">{t.account.createTitle}</h1>
               <p className="mt-2 text-muted">{t.account.createText}</p>
               <form action={createMyRoperProfile} className="mt-6">
@@ -67,7 +67,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
         // KIN-770: una sola lista con lo que viene (pagadas, pendientes y en espera), por fecha.
         const next = mergeUpcoming(upcoming, waiting.filter((w) => w.event?.status === "publicado"));
         return (
-          <div className="mx-auto max-w-3xl px-5 pb-10 pt-10">
+          <div className="page">
             <div className="flex items-start gap-3 sm:gap-4">
               <AvatarUploader compact url={publicAvatarUrl(s.avatarPath)} initials={initials(s.name)} name={s.name} l={t.account.photo}
                 badge={modes[0] && <span className="whitespace-nowrap rounded-full border-2 border-cream bg-brand px-2 text-xs font-semibold tabular-nums text-ink" aria-label={`${t.account.currentRating}: ${fmtRating(me!.stats[modes[0].id]!.rating)}`} role="img">{fmtRating(me!.stats[modes[0].id]!.rating)}</span>} />
@@ -97,7 +97,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
             {notice && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{notice}</p>}
 
             <h2 className="mt-8 text-xl font-semibold">{t.account.upcoming}</h2>
-            <div className="mt-3 space-y-3">
+            <div className="mt-3 grid items-start gap-3 md:grid-cols-2 [&>:only-child]:col-span-full">
               {next.length === 0 && (
                 <div className="rounded-2xl bg-sand p-6 text-center">
                   <p className="text-muted">{t.account.noUpcoming}</p>
@@ -172,7 +172,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
             {removed.length > 0 && (
               <section aria-labelledby="removed" className="mt-10">
                 <h2 id="removed" className="text-xl font-semibold">{t.account.removedTitle}</h2>
-                <div className="mt-3 space-y-3">
+                <div className="mt-3 grid items-start gap-3 md:grid-cols-2 [&>:only-child]:col-span-full">
                   {removed.map((x) => (
                     <AccountEventCard key={x.id} date={x.event?.event_date} lang={lang} name={x.event?.name ?? "—"} href={x.event?.slug ? `/${lang}/eventos/${x.event.slug}` : undefined}
                       meta={x.category} menuLabel={t.account.moreOptions}

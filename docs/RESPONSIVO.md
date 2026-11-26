@@ -21,6 +21,12 @@ Los de Tailwind. Se diseña primero para celular y se agregan excepciones hacia 
 4. **Textos largos** (nombres de evento o lazador): `break-words` donde deban leerse completos; `truncate` solo en listas.
 
 ## Patrones
+**Campos de texto.** En pantallas táctiles miden 16 px (regla en `globals.css`): con menos, iPhone hace zoom al tocarlos. No se baja ese
+tamaño ni se bloquea el zoom en el `viewport`.
+
+**Contenedor de página.** Toda pantalla usa `<div className="page">` (mismo ancho que la barra y el pie: 1024 px, 20 px a los lados). Solo
+entrar, registrarse, recuperar la contraseña y «no encontrado» usan `page-narrow`. No se ponen anchos ni márgenes de página a mano.
+
 **Tablas.** En celular, tarjetas; desde `sm`, tabla dentro de un contenedor con desplazamiento. Ejemplo: `OrgParticipantsTable`.
 ```tsx
 <div className="space-y-3 sm:hidden">{/* una tarjeta por fila */}</div>

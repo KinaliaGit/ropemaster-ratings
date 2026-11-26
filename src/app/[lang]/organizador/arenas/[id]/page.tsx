@@ -1,3 +1,4 @@
+import { BackLink } from "@/components/BackLink";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -31,8 +32,8 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/arenas/[i
         const inUse = arena.events.length > 0 || arena.series.length > 0;
         return (
           <>
-            <div className="mx-auto max-w-4xl px-5 pb-10 pt-8">
-              <Link href={`/${lang}/organizador/arenas`} className="text-sm text-muted hover:text-ink">← {a.back}</Link>
+            <div className="page">
+              <BackLink href={`/${lang}/organizador/arenas`}>{a.back}</BackLink>
               <h1 className="mt-2 text-3xl font-semibold">{arena.name}</h1>
               {arena.city && <p className="mt-1 text-sm text-muted">{arena.city}</p>}
               {(sp.guardada === "1" || sp.unida === "1") && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{sp.unida === "1" ? a.merged : a.saved}</p>}

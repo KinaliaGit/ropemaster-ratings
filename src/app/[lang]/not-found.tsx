@@ -7,7 +7,7 @@ export default function NotFound() {
   const es = getDictionary("es").account;
   const en = getDictionary("en").account;
   return (
-    <div className="mx-auto max-w-lg px-5 pb-16 pt-20 text-center">
+    <div className="page-narrow text-center">
       <p className="label">404</p>
       <h1 className="mt-2 text-3xl font-semibold">{es.notFoundTitle}</h1>
       <p className="mt-2 text-muted">{es.notFoundText}</p>

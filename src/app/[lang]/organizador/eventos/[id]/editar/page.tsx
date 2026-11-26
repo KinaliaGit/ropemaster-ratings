@@ -1,5 +1,5 @@
+import { BackLink } from "@/components/BackLink";
 import { isoToZonedLocal } from "@/lib/event-time";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
@@ -27,8 +27,8 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/eventos/[
         const [paymentInfo, arenas] = await Promise.all([getPaymentInstructions(e.uuid!), listArenas()]);
         return (
           <>
-            <div className="mx-auto max-w-2xl px-5 pb-10 pt-8">
-              <Link href={`/${lang}/organizador/eventos/${id}`} className="text-sm text-muted hover:text-ink">← {e.name}</Link>
+            <div className="page">
+              <BackLink href={`/${lang}/organizador/eventos/${id}`}>{e.name}</BackLink>
               <h1 className="mt-2 text-3xl font-semibold">{f.editTitle}</h1>
               <p className="mt-1 text-sm text-muted">{f.editBlurb}</p>
               <EventForm

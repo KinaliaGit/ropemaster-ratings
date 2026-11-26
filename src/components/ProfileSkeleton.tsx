@@ -18,7 +18,7 @@ export function HistorySkeleton() {
 // Perfil completo mientras llega el participante.
 export function ProfileSkeleton() {
   return (
-    <div className="mx-auto max-w-3xl animate-pulse px-5 pb-10 pt-10" aria-hidden>
+    <div className="page animate-pulse" aria-hidden>
       <div className="flex items-center gap-4">
         <div className="size-14 rounded-full bg-sand" />
         <div className="h-10 flex-1 rounded-xl bg-sand" />

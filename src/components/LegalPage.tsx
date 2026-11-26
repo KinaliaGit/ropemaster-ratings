@@ -4,7 +4,7 @@ import { LEGAL, type LegalDoc } from "@/lib/legal";
 // Documento legal: título, versión y secciones. Enlaza al otro documento al final.
 export function LegalPage({ doc, otherHref, otherLabel }: { doc: LegalDoc; otherHref: string; otherLabel: string }) {
   return (
-    <article className="mx-auto max-w-2xl px-5 pb-10 pt-12">
+    <article className="page">
       <h1 className="text-4xl font-semibold">{doc.title}</h1>
       <p className="mt-2 text-sm text-muted">
         {doc.updated}: {LEGAL.version}

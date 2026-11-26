@@ -50,7 +50,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   const fromFee = e.categories.length ? Math.min(...e.categories.map((c) => c.fee)) : 0;
   const meta = [e.date ? fmtDate(e.date, lang) : "", [e.venue, e.city].filter(Boolean).join(", ")].filter(Boolean);
   return (
-    <div className="mx-auto max-w-6xl px-5 pb-12 pt-8">
+    <div className="page">
       {/* Celular: barra fija abajo con el botón de inscripción siempre a la mano (a todo el ancho; el selector de idioma en celular va en el pie). */}
       {open && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-cream/90 p-3 backdrop-blur-xl lg:hidden">
@@ -64,11 +64,11 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
           <Link href={`/${lang}/eventos/${e.id}/inscribirse`} className="block whitespace-nowrap rounded-full bg-ink px-5 py-3 text-center text-sm font-medium text-white transition hover:bg-brand-hot">{t.event.joinWaitlist}</Link>
         </div>
       )}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,380px)_1fr] lg:gap-12">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,360px)_1fr] lg:gap-10">
         {/* Cartel: el flyer vertical completo (2:3), sin recortes ni texto encima. */}
         <div className="mx-auto w-full max-w-sm lg:max-w-none">
           <div className="relative aspect-[2/3] overflow-hidden rounded-[28px] bg-sand shadow-[0_18px_48px_-24px_rgba(20,19,17,0.55)] lg:sticky lg:top-24">
-            <EventCover e={e} sizes="(min-width: 1024px) 380px, (min-width: 384px) 384px, 100vw" eager />
+            <EventCover e={e} sizes="(min-width: 1024px) 360px, (min-width: 384px) 384px, 100vw" eager />
             {!e.cover && <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-6 pt-24"><h2 className="text-3xl font-semibold text-white">{e.name}</h2></div>}
           </div>
         </div>

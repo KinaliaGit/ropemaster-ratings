@@ -1,3 +1,4 @@
+import { BackLink } from "@/components/BackLink";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -121,7 +122,7 @@ async function Content({ organizerId, lang, t, f, pagoError, done, shown, arena 
               <Link href={overview({ cobro: "completos" })} scroll={false} aria-current={showDone ? "page" : undefined} className={tabClass(showDone)}>{p.completeTab} <span className="tabular-nums">{complete.length}</span></Link>
             </nav>
             {events.length === 0 ? <p className="mt-3 rounded-2xl bg-sand p-6 text-center text-muted">{p.noneOwing}</p> : (
-              <ul className="mt-3 grid gap-2 sm:grid-cols-2" data-testid="pays-events">
+              <ul className="mt-3 grid gap-2 sm:grid-cols-2 [&>:only-child]:col-span-full" data-testid="pays-events">
                 {events.slice(0, shown).map((e) => (
                   <li key={e.slug} className="min-w-0">
                     <Link href={to({ event: e.slug, q: "", status: e.pendingCount > 0 ? "pendiente" : "todos" })} className="card card-link block h-full p-4">
@@ -152,7 +153,7 @@ async function Content({ organizerId, lang, t, f, pagoError, done, shown, arena 
   ] as const;
   return (
     <>
-      <Link href={home} className="mt-2 inline-block py-1.5 text-sm text-muted hover:text-ink">← {p.allPayments}</Link>
+      <BackLink href={home} className="mt-2">{p.allPayments}</BackLink>
       {alert}
       {selected && (
         <section className="card mt-2 p-5">
@@ -221,7 +222,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/pagos"> }
         if (!s.verified) redirect(`/${lang}/organizador`);
         return (
           <>
-            <div className="mx-auto max-w-3xl px-5 pb-10 pt-6 sm:pt-8">
+            <div className="page">
               <h1 className="text-2xl font-semibold sm:text-3xl">{t.org.pays.title}</h1>
               <Content organizerId={s.id} lang={lang} t={t} f={f} pagoError={one(sp.pagoError) === "1"} done={done} shown={shown} arena={arena} />
             </div>

@@ -42,5 +42,27 @@ h1, h2, h3, .font-display { font-family: var(--font-inter), sans-serif; letter-s
 .card-link { transition: border-color 0.2s; }
 .card-link:hover { border-color: #cfcbc1; }
 
+/* Contenedor de TODAS las pantallas (docs/RESPONSIVO.md): mismo ancho que la barra y el pie, así los márgenes no cambian al navegar.
+   `page-narrow` es solo para entrar, registrarse, recuperar la contraseña y «no encontrado». */
+@utility page {
+  margin-inline: auto;
+  width: 100%;
+  max-width: var(--container-5xl);
+  padding: 1.5rem 1.25rem 2.5rem;
+  @variant sm { padding-top: 2rem; }
+}
+@utility page-narrow {
+  margin-inline: auto;
+  width: 100%;
+  max-width: var(--container-md);
+  padding: 2.5rem 1.25rem;
+}
+
+/* iPhone hace zoom al tocar un campo con letra menor a 16 px y la página queda desfasada. En pantallas táctiles todos los campos usan 16 px
+   (sin bloquear el zoom con los dedos). Va fuera de las capas de Tailwind para ganarle a `text-sm`. */
+@media (pointer: coarse) {
+  input, select, textarea { font-size: 16px; }
+}
+
 /* Etiqueta pequeña */
 .label { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; color: var(--muted); }

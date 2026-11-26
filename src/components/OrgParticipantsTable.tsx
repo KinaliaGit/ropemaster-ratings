@@ -23,7 +23,7 @@ export function OrgParticipantsTable({ rows, l }: { rows: OrgRow[]; l: Labels })
         {list.map((r) => (
           <div key={r.id} className="card p-4">
             <div className="flex items-start justify-between gap-3">
-              <Link href={r.href} className="font-semibold hover:text-brand-hot">{r.name}</Link>
+              <Link href={r.href} className="-my-1.5 inline-block py-1.5 font-semibold hover:text-brand-hot">{r.name}</Link>
               <span className="shrink-0 rounded-full bg-sand px-2.5 py-0.5 text-xs font-medium text-muted">{r.profile}</span>
             </div>
             <p className="mt-0.5 break-all text-sm text-muted">{r.email}</p>
@@ -42,7 +42,7 @@ export function OrgParticipantsTable({ rows, l }: { rows: OrgRow[]; l: Labels })
           <tbody>
             {list.map((r) => (
               <tr key={r.id} className="border-t border-line">
-                <td className="p-3 font-medium"><Link href={r.href} className="hover:text-brand-hot">{r.name}</Link></td>
+                <td className="p-3 font-medium"><Link href={r.href} className="-my-1.5 inline-block py-1.5 hover:text-brand-hot">{r.name}</Link></td>
                 <td>{r.email}</td>
                 {r.ratings.map((v, i) => <td key={i} className="tabular-nums">{v}</td>)}
                 <td className="tabular-nums">{r.events}</td><td className="tabular-nums">{r.wins}</td><td>{r.profile}</td>

@@ -17,7 +17,7 @@ export function RemoveRegistrationDialog({ action, lang, slug, id, name, categor
   const ok = reason.trim().length >= 3;
   return (
     <>
-      <button type="button" onClick={() => ref.current?.showModal()} className="rounded-full border border-line px-3 py-1 text-xs font-medium text-red-700 hover:border-red-700">{l.button}</button>
+      <button type="button" onClick={() => ref.current?.showModal()} className="min-h-9 rounded-full border border-line px-3 text-xs font-medium text-red-700 hover:border-red-700">{l.button}</button>
       <dialog ref={ref} aria-labelledby={`rm-${id}`} className="m-auto w-[min(92vw,28rem)] rounded-2xl p-0 backdrop:bg-black/40">
         <form action={action} className="p-6">
           <h3 id={`rm-${id}`} className="text-lg font-semibold">{l.title}</h3>

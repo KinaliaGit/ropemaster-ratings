@@ -59,7 +59,7 @@ export function SeriesForm({ lang, labels: l, disciplines, error, initial, arena
               </div>
             </div>
           ))}
-          <button type="button" onClick={() => setCats([...cats, { name: "", fee: 0 }])} className="mt-3 text-sm font-medium text-brand-hot">{l.addCategory}</button>
+          <button type="button" onClick={() => setCats([...cats, { name: "", fee: 0 }])} className="mt-3 min-h-10 text-sm font-medium text-brand-hot">{l.addCategory}</button>
         </fieldset>
         <label className="mt-4 block text-sm font-medium">{l.paymentInfo}
           <textarea name="paymentInfo" rows={3} maxLength={1000} defaultValue={initial?.paymentInfo} className={input} />

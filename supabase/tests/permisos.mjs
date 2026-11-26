@@ -1947,6 +1947,81 @@ console.log("- Resultados de un evento (0030)");
   await as("authenticated", A, `delete from arenas where id = 'a7510000-0000-0000-0000-0000000000c1'`, "una arena sin uso SÍ se borra", "some");
 }
 
+// Resumen del organizador por arena (KIN-762, migración 0054): el panel filtra por la llave de la arena y solo ve lo de sus propias arenas.
+{
+  console.log("\n— Resumen del organizador por arena");
+  const num = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const verify = (label, ok) => { if (!ok) failures++; console.log(`${ok ? "✔" : "✘ FALLO"}  ${label}`); };
+  const NORTE = "Arena Norte KIN762", SUR = "Arena Sur KIN762", KNORTE = "arena norte kin762", KSUR = "arena sur kin762";
+  const SER762 = "5e762000-0000-0000-0000-000000000001";
+  const EN1 = "e7620000-0000-0000-0000-000000000001", EN2 = "e7620000-0000-0000-0000-000000000002", ES1 = "e7620000-0000-0000-0000-000000000003", EB1 = "e7620000-0000-0000-0000-0000000000b1";
+  const ANA = "11111111-0000-0000-0000-000000000001", MATEO = "22222222-0000-0000-0000-000000000002";
+  const overview = async (who, arg) => {
+    await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${who}', false); set role authenticated`);
+    try { return (arg === undefined ? await db.query("select public.organizer_overview() as o") : await db.query("select public.organizer_overview($1) as o", [arg])).rows[0].o; }
+    finally { await db.exec("reset role"); }
+  };
+  await db.exec(`update profiles set license_valid_until = 'infinity' where user_id in ('${A}', '${B}')`);
+  // El organizador A crea eventos en dos arenas (se enlazan solos por el lugar); B tiene su propia arena con otro nombre y un evento.
+  await db.exec(`
+    insert into event_series (id, slug, organizer_id, name, start_date, end_date) values ('${SER762}', 'serie-762', '${A}', 'Serie 762', '2099-01-01', '2099-12-31');
+    insert into events (id, name, organizer_id, status, slug, event_date, venue, city, series_id) values
+      ('${EN1}', 'Norte uno', '${A}', 'publicado', 'norte-uno-762', '2099-06-01', '${NORTE}', 'Monterrey', '${SER762}'),
+      ('${EN2}', 'Norte borrador', '${A}', 'borrador', 'norte-borrador-762', '2099-06-02', 'ARENA  norte kin762.', 'Monterrey', null),
+      ('${ES1}', 'Sur uno', '${A}', 'publicado', 'sur-uno-762', '2099-07-01', '${SUR}', 'Saltillo', null),
+      ('${EB1}', 'Evento de B', '${B}', 'publicado', 'b-uno-762', '2099-08-01', 'Arena de B 762', 'Puebla', null);
+    insert into registrations (event_id, roper_id, amount_cents, payment_status, payment_method) values
+      ('${EN1}', '${ANA}', 50000, 'pagado', 'efectivo'), ('${EN1}', '${MATEO}', 30000, 'pendiente', null),
+      ('${ES1}', '${ANA}', 10000, 'pendiente', null), ('${EB1}', '${ANA}', 99000, 'pagado', 'efectivo');
+  `);
+  verify("cada evento quedó con su arena correcta (los dos de Norte en la misma, el de Sur en otra)", await num(`select count(*) n from events e join arenas a on a.id = e.arena_id where e.organizer_id = '${A}' and ((e.id in ('${EN1}', '${EN2}') and a.key = '${KNORTE}') or (e.id = '${ES1}' and a.key = '${KSUR}'))`) === 3);
+  verify("las dos arenas de A son distintas y solo de A", await num(`select count(distinct id) n from arenas where organizer_id = '${A}' and key in ('${KNORTE}', '${KSUR}')`) === 2 && await num(`select count(*) n from arenas where organizer_id = '${B}' and key in ('${KNORTE}', '${KSUR}')`) === 0);
+  await as("authenticated", B, `select id from arenas where key in ('${KNORTE}', '${KSUR}')`, "otro organizador NO ve esas arenas", "deny");
+  await as("authenticated", B, `update events set venue = 'Robado' where id = '${EN1}'`, "otro organizador NO edita sus eventos", "deny");
+
+  // Permisos de la función, con y sin filtro
+  await as("anon", null, `select public.organizer_overview('${KNORTE}')`, "anónimo NO pide el resumen por arena", "deny");
+  await as("authenticated", C, `select public.organizer_overview('${KNORTE}')`, "un participante NO pide el resumen por arena", "deny");
+  await as("authenticated", A, `select public.organizer_overview('${KNORTE}')`, "el organizador SÍ pide el resumen de su arena", "some");
+  await as("authenticated", A, `select public.organizer_overview()`, "y sin filtro sigue funcionando igual que antes", "some");
+
+  // Con filtro, todo el resumen sale solo de esa arena
+  const norte = await overview(A, KNORTE), sur = await overview(A, KSUR);
+  verify("el resumen dice de qué arena es (id, nombre, ciudad y llave)", norte.arena?.key === KNORTE && norte.arena?.name === NORTE && norte.arena?.city === "Monterrey" && typeof norte.arena?.id === "string");
+  const pagos = (o, pending, paid, pendingCents, collectedCents) => o.payments.pending === pending && o.payments.paid === paid && o.payments.pending_cents === pendingCents && o.payments.collected_cents === collectedCents;
+  verify("Norte: pagos solo de sus eventos (1 pagado, 1 pendiente)", pagos(norte, 1, 1, 30000, 50000));
+  verify("Norte: estados (1 abierto, 1 borrador) y su próximo evento", norte.states.open === 1 && norte.states.draft === 1 && norte.states.finished === 0 && norte.next_event?.slug === "norte-uno-762" && norte.next_event?.enrolled === 2);
+  verify("Norte: la actividad y los pendientes son solo de Norte", norte.activity.length === 2 && norte.activity.every((x) => x.event === "Norte uno") && norte.todo.unpaid.length === 1 && norte.todo.unpaid[0].slug === "norte-uno-762");
+  verify("Norte: la próxima serie es la que tiene eventos ahí", norte.series?.slug === "serie-762" && norte.series?.events === 1 && norte.series?.enrolled === 2);
+  verify("Sur: pagos solo de su evento (1 pendiente)", sur.arena?.key === KSUR && pagos(sur, 1, 0, 10000, 0));
+  verify("Sur: su próximo evento y sin serie (ninguna serie tiene eventos ahí)", sur.next_event?.slug === "sur-uno-762" && sur.states.open === 1 && sur.states.draft === 0 && sur.series === null);
+  verify("ningún resumen filtrado incluye el evento de otra arena ni de otro organizador", !JSON.stringify(norte).includes("Sur uno") && !JSON.stringify(sur).includes("Norte") && !JSON.stringify([norte, sur]).includes("Evento de B"));
+
+  // La llave se entiende escrita de cualquier forma, como en la web
+  const escrita = await overview(A, "  ARENA   Norte  KIN762. ");
+  verify("«  ARENA   Norte  KIN762. » es la misma arena que su llave", escrita.arena?.id === norte.arena.id && pagos(escrita, 1, 1, 30000, 50000));
+
+  // Sin filtro, o con una llave vacía o sin letras, es lo de siempre (no filtra)
+  const todo = await overview(A), sinArgumento = await overview(A, null), vacio = await overview(A, ""), signos = await overview(A, " ... ");
+  verify("sin filtro: la respuesta trae arena null y las secciones de siempre", todo.arena === null && ["series", "next_event", "payments", "states", "activity", "todo"].every((k) => k in todo));
+  verify("null, vacío o solo signos NO filtran (igual que sin argumento)", [sinArgumento, vacio, signos].every((o) => JSON.stringify(o) === JSON.stringify(todo)));
+  verify("sin filtro cuenta los eventos de todas sus arenas (Norte + Sur de más)", todo.payments.pending >= norte.payments.pending + sur.payments.pending && todo.payments.paid >= norte.payments.paid + sur.payments.paid && todo.states.open >= norte.states.open + sur.states.open);
+
+  // Una llave que no es suya, que no existe o que se renombró no revela nada: resumen vacío y arena null
+  const ajena = await overview(B, KNORTE), inexistente = await overview(A, "no existe esta arena 762");
+  const vacioEsperado = (o) => o.arena === null && o.series === null && o.next_event === null && o.payments.pending === 0 && o.payments.paid === 0 && o.states.open + o.states.scheduled + o.states.finished + o.states.draft === 0 && o.activity.length === 0 && o.todo.unpaid.length === 0;
+  verify("B pidiendo la llave de una arena de A recibe el resumen vacío (sin error ni datos de A)", vacioEsperado(ajena) && !JSON.stringify(ajena).includes("Norte"));
+  verify("una llave que no existe da el resumen vacío", vacioEsperado(inexistente));
+  const deB = await overview(B, "arena de b 762");
+  verify("B filtrando por su propia arena ve solo lo suyo", deB.arena?.name === "Arena de B 762" && deB.payments.collected_cents === 99000 && !JSON.stringify(deB).includes("Norte"));
+  // Consultar el resumen es solo lectura: el lugar escrito y la arena de cada evento siguen exactamente igual
+  verify("consultar el resumen no cambia ningún evento ni arena", await num(`select count(*) n from events where (id = '${EN1}' and venue = '${NORTE}') or (id = '${EN2}' and venue = 'ARENA  norte kin762.') or (id = '${ES1}' and venue = '${SUR}')`) === 3);
+
+  // Al renombrar la arena cambia su llave: la vieja ya no coincide y la nueva sí
+  await db.exec(`update arenas set name = 'Arena Norte Renombrada KIN762' where organizer_id = '${A}' and key = '${KNORTE}'`);
+  verify("si la arena se renombra, la llave vieja ya no coincide y la nueva sí", vacioEsperado(await overview(A, KNORTE)) && (await overview(A, "arena norte renombrada kin762")).payments.paid === 1);
+}
+
 // Relleno de la 0052: las arenas salen de los lugares que ya existían, sin cambiar el texto de los eventos ni su fecha de actualización.
 {
   console.log("\n— Arenas: relleno de los eventos existentes");

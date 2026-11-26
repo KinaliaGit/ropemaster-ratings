@@ -7,7 +7,8 @@ import { getEventRegistrants, getEventWaitlistCount } from "@/lib/data/registrat
 import { ACTIVE_DISCIPLINES, DEFAULT_DISCIPLINE, type DisciplineId } from "@/lib/disciplines";
 import { toEnrolledItem } from "@/lib/enrolled-view";
 import { fmtDate, mxn, type Lang } from "@/lib/format";
-import { fmtDeadline, isNotOpenYet, isRegistrationOpen, statusByDate } from "@/lib/event-time";
+import { fmtDeadline, isLiveToday, isNotOpenYet, isRegistrationOpen, statusByDate } from "@/lib/event-time";
+import { LIVE_DEMO } from "@/lib/flags";
 import Image from "next/image";
 import { EnrolledList } from "@/components/EnrolledList";
 import { EventResultsSection } from "@/components/EventResultsSection";
@@ -75,6 +76,11 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
 
         <div>
           <h1 className="text-3xl font-semibold sm:text-4xl">{e.name}</h1>
+          {LIVE_DEMO && isLiveToday(found) && (
+            <Link href={`/${lang}/eventos/${e.id}/en-vivo`} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-full bg-red-600 px-5 text-sm font-medium text-white hover:bg-red-700">
+              <span aria-hidden className="size-2 animate-pulse rounded-full bg-white motion-reduce:animate-none" />{t.live.watch}
+            </Link>
+          )}
           <p className="mt-2 text-muted">{meta.join(" · ")}</p>
           <p className="mt-1 text-sm font-medium" data-testid="draw-type">
             {t.event.drawType}: {e.drawType === "lazada_sorteada" ? t.event.lazadaSorteada : t.event.roundRobin}

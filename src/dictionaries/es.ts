@@ -266,5 +266,12 @@ export const es = {
     event: (n: number): string => (n === 1 ? "evento" : "eventos"),
     win: (n: number): string => (n === 1 ? "victoria" : "victorias"),
   },
+  live: {
+    live: "En vivo", updated: "hace {a} s", progress: "Avance de la ronda", round: "Ronda {a} de {b}", teams: "Van {a} de {b} equipos · faltan {c}",
+    onDeck: "En turno · equipo {a}", accumulated: "acumulado", next: "Siguen", waiting: "La ronda todavía no empieza.", roundOver: "Terminó la ronda.",
+    standings: "Posiciones", showAll: "Ver todas", showLess: "Ver menos", noTimes: "Todavía no hay tiempos.",
+    search: "Buscar mi nombre o turno", noMatch: "No encontramos ese nombre o turno en esta ronda.", nowShort: "En turno", turn: "Turno {a}", turns: "Turnos:", isNext: "Sigue", ahead: "Faltan {a}",
+    demo: "Demostración: los turnos y tiempos son inventados.", watch: "Ver en vivo", details: "Detalles del evento e inscripción",
+  },
 };
 export type Dict = typeof es;

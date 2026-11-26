@@ -70,7 +70,7 @@ export type EventRegistration = { id: string; roperId: string; name: string; cat
 export async function listEventRegistrations(eventUuid: string): Promise<EventRegistration[]> {
   const supabase = await createServerSupabase();
   const { data, error } = await supabase.from("registrations")
-    .select("id, roper_id, payment_status, payment_method, amount_cents, role, event_categories(name), ropers(full_name)")
+    .select("id, roper_id, payment_status, payment_method, amount_cents, role, event_categories(name), ropers!roper_id(full_name)")
     .eq("event_id", eventUuid).order("created_at", { ascending: true });
   if (error) throw new Error(`No se pudieron leer los inscritos: ${error.message}`);
   type Row = { id: string; roper_id: string; payment_status: string; payment_method: string | null; amount_cents: number; role: string | null; event_categories: { name: string } | null; ropers: { full_name: string } | null };

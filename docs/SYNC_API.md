@@ -29,7 +29,7 @@ La contraseña se recorta y se corta a 100 caracteres, igual que en el formulari
 | `401` | `invalid_credentials` | Correo o contraseña incorrectos (mismo mensaje si el correo no existe) | no, pide corregir |
 | `403` | `email_not_confirmed` | La contraseña es correcta pero falta confirmar el correo | no, pide confirmar |
 | `403` | `organizer_not_active` | La cuenta no es de organizador activo (licencia vigente o aprobación de un administrador) | no |
-| `409` | `device_limit` | Ya hay 3 equipos conectados. **No cierra ninguno**: el organizador revoca uno en su panel (*App local*) | no, pide revocar uno |
+| `409` | `device_limit` | Ya hay 3 equipos conectados. **No cierra ninguno**: el organizador revoca uno en *App local*, desde el menú de su cuenta | no, pide revocar uno |
 | `413` | `payload_too_large` | Cuerpo de más de 4 KB | no |
 | `426` | `version_unsupported` | La web ya no habla esa versión del contrato | no, pide actualizar |
 | `429` | `rate_limited` | Demasiados intentos fallidos (20 por IP o 10 por correo en 5 minutos; solo cuentan los fallos). Trae `Retry-After` | sí, tras la espera |

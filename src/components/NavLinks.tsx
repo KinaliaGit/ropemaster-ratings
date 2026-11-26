@@ -23,7 +23,7 @@ function List({ items, current }: { items: Item[]; current: string }) {
         return (
           <li key={i.href}>
             <Link href={i.href} aria-current={active ? "page" : undefined}
-              className={`relative rounded-full px-3 py-2 text-sm font-medium transition ${active ? "bg-ink/[0.06] text-ink" : "text-muted hover:text-ink"}`}>{i.label}</Link>
+              className={`relative block whitespace-nowrap rounded-full px-2 py-2 text-[13px] font-medium sm:px-3 sm:text-sm transition ${active ? "bg-ink/[0.06] text-ink" : "text-muted hover:text-ink"}`}>{i.label}</Link>
           </li>
         );
       })}

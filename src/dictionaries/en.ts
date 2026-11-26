@@ -5,7 +5,7 @@ export const en: Dict = {
   meta: { title: "Rope Master Ratings", description: "The global registry of ropers: rating, history and results from every event." },
   common: { brand: "Rope Master", ratings: "Ratings", loading: "Loading…", back: "Back", of: "of" },
   roles: { legend: "Which role do you usually compete in?", header: "Header", heeler: "Heeler", both: "Both", favoriteLegend: "Which is your favorite role, the one you use most?", favorite: "favorite", undefined: "Not set" },
-  nav: { myLazador: "My roper profile", createLazador: "Create my roper profile", events: "Events", participants: "Participants", signIn: "Sign in", myPanel: "My dashboard", myAccount: "My account", signOut: "Sign out", publicSite: "Public site", language: "Language" },
+  nav: { myLazador: "My roper profile", createLazador: "Create my roper profile", events: "Events", participants: "Participants", myPanel: "My organizer dashboard", signInOrUp: "Sign in / Sign up", localApp: "Local app", myAccount: "My account", signOut: "Sign out", publicSite: "Public site", language: "Language" },
   promo: {
     label: "Rope Master", title: "The software to run your roping event.",
     text: "Rope Master is the app used to manage roping series and events: teams, times, judges and results in one system, synced in real time.",
@@ -135,7 +135,7 @@ export const en: Dict = {
     },
     welcome: "Account created! You can now create your first event.", noEvents: "You have no events yet. Create a series and add the first one inside it.", noParticipants: "No participants have registered yet.",
     accountType: "Organizer account", newSeries: "+ New series", newEvent: "+ Individual event", events: "Events", enrolled: "Registered", collected: "Collected", myEvents: "My events", manage: "Manage",
-    tabs: { series: "Series", appShort: "App", adminShort: "Admin", admin: "Administration", summary: "Overview", participants: "Participants", payments: "Payments", arenas: "Arenas", app: "Local app" },
+    tabs: { series: "Series", adminShort: "Admin", admin: "Administration", summary: "Overview", participants: "Participants", payments: "Payments", arenas: "Arenas" },
     arenas: {
       title: "Arenas", blurb: "The places where you hold your events. Save them once and reuse them when creating events and series; each arena has its own history.",
       newTitle: "Add arena", name: "Name", city: "City", notes: "Basic details (address, contact, notes)", add: "Add arena",

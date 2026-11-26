@@ -13,7 +13,7 @@ import type { Lang } from "@/lib/format";
 
 async function Account({ lang, t }: { lang: Lang; t: Dict }) {
   const s = await getSession();
-  if (!s) return <Link href={`/${lang}/entrar`} className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-hot">{t.nav.signIn}</Link>;
+  if (!s) return <Link href={`/${lang}/entrar`} className="whitespace-nowrap rounded-full bg-ink px-2.5 py-2 text-xs font-medium text-white transition hover:bg-brand-hot sm:px-4 sm:text-sm">{t.nav.signInOrUp}</Link>;
   const org = s.role === "organizador";
   const unread = await countMyUnread();
   return (
@@ -25,7 +25,8 @@ async function Account({ lang, t }: { lang: Lang; t: Dict }) {
     <AccountMenu
       initials={initials(s.name)} photo={publicAvatarUrl(s.avatarPath)} name={s.name} roleLabel={org ? t.org.accountType : t.account.type} lang={lang}
       dashboardHref={`/${lang}/${org ? "organizador" : "mi-cuenta"}`} dashboardLabel={org ? t.nav.myPanel : t.nav.myAccount}
-      extra={org ? { href: `/${lang}/mi-cuenta`, label: s.hasRoper ? t.nav.myLazador : t.nav.createLazador } : undefined}
+      // KIN-761: «App local» vive aquí y no en las pestañas del panel. El enlace solo la muestra; la página sigue protegida por su cuenta.
+      extras={org ? [{ href: `/${lang}/mi-cuenta`, label: s.hasRoper ? t.nav.myLazador : t.nav.createLazador }, { href: `/${lang}/organizador/app`, label: t.nav.localApp }] : []}
       signOutLabel={t.nav.signOut} signOut={logout}
     />
     </>
@@ -37,8 +38,8 @@ export function Header({ lang, t }: { lang: Lang; t: Dict }) {
   const items = [{ href: `/${lang}`, label: t.nav.events }, { href: `/${lang}/participantes`, label: t.nav.participants }];
   return (
     <header className="fixed inset-x-0 top-0 z-50 bg-cream/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-5 md:grid md:grid-cols-[1fr_auto_1fr]">
-        <Link href={`/${lang}`} className="flex items-center gap-2.5 text-[17px] font-semibold tracking-tight">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-5 sm:gap-3 md:grid md:grid-cols-[1fr_auto_1fr]">
+        <Link href={`/${lang}`} className="flex shrink-0 items-center gap-2.5 text-[17px] font-semibold tracking-tight">
           <Image src="/logo.png" alt="" width={32} height={32} loading="eager" className="size-8" />
           <span className="hidden sm:inline">{t.common.brand}</span>
         </Link>

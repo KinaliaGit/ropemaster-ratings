@@ -5,7 +5,7 @@ export const es = {
   meta: { title: "Rope Master Ratings", description: "El registro global de lazadores: rating, historial y resultados de cada evento." },
   common: { brand: "Rope Master", ratings: "Ratings", loading: "Cargando…", back: "Volver", of: "de" },
   roles: { legend: "¿Con qué rol sueles competir?", header: "Cabecero", heeler: "Pialador", both: "Ambos", favoriteLegend: "¿Cuál es tu rol favorito, el que usas más?", favorite: "favorito", undefined: "Sin definir" },
-  nav: { myLazador: "Mi perfil de lazador", createLazador: "Crear mi perfil de lazador", events: "Eventos", participants: "Participantes", signIn: "Entrar", myPanel: "Mi panel", myAccount: "Mi cuenta", signOut: "Salir", publicSite: "Sitio público", language: "Idioma" },
+  nav: { myLazador: "Mi perfil de lazador", createLazador: "Crear mi perfil de lazador", events: "Eventos", participants: "Participantes", myPanel: "Mi panel de organizador", signInOrUp: "Entrar / Registro", localApp: "App local", myAccount: "Mi cuenta", signOut: "Salir", publicSite: "Sitio público", language: "Idioma" },
   promo: {
     label: "Rope Master", title: "El software para organizar tu evento de lazo.",
     text: "Rope Master es la aplicación con la que se gestionan series y eventos de lazo: equipos, tiempos, jueces y resultados en un solo sistema, sincronizado en tiempo real.",
@@ -135,7 +135,7 @@ export const es = {
     },
     welcome: "¡Cuenta creada! Ya puedes crear tu primer evento.", noEvents: "Aún no tienes eventos. Crea una serie y agrega el primero dentro de ella.", noParticipants: "Todavía no hay participantes registrados.",
     accountType: "Cuenta de organizador", newSeries: "+ Serie nueva", newEvent: "+ Evento individual", events: "Eventos", enrolled: "Inscritos", collected: "Cobrado", myEvents: "Mis eventos", manage: "Gestionar",
-    tabs: { series: "Series", appShort: "App", adminShort: "Admin", admin: "Administración", summary: "Resumen", participants: "Participantes", payments: "Pagos", arenas: "Arenas", app: "App local" },
+    tabs: { series: "Series", adminShort: "Admin", admin: "Administración", summary: "Resumen", participants: "Participantes", payments: "Pagos", arenas: "Arenas" },
     arenas: {
       title: "Arenas", blurb: "Los lugares donde haces tus eventos. Guárdalos una vez y reutilízalos al crear eventos y series; cada arena tiene su historial.",
       newTitle: "Agregar arena", name: "Nombre", city: "Ciudad", notes: "Datos básicos (dirección, contacto, notas)", add: "Agregar arena",

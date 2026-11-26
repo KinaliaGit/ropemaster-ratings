@@ -26,10 +26,10 @@ function PayForm({ lang, row, query, method, label, tone }: { lang: Lang; row: P
   );
 }
 
-async function Content({ lang, t, f, pagoError }: { lang: Lang; t: Dict; f: PaymentFilters; pagoError: boolean }) {
+async function Content({ organizerId, lang, t, f, pagoError }: { organizerId: string; lang: Lang; t: Dict; f: PaymentFilters; pagoError: boolean }) {
   const p = t.org.pays;
   let totals, list;
-  try { [totals, list] = await Promise.all([listPaymentTotals(), listPaymentRows(f)]); } catch { return <p role="alert" className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-800">{p.loadError}</p>; }
+  try { [totals, list] = await Promise.all([listPaymentTotals(organizerId), listPaymentRows(organizerId, f)]); } catch { return <p role="alert" className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-800">{p.loadError}</p>; }
   const sum = totals.reduce((a, x) => ({ expected: a.expected + x.expectedCents, paid: a.paid + x.paidCents, pending: a.pending + x.pendingCents }), { expected: 0, paid: 0, pending: 0 });
   const query = paymentFiltersQuery(f);
   const filtered = Boolean(f.event || f.q || f.status !== "pendiente");
@@ -137,7 +137,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/pagos"> }
             <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
               <h1 className="text-3xl font-semibold">{t.org.pays.title}</h1>
               <p className="mt-1 max-w-2xl text-sm text-muted">{t.org.pays.blurb}</p>
-              <Content lang={lang} t={t} f={f} pagoError={one(sp.pagoError) === "1"} />
+              <Content organizerId={s.id} lang={lang} t={t} f={f} pagoError={one(sp.pagoError) === "1"} />
             </div>
           </>
         );

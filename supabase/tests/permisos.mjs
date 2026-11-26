@@ -1996,5 +1996,28 @@ console.log("- Resultados de un evento (0030)");
   await old.close();
 }
 
+// Un organizador que además compite (KIN-627): las reglas le dejan leer DOS cosas distintas (lo de sus eventos y lo suyo en eventos ajenos), así
+// que la app tiene que filtrar según lo que muestra. Aquí se fija ese comportamiento y que cada filtro devuelve solo lo que toca.
+console.log("— Organizador que además compite");
+{
+  const MIO = "e0000000-0000-0000-0000-0000000000f1", AJENO = "e0000000-0000-0000-0000-0000000000f2";
+  const C1 = "ca000000-0000-0000-0000-0000000000f1", C2 = "ca000000-0000-0000-0000-0000000000f2";
+  const YO = "22222222-0000-0000-0000-0000000000f1", OTRO = "22222222-0000-0000-0000-0000000000f2";
+  const U1 = "f1f1f1f1-0000-0000-0000-000000000001", U2 = "f1f1f1f1-0000-0000-0000-000000000002";
+  await db.exec(`reset role;
+    insert into auth.users (id, email, email_confirmed_at) values ('${U1}','org-compite@x.com',now()), ('${U2}','otro-org@x.com',now());
+    insert into profiles (user_id, role, display_name) values ('${U1}','organizador','Org Compite'), ('${U2}','organizador','Otro Org');
+    insert into ropers (id, full_name, user_id) values ('${YO}','Org Compite','${U1}'), ('${OTRO}','Otro Lazador',null);
+    insert into events (id, name, organizer_id, status, slug, capacity, disciplines) values ('${MIO}','Mío','${U1}','publicado','kin627-mio',10,'{lazo}'), ('${AJENO}','Ajeno','${U2}','publicado','kin627-ajeno',10,'{lazo}');
+    insert into event_categories (id, event_id, name, fee_cents) values ('${C1}','${MIO}','Libre',100), ('${C2}','${AJENO}','Libre',200);
+    insert into registrations (event_id, roper_id, category_id, amount_cents) values ('${MIO}','${OTRO}','${C1}',100), ('${AJENO}','${YO}','${C2}',200);
+  `);
+  const ambos = `event_id in ('${MIO}','${AJENO}')`;
+  const solo = (where, monto) => `select 1 from (select array_agg(r.amount_cents) m from registrations r join events e on e.id = r.event_id where r.${ambos} and ${where}) x where m = array[${monto}]`;
+  await as("authenticated", U1, `select 1 where (select count(*) from registrations where ${ambos}) = 2`, "sin filtro ve lo de su evento Y lo suyo en otro", "some");
+  await as("authenticated", U1, solo(`r.roper_id = '${YO}'`, 200), "filtrando por su perfil: solo su inscripción", "some");
+  await as("authenticated", U1, solo(`e.organizer_id = '${U1}'`, 100), "filtrando por sus eventos: solo lo que él cobra", "some");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

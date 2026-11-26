@@ -4,6 +4,7 @@ import { readFileSync, readdirSync } from "node:fs";
 // ver o escribir qué (anónimo, organizador sin verificar, organizador verificado y participante).
 // Se corre con `npm run test:db`. Sale con código 1 si alguna comprobación falla (para usarlo en CI).
 import { fileURLToPath } from "node:url";
+import { statusByDate } from "../../src/lib/event-time.ts"; // la regla de finalización de la web: la de SQL (public.event_phase) debe dar lo mismo (KIN-769)
 const dir = fileURLToPath(new URL("../migrations", import.meta.url));
 const db = new PGlite();
 
@@ -1751,6 +1752,117 @@ console.log("- Resultados de un evento (0030)");
   // Regresión: la campana y la lista de la persona siguen mostrando lo vigente después de limpiar
   verify("tras limpiar, la persona sigue viendo sus 6 avisos vigentes", (await seen(C)).length === 6);
   await db.exec("delete from notifications");
+}
+
+// ---- Ciclo de vida y visibilidad de los eventos (KIN-769): estado (borrador, publicado, finalizado) x visibilidad (público, privado) contra cada tipo de persona
+{
+  console.log("\n— Estado y visibilidad de los eventos");
+  const num = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const verify = (label, ok) => { if (!ok) failures++; console.log(`${ok ? "✔" : "✘ FALLO"}  ${label}`); };
+  const asRows = async (role, uid, sql) => {
+    await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${uid ?? ""}', false); set role ${role}`);
+    try { return (await db.query(sql)).rows; } finally { await db.exec("reset role"); }
+  };
+  const E = (n) => `e7690000-0000-0000-0000-00000000000${n}`, K = (n) => `ca769000-0000-0000-0000-00000000000${n}`;
+  // 1 público  2 privado  3 privado con lista de espera  4 borrador privado  5 borrador público  6 finalizado privado  7 finalizado público
+  const spec = [[1, "pub", "publicado", "publico"], [2, "priv", "publicado", "privado"], [3, "wait", "publicado", "privado"], [4, "draftprv", "borrador", "privado"],
+    [5, "draftpub", "borrador", "publico"], [6, "finpriv", "finalizado", "privado"], [7, "finpub", "finalizado", "publico"]];
+  const PA = `(select id from ropers where user_id = '${C}')`, PB = `(select id from ropers where user_id = '${P2}')`;
+  await db.exec(`reset role; select set_config('request.jwt.claim.sub', '', false)`); // sembrar como administrador de la base: sin la sesión que dejó la prueba anterior
+  await db.exec(`update profiles set license_valid_until = 'infinity' where user_id in ('${A}', '${B}')`);
+  for (const [n, slug, status, visibility] of spec) {
+    await db.exec(`
+      insert into events (id, name, organizer_id, status, slug, event_date, capacity, visibility) values ('${E(n)}', 'V769 ${slug}', '${A}', '${status}', 'v769-${slug}', '2099-11-0${n}', 10, '${visibility}');
+      insert into event_categories (id, event_id, name, fee_cents) values ('${K(n)}', '${E(n)}', 'Libre', 10000);
+      insert into event_photos (event_id, storage_path) values ('${E(n)}', 'v769/${n}.jpg');
+      insert into event_results (id, event_id, participant_name, discipline, time_ms, penalty_ms, disqualified) values (gen_random_uuid(), '${E(n)}', 'Resultado ${slug}', 'lazo', 9000, 0, false);
+    `);
+  }
+  // C está inscrito en el público y en el privado (2); P2 espera en el privado con lista de espera (3)
+  await db.exec(`
+    insert into registrations (event_id, roper_id, category_id, amount_cents) values ('${E(1)}', ${PA}, '${K(1)}', 10000), ('${E(2)}', ${PA}, '${K(2)}', 10000);
+    insert into event_waitlist (event_id, roper_id, category_id) values ('${E(3)}', ${PB}, '${K(3)}');
+  `);
+
+  // El modelo: todo lo que ya existía quedó público, y solo se acepta público o privado
+  verify("los eventos que ya existían quedaron 'público' (nada cambia para ellos)", await num(`select count(*) n from events where visibility <> 'publico' and slug not like 'v769-%'`) === 0);
+  let rejected = false;
+  try { await db.exec(`update events set visibility = 'secreto' where id = '${E(1)}'`); } catch { rejected = true; }
+  verify("una visibilidad que no existe se rechaza", rejected);
+  await as("authenticated", A, `update events set visibility = 'privado' where id = '${E(1)}'`, "el organizador NO cambia la visibilidad desde la web (aún)", "deny");
+  await as("authenticated", A, `insert into events (id, name, organizer_id, visibility) values (gen_random_uuid(), 'Privado de golpe', '${A}', 'privado')`, "ni crearlo ya privado", "deny");
+
+  // Quién ve cada evento (lectura por política): sin sesión, otro participante, otro organizador, el inscrito, el que espera y el dueño
+  const seesEvents = async (role, uid) => (await asRows(role, uid, `select slug from events where slug like 'v769-%' order by slug`)).map((r) => r.slug.replace("v769-", ""));
+  const same = (got, want) => JSON.stringify(got) === JSON.stringify([...want].sort());
+  const anon = await seesEvents("anon", null);
+  verify("sin sesión: solo lo público publicado o finalizado (ni borradores ni privados)", same(anon, ["pub", "finpub"]));
+  verify("otro organizador ve lo mismo que el público", same(await seesEvents("authenticated", B), ["pub", "finpub"]));
+  verify("un participante sin relación con los privados ve lo mismo que el público", same(await seesEvents("authenticated", D), ["pub", "finpub"]));
+  verify("el inscrito ve su evento privado (y lo público), no los demás privados", same(await seesEvents("authenticated", C), ["pub", "priv", "finpub"]));
+  verify("quien está en la lista de espera de un privado también lo ve", same(await seesEvents("authenticated", P2), ["pub", "wait", "finpub"]));
+  verify("el organizador ve todo lo suyo (borradores y privados incluidos)", same(await seesEvents("authenticated", A), spec.map((s) => s[1])));
+
+  // Lo que cuelga del evento sigue al evento: categorías, fotos y resultados
+  const countFor = (table, role, uid) => asRows(role, uid, `select count(*)::int n from ${table} where event_id::text like 'e7690000%'`).then((r) => r[0].n);
+  for (const table of ["event_categories", "event_photos", "event_results"]) {
+    const [a, b, c, p2, o] = [await countFor(table, "anon", null), await countFor(table, "authenticated", B), await countFor(table, "authenticated", C), await countFor(table, "authenticated", P2), await countFor(table, "authenticated", A)];
+    verify(`${table}: público 2, otro organizador 2, inscrito 3, en espera 3, dueño 7`, a === 2 && b === 2 && c === 3 && p2 === 3 && o === 7);
+  }
+
+  // Funciones públicas de inscritos y conteos (saltan RLS): también respetan la visibilidad
+  const callN = async (role, uid, sql) => (await asRows(role, uid, sql)).length;
+  verify("event_enrolled: del privado, sin sesión 0 y el inscrito 1", (await asRows("anon", null, `select public.event_enrolled('v769-priv') n`))[0].n === 0 && (await asRows("authenticated", C, `select public.event_enrolled('v769-priv') n`))[0].n === 1);
+  verify("event_enrolled: del público lo ve cualquiera", (await asRows("anon", null, `select public.event_enrolled('v769-pub') n`))[0].n === 1);
+  verify("event_registrants: del privado, sin sesión y otro organizador 0; el inscrito 1", await callN("anon", null, `select * from public.event_registrants('${E(2)}')`) === 0 && await callN("authenticated", B, `select * from public.event_registrants('${E(2)}')`) === 0 && await callN("authenticated", C, `select * from public.event_registrants('${E(2)}')`) === 1);
+  verify("event_registrants_page: igual (sin sesión 0, el inscrito 1)", await callN("anon", null, `select * from public.event_registrants_page('${E(2)}', 'lazo', 1)`) === 0 && await callN("authenticated", C, `select * from public.event_registrants_page('${E(2)}', 'lazo', 1)`) === 1);
+  const countsOf = async (role, uid) => (await asRows(role, uid, `select event_id from public.event_registration_counts() where event_id::text like 'e7690000%' order by 1`)).map((r) => r.event_id);
+  verify("event_registration_counts: el público no cuenta el privado; el inscrito sí", same((await countsOf("anon", null)).map((id) => id.slice(-1)), ["1"]) && same((await countsOf("authenticated", C)).map((id) => id.slice(-1)), ["1", "2"]));
+  const waitOf = async (role, uid) => (await asRows(role, uid, `select event_id from public.event_waitlist_counts() where event_id::text like 'e7690000%'`)).length;
+  verify("event_waitlist_counts: la espera de un privado solo la ve quien puede ver el evento", await waitOf("anon", null) === 0 && await waitOf("authenticated", C) === 0 && await waitOf("authenticated", P2) === 1 && await waitOf("authenticated", A) === 1);
+
+  // Escritura: nadie entra a un evento que no puede ver (guarda en inscripciones y lista de espera, sirve para toda función que inserte)
+  const insertAs = async (uid, sql) => {
+    await db.exec(`select set_config('request.jwt.claim.sub', '${uid ?? ""}', false)`);
+    try { await db.exec(sql); return "ok"; } catch (e) { return String(e.message); } finally { await db.exec("select set_config('request.jwt.claim.sub', '', false)"); }
+  };
+  const reg = (n) => `insert into registrations (event_id, roper_id, category_id, amount_cents) values ('${E(n)}', ${PB}, '${K(n)}', 10000)`;
+  verify("con sesión, inscribirse a un privado que no ve se rechaza (not_found)", (await insertAs(P2, reg(2))).includes("not_found"));
+  verify("con sesión, entrar a la espera de un privado que no ve se rechaza", (await insertAs(B, `insert into event_waitlist (event_id, roper_id, category_id) values ('${E(2)}', ${PB}, '${K(2)}')`)).includes("not_found"));
+  verify("no quedó ninguna inscripción nueva", await num(`select count(*) n from registrations where event_id = '${E(2)}'`) === 1);
+  await as("authenticated", P2, `select public.register_for_event('${E(2)}', '${K(2)}')`, "la función de inscribirse tampoco deja entrar a un privado", "deny");
+  verify("sin sesión (el servidor) la guarda no estorba", (await insertAs(null, reg(2))) === "ok");
+  await db.exec(`delete from registrations where event_id = '${E(2)}' and roper_id = ${PB}`);
+  verify("a un evento público se inscribe como siempre", (await insertAs(P2, reg(1))) === "ok");
+  await db.exec(`delete from registrations where event_id = '${E(1)}' and roper_id = ${PB}`);
+  await as("authenticated", A, `select public.organizer_enroll('${E(2)}', 'p2@x.com', '${K(2)}', null, 1)`, "el organizador SÍ inscribe a mano en su evento privado", "some");
+  verify("y esa persona ya ve el privado", same(await seesEvents("authenticated", P2), ["pub", "priv", "wait", "finpub"]));
+
+  // Finalización automática: la regla de SQL (event_phase) da lo mismo que la de la web (statusByDate), también en las orillas de zona horaria
+  const zones = ["America/Mexico_City", "Pacific/Kiritimati", "Pacific/Pago_Pago", "UTC"];
+  let mismatches = 0, cases = 0;
+  for (const tz of zones) {
+    const today = (await db.query(`select (now() at time zone $1)::date::text d`, [tz])).rows[0].d;
+    for (const offset of [-400, -3, -1, 0, 1, 5]) {
+      const date = (await db.query(`select ($1::date + $2::int)::text d`, [today, offset])).rows[0].d;
+      for (const status of ["borrador", "publicado", "finalizado"]) {
+        cases++;
+        const sql = (await db.query(`select public.event_phase($1, $2::date, $3) p`, [status, date, tz])).rows[0].p;
+        if (sql !== statusByDate({ status, date, timezone: tz })) { mismatches++; console.log(`   distinto: ${status} ${date} ${tz}: sql=${sql} web=${statusByDate({ status, date, timezone: tz })}`); }
+      }
+    }
+  }
+  verify(`event_phase (SQL) y statusByDate (web) coinciden en ${cases} casos (estados, fechas y zonas horarias)`, mismatches === 0);
+  verify("un publicado con fecha de ayer es finalizado; de hoy o de mañana, publicado", (await db.query(`select public.event_phase('publicado', (now() at time zone 'UTC')::date - 1, 'UTC') a, public.event_phase('publicado', (now() at time zone 'UTC')::date, 'UTC') b, public.event_phase('publicado', (now() at time zone 'UTC')::date + 1, 'UTC') c`)).rows[0].a === "finalizado");
+  verify("un borrador nunca se finaliza solo, y sin fecha no hay nada que vencer", (await db.query(`select public.event_phase('borrador', date '2000-01-01', 'UTC') a, public.event_phase('publicado', null, 'UTC') b`)).rows[0].a === "borrador" && (await db.query(`select public.event_phase('publicado', null, 'UTC') b`)).rows[0].b === "publicado");
+  // El resumen del organizador (KIN-658) repite la regla en SQL: debe contar como finalizados los mismos eventos
+  await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${A}', false); set role authenticated`);
+  const overview = (await db.query("select public.organizer_overview() as o")).rows[0].o;
+  await db.exec("reset role");
+  verify("el resumen del organizador cuenta como finalizados los mismos eventos que event_phase", overview.states.finished === await num(`select count(*) n from events where organizer_id = '${A}' and public.event_phase(status, event_date, timezone) = 'finalizado'`));
+
+  // Limpieza de lo que sembró este bloque
+  await db.exec(`delete from events where slug like 'v769-%'`);
 }
 
 // ---- Eventos que la app sube a la web (KIN-648, entrega 2)

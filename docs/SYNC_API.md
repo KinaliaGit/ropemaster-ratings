@@ -35,8 +35,40 @@ La contraseña se recorta y se corta a 100 caracteres, igual que en el formulari
 | `429` | `rate_limited` | Demasiados intentos fallidos (20 por IP o 10 por correo en 5 minutos; solo cuentan los fallos). Trae `Retry-After` | sí, tras la espera |
 | `503` | `service_unavailable` | Falla temporal de la web o de Supabase | sí |
 
+## Enlace privado por evento: `POST /api/app/conexion` (KIN-783)
+Convive con el login: con correo y contraseña la app ve **todo** el organizador; con un enlace privado ve y escribe en **un solo evento**, sin la
+contraseña (por ejemplo, la persona que captura en la arena). Decisiones en KIN-782.
+
+1. El organizador crea el enlace en el panel (*App local → Enlaces por evento*): elige el evento (solo `publicado` o `finalizado`), para quién es y los permisos.
+   La web entrega una **invitación** (`rmi_…`) que se muestra una sola vez. Es de un solo uso y **vence a las 72 h**. En la base solo queda su hash.
+2. La app (o el operador) la canjea sin `Authorization`: `POST /api/app/conexion` con `{ contract_version, invite, device_name? }`
+   (ejemplos: `sync-examples/conexion.request.json` y `conexion.response.json`). Responde el **token del evento** (`rme_…`, también una sola vez), el evento,
+   los `scopes` y `expires_at`. Con ese token se usa `Authorization: Bearer <token>` como siempre.
+3. Permisos (`scopes`): `event:read` (siempre: ver el evento, sus inscritos y quién ya pagó), `results:write` (subir resultados, cerrar y reabrir)
+   y `payments:write` (subir pagos, por ejemplo en efectivo). **Solo puede haber un enlace con `results:write` por evento** y hasta 5 enlaces activos por evento.
+4. Vigencia: el token vence a los **30 días sin usarse** y, a más tardar, a los **7 días de la fecha del evento**. Cada uso reinicia el plazo de inactividad.
+   El organizador lo revoca al instante desde su panel, o la app con `POST /api/app/logout` (revoca solo ese enlace). Si el evento deja de estar publicado, responde `404`.
+5. Mientras haya un enlace con `results:write` activo y los resultados estén abiertos, la web **no deja borrar resultados** del evento (error `connected_event`
+   en la base): ciérralos, o revoca el enlace de escritura. Hoy la web no tiene un botón para borrarlos; el candado cubre cualquier otro camino.
+
+Qué responde cada endpoint con un token de evento:
+
+| Endpoint | Con token de evento |
+|---|---|
+| `GET /api/app/eventos` | Solo ese evento (mismo formato, misma paginación y `since`). Requiere `event:read`. |
+| `GET /api/app/participantes` | Solo si `event_id` es su evento; otro evento: `404 event_not_found`. |
+| `POST /api/app/resultados` | Requiere `results:write`. Si **algún** resultado del lote es de otro evento (o no trae `event_id`) se rechaza todo el lote con `404 event_not_found`. |
+| `POST /api/app/pagos` | Requiere `payments:write`; mismo criterio del lote. |
+| `POST /api/app/eventos/<id>/cierre` y `/reabrir` | Requieren `results:write` y que `<id>` sea su evento. |
+| `POST /api/app/eventos` (crear eventos y series), `POST /api/app/login` | Solo con correo y contraseña: `403 scope_denied`. |
+
+Códigos nuevos: `403 scope_denied` (el token no tiene el permiso o la ruta no admite enlaces) y `404 event_not_found` (otro evento, uno inexistente o
+uno que dejó de ser público: no se distinguen). Al canjear: `401 invalid_invite` cuando la invitación no existe, ya se usó, venció, se revocó o su evento ya no está publicado
+(todos se ven igual y gastan el límite de intentos: 20 por IP en 5 minutos, `429 rate_limited` con `Retry-After`); además `400`, `413` (más de 4 KB) y `426` como en el login.
+La respuesta 200 incluye `organizer` (id y nombre del dueño del evento).
+
 ## `POST /api/app/logout`
-`Authorization: Bearer <token>`. Revoca **solo** el token con el que se llama (ese equipo). Siempre responde `200 { "ok": true, "revoked": <boolean> }`:
+`Authorization: Bearer <token>`. Revoca **solo** el token con el que se llama (ese equipo, o ese enlace si es un token de evento). Siempre responde `200 { "ok": true, "revoked": <boolean> }`:
 un token que ya estaba revocado, vencido o que no existe da `revoked: false`, así la app puede olvidar su token local sin distinguir. Sin internet la app
 solo lo olvida; la web lo deja vencer a los 30 días sin uso o el organizador lo revoca en su panel. Sin encabezado `Authorization`: `401 invalid_token`.
 

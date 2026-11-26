@@ -1,0 +1,10 @@
+{
+  "contract_version": 1,
+  "token": "rme_9fQ2xv1kLw0b8TnZpR3uYcA7dHjE5sGm4VbN6yXo",
+  "event": { "id": "e5600000-0000-0000-0000-000000000001", "name": "Lienzo Charro de Primavera" },
+  "organizer": { "id": "0c2d0f40-bc37-4edd-9b17-28e91efca6ef", "name": "Emiliano Neaves" },
+  "scopes": ["event:read", "payments:write", "results:write"],
+  "expires_at": "2026-12-26T20:15:00.000Z",
+  "idle_days": 30,
+  "device_name": "Laptop de la mesa de captura"
+}

@@ -2342,5 +2342,133 @@ console.log("- Pagos que sube la app (0053)");
   await check("el servidor SÍ ejecuta la función", (await pay(A, [request.payments[0]])).length === 1);
 }
 
+console.log("— Enlace privado por evento (0056, KIN-783)");
+{
+  const O1 = "f5600000-0000-0000-0000-0000000000a1", O2 = "f5600000-0000-0000-0000-0000000000b1";
+  const EVN = "e5600000-0000-0000-0000-000000000001", EVN2 = "e5600000-0000-0000-0000-000000000002", EVB = "e5600000-0000-0000-0000-000000000003", EVO = "e5600000-0000-0000-0000-000000000004";
+  const RP = (n) => `a5600000-0000-0000-0000-00000000010${n}`;
+  await db.exec(`
+    insert into auth.users (id, email, email_confirmed_at) values ('${O1}','o1-56@x.com',now()), ('${O2}','o2-56@x.com',now());
+    insert into profiles (user_id, role, display_name, organizer_verified) values ('${O1}','organizador','Org 56 A',true), ('${O2}','organizador','Org 56 B',true);
+    insert into events (id, name, organizer_id, status, slug, event_date) values
+      ('${EVN}','Enlace uno','${O1}','publicado','e56-1', current_date + 10),
+      ('${EVN2}','Enlace dos','${O1}','publicado','e56-2', current_date + 20),
+      ('${EVB}','Enlace borrador','${O1}','borrador','e56-3', current_date + 10),
+      ('${EVO}','Enlace de otro','${O2}','publicado','e56-4', current_date + 10);
+    insert into ropers (id, full_name) values ('${RP(1)}','Lazador 1'), ('${RP(2)}','Lazador 2'), ('${RP(3)}','Lazador 3');
+  `);
+  const svc = async (sql, params = []) => { await db.exec("reset role; set role service_role"); try { return (await db.query(sql, params)).rows; } finally { await db.exec("reset role"); } };
+  const fails = async (sql, params, code) => { try { await svc(sql, params); return false; } catch (e) { return String(e.message ?? e).includes(code); } };
+  const arr = (scopes) => `{${scopes.join(",")}}`;
+  const create = async (org, ev, hash, scopes = ["event:read"], label = "Mesa 1") =>
+    (await svc("select public.create_event_connection($1, $2, $3, $4, $5::text[]) as id", [org, ev, hash, label, arr(scopes)]))[0].id;
+  const failCreate = (org, ev, hash, scopes, code) => fails("select public.create_event_connection($1, $2, $3, 'x', $4::text[])", [org, ev, hash, arr(scopes)], code);
+  const redeem = async (invite, token, device = "Laptop") => (await svc("select * from public.redeem_event_connection($1, $2, $3)", [invite, token, device]));
+  const verify = async (hash) => (await svc("select * from public.verify_event_token($1)", [hash]));
+  const W = ["event:read", "results:write", "payments:write"];
+
+  // --- crear
+  const w1 = await create(O1, EVN, "inv-w1", W);
+  await check("el organizador dueño crea la invitación de un evento publicado", !!w1);
+  await check("los permisos incluyen siempre event:read", (await db.query(`select scopes from event_connections where id = '${w1}'`)).rows[0].scopes.includes("event:read"));
+  await check("sin pedir permisos, el enlace queda con event:read", (await db.query(`select scopes from event_connections where id = '${await create(O1, EVN2, "inv-solo-lectura", [])}'`)).rows[0].scopes.join() === "event:read");
+  await check("un borrador NO tiene enlace (not_published)", await failCreate(O1, EVB, "inv-b", ["event:read"], "not_published"));
+  await check("un evento ajeno NO tiene enlace (not_found)", await failCreate(O1, EVO, "inv-o", ["event:read"], "not_found"));
+  await check("permisos desconocidos se rechazan (invalid_scopes)", await failCreate(O1, EVN, "inv-s", ["event:read", "pagos:todo"], "invalid_scopes"));
+  await check("un solo escritor por evento: el segundo con results:write NO se crea (writer_exists)", await failCreate(O1, EVN, "inv-w2", ["results:write"], "writer_exists"));
+  await check("sí caben enlaces de solo lectura junto al escritor", !!(await create(O1, EVN, "inv-r1")) && !!(await create(O1, EVN, "inv-r2")));
+  await check("el límite es de 5 enlaces activos por evento", !!(await create(O1, EVN, "inv-r3")) && !!(await create(O1, EVN, "inv-r4"))
+    && await failCreate(O1, EVN, "inv-r5", ["event:read"], "limit"));
+  await check("otro evento del mismo organizador tiene su propio escritor", !!(await create(O1, EVN2, "inv-w-evn2", ["results:write"])));
+  await check("la invitación dura 72 horas", (await db.query("select (invite_expires_at - created_at) = interval '72 hours' as ok from event_connections where invite_hash = 'inv-r2'")).rows[0].ok === true);
+
+  // --- canjear
+  const rw = await redeem("inv-w1", "tok-w1", "  Laptop de la mesa  ");
+  await check("canjear devuelve el evento, el organizador y los permisos", rw.length === 1 && rw[0].event_id === EVN && rw[0].organizer_id === O1 && rw[0].scopes.join() === "event:read,payments:write,results:write");
+  await check("el nombre del equipo se limpia y se guarda", (await db.query("select device_name from event_connections where token_hash = 'tok-w1'")).rows[0].device_name === "Laptop de la mesa");
+  await check("la invitación es de un solo uso: canjearla otra vez no devuelve nada", (await redeem("inv-w1", "tok-otro")).length === 0);
+  await check("una invitación desconocida no se canjea", (await redeem("no-existe", "tok-x")).length === 0);
+  await redeem("inv-r3", "tok-r3");
+  await db.exec("update event_connections set invite_expires_at = now() - interval '1 minute' where invite_hash = 'inv-r1'");
+  await check("una invitación vencida (72 h) no se canjea", (await redeem("inv-r1", "tok-r1")).length === 0);
+  await db.exec("update event_connections set invite_expires_at = now() - interval '1 minute' where invite_hash = 'inv-w-evn2'");
+  await check("la invitación vencida del escritor libera su lugar: otro escritor ya cabe", !!(await create(O1, EVN2, "inv-w-evn2-b", ["results:write"])));
+
+  // --- verificar
+  const v = await verify("tok-w1");
+  await check("el token canjeado se verifica: organizador dueño, evento, permisos y estado del evento",
+    v.length === 1 && v[0].organizer_id === O1 && v[0].event_id === EVN && v[0].event_status === "publicado" && v[0].scopes.includes("results:write"));
+  await check("un token desconocido o una invitación sin canjear NO sirven como token", (await verify("nada")).length === 0 && (await verify("inv-r2")).length === 0);
+  const before = (await db.query("select last_used_at::text as t from event_connections where token_hash = 'tok-w1'")).rows[0].t;
+  await verify("tok-w1");
+  await check("last_used_at se escribe como máximo una vez por minuto", (await db.query("select last_used_at::text as t from event_connections where token_hash = 'tok-w1'")).rows[0].t === before);
+  await db.exec("update event_connections set last_used_at = now() - interval '31 days', created_at = now() - interval '40 days' where token_hash = 'tok-w1'");
+  await check("a los 31 días sin uso el token vence", (await verify("tok-w1")).length === 0);
+  await db.exec("update event_connections set last_used_at = now() - interval '29 days' where token_hash = 'tok-w1'");
+  await check("a los 29 días sigue sirviendo y ese uso reinicia el plazo", (await verify("tok-w1")).length === 1
+    && (await db.query("select last_used_at > now() - interval '1 minute' as fresh from event_connections where token_hash = 'tok-w1'")).rows[0].fresh === true);
+  await db.exec(`update events set event_date = current_date - 7 where id = '${EVN}'`);
+  await check("hasta 7 días después de la fecha del evento el token sigue sirviendo", (await verify("tok-w1")).length === 1);
+  await db.exec(`update events set event_date = current_date - 8 where id = '${EVN}'`);
+  await check("a los 8 días de la fecha del evento el token vence aunque se haya usado hoy", (await verify("tok-w1")).length === 0);
+  await db.exec(`update events set event_date = current_date + 10 where id = '${EVN}'`);
+  await db.exec(`update events set status = 'borrador' where id = '${EVN}'`);
+  await check("si el evento vuelve a borrador, el token se reconoce pero avisa el estado (la ruta responde 404)", (await verify("tok-w1"))[0]?.event_status === "borrador");
+  await check("un evento en borrador ya no canjea invitaciones", (await redeem("inv-r4", "tok-r4")).length === 0);
+  await db.exec(`update events set status = 'publicado' where id = '${EVN}'`);
+
+  // --- un solo escritor y revocación
+  await check("otro organizador NO puede revocar un enlace ajeno", (await svc("select public.revoke_event_connection($1, $2) as ok", [O2, w1]))[0].ok === false && (await verify("tok-w1")).length === 1);
+  await check("revocar libera el lugar del escritor y el token deja de servir al instante",
+    (await svc("select public.revoke_event_connection($1, $2) as ok", [O1, w1]))[0].ok === true && (await verify("tok-w1")).length === 0 && !!(await create(O1, EVN, "inv-w3", ["results:write"], "Mesa 2")));
+  await check("revocar dos veces devuelve false, sin error", (await svc("select public.revoke_event_connection($1, $2) as ok", [O1, w1]))[0].ok === false);
+  await redeem("inv-w3", "tok-w3");
+  await check("cerrar sesión con el token revoca solo ese enlace", (await svc("select public.revoke_event_connection_by_token($1) as ok", ["tok-w3"]))[0].ok === true
+    && (await verify("tok-w3")).length === 0 && (await verify("tok-r3")).length === 1);
+  await check("cerrar sesión con un token que ya no existe devuelve false", (await svc("select public.revoke_event_connection_by_token($1) as ok", ["tok-w3"]))[0].ok === false);
+
+  // --- un token de evento solo descarga su evento
+  const only = await svc("select id from public.app_organizer_events($1, null, now() + interval '1 hour', null, null, 50, $2)", [O1, EVN]);
+  await check("app_organizer_events con un evento devuelve solo ese evento", only.length === 1 && only[0].id === EVN);
+  const all = await svc("select id from public.app_organizer_events($1, null, now() + interval '1 hour', null, null, 50)", [O1]);
+  await check("sin evento devuelve todos los publicados del organizador, como antes", all.some((r) => r.id === EVN) && all.some((r) => r.id === EVN2) && !all.some((r) => r.id === EVB));
+  await check("pedir un evento ajeno devuelve vacío (no revela nada)", (await svc("select id from public.app_organizer_events($1, null, now() + interval '1 hour', null, null, 50, $2)", [O1, EVO])).length === 0);
+
+  // --- candado: con un escritor activo y resultados abiertos no se borran resultados
+  const RES = (n) => `e5600000-0000-0000-0000-0000000001${String(n).padStart(2, "0")}`;
+  const insertResult = (n) => db.exec(`insert into event_results (id, event_id, roper_id, discipline, disqualified) values ('${RES(n)}', '${EVN}', '${RP(n)}', 'lazo', false)`);
+  const gone = async (n) => (await db.query(`select count(*)::int as n from event_results where id = '${RES(n)}'`)).rows[0].n === 0;
+  await insertResult(1);
+  await db.exec(`delete from event_results where id = '${RES(1)}'`); // todavía no hay escritor activo
+  await check("sin escritor activo se pueden borrar resultados como siempre", await gone(1));
+  await create(O1, EVN, "inv-w4", ["results:write"], "Mesa 3");
+  await insertResult(2);
+  await check("con un escritor activo y el evento abierto NO se borran resultados (connected_event)", await (async () => { try { await db.exec(`delete from event_results where id = '${RES(2)}'`); return false; } catch (e) { return String(e.message ?? e).includes("connected_event"); } })());
+  await db.exec(`update events set results_closed_at = now() where id = '${EVN}'`);
+  await db.exec(`delete from event_results where id = '${RES(2)}'`);
+  await check("con los resultados cerrados el candado no aplica", await gone(2));
+  await db.exec(`update events set results_closed_at = null where id = '${EVN}'`);
+  await insertResult(3);
+  await db.exec("update event_connections set revoked_at = now() where invite_hash = 'inv-w4'");
+  await db.exec(`delete from event_results where id = '${RES(3)}'`);
+  await check("al revocar el enlace de escritura el candado se levanta", await gone(3));
+
+  // --- permisos: solo el servidor
+  for (const [fn, args] of [
+    ["create_event_connection", `'${O1}', '${EVN2}', 'x-perm', 'x', array['event:read']`], ["redeem_event_connection", `'x', 'x', 'x'`],
+    ["verify_event_token", `'x'`], ["revoke_event_connection", `'${O1}', '${w1}'`], ["revoke_event_connection_by_token", `'x'`],
+  ]) {
+    await as("anon", null, `select public.${fn}(${args})`, `anónimo NO ejecuta ${fn}`, "deny");
+    await as("authenticated", O1, `select public.${fn}(${args})`, `un organizador NO ejecuta ${fn}`, "deny");
+  }
+  await as("authenticated", O1, `select id, event_id, label, scopes, invite_expires_at, redeemed_at, created_at, last_used_at, revoked_at from event_connections where organizer_id = '${O1}'`, "el organizador ve sus enlaces (sin los secretos)", "some");
+  await as("authenticated", O1, "select invite_hash from event_connections", "NO ve el hash de la invitación", "deny");
+  await as("authenticated", O1, "select token_hash from event_connections", "NO ve el hash del token", "deny");
+  await as("authenticated", O2, `select id from event_connections where organizer_id = '${O1}'`, "NO ve los enlaces de otro organizador", "deny");
+  await as("authenticated", O1, `insert into event_connections (event_id, organizer_id, invite_hash, invite_expires_at) values ('${EVN2}', '${O1}', 'directo', now() + interval '1 day')`, "NO crea enlaces directo (se saltaría el límite)", "deny");
+  await as("authenticated", O1, `update event_connections set revoked_at = null, scopes = array['event:read','results:write'] where organizer_id = '${O1}'`, "NO reactiva ni amplía un enlace directo", "deny");
+  await as("anon", null, "select id from event_connections", "anónimo NO ve enlaces", "deny");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

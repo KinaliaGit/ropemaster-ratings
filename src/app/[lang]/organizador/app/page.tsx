@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
-import { OrgNav } from "@/components/OrgNav";
 import { DeviceRevoke } from "@/components/DeviceRevoke";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 import { listDevices } from "@/lib/sync-tokens";
@@ -46,7 +45,6 @@ async function Page({ params }: { params: PageProps<"/[lang]/organizador/app">["
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador/app`}>
       {(s) => (
         <>
-          <OrgNav lang={lang} t={t} admin={s.isAdmin} />
           <div className="mx-auto max-w-2xl px-5 pb-10 pt-10">
             <h1 className="text-3xl font-semibold">{a.title}</h1>
             <p className="mt-2 text-muted">{a.blurb}</p>

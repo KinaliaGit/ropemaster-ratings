@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
-import { OrgNav } from "@/components/OrgNav";
 import { arenaKey, collectArenas, parseArenaParam } from "@/lib/arena";
 import { StripeConnectButton } from "@/components/StripeConnectButton";
 import { STRIPE_ENABLED } from "@/lib/flags";
@@ -44,7 +43,6 @@ async function Panel({ s, lang, t, welcome, deleted, verified, arena, passwordCh
   const notice = "mb-4 rounded-2xl bg-brand-soft p-4 text-sm font-medium";
   return (
     <>
-      <OrgNav lang={lang} t={t} admin={s.isAdmin} />
       <div className="mx-auto max-w-3xl px-5 pb-10 pt-6 sm:pt-8">
         {verified && <p role="status" className={notice}>{t.account.alreadyVerified}</p>}
         {passwordChanged && <p role="status" className={notice}>{t.recovery.changed}</p>}

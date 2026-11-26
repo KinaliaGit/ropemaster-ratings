@@ -3,7 +3,6 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
-import { OrgNav } from "@/components/OrgNav";
 import { SeriesForm } from "@/components/SeriesForm";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { listArenas } from "@/lib/data/arenas";
@@ -21,7 +20,6 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/series/nu
         const arenas = await listArenas();
         return (
           <>
-            <OrgNav lang={lang} t={t} admin={s.isAdmin} />
             <div className="mx-auto max-w-2xl px-5 pb-10 pt-8">
               <Link href={`/${lang}/organizador/series`} className="text-sm text-muted hover:text-ink">← {t.org.series.back}</Link>
               <h1 className="mt-2 text-3xl font-semibold">{f.newTitle}</h1>

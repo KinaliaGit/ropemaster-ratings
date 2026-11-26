@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
-import { OrgNav } from "@/components/OrgNav";
 import { listPaymentRows, listPaymentTotals, PAYMENT_ROWS_LIMIT, type PaymentRow } from "@/lib/data/payments";
 import { parsePaymentFilters, paymentFiltersQuery, type PaymentFilters } from "@/lib/payment-filters";
 import { setRegistrationPayment } from "@/lib/payment-actions";
@@ -133,7 +132,6 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/pagos"> }
         if (!s.verified) redirect(`/${lang}/organizador`);
         return (
           <>
-            <OrgNav lang={lang} t={t} admin={s.isAdmin} />
             <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
               <h1 className="text-3xl font-semibold">{t.org.pays.title}</h1>
               <p className="mt-1 max-w-2xl text-sm text-muted">{t.org.pays.blurb}</p>

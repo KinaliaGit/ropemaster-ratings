@@ -11,7 +11,6 @@ import { enrollByOrganizer, promoteWaitlistEntry, removeRegistration, removeWait
 import { RemoveRegistrationDialog } from "@/components/RemoveRegistrationDialog";
 import { fmtDeadline, isNotOpenYet, isRegistrationOpen } from "@/lib/event-time";
 import { Gate } from "@/components/Gate";
-import { OrgNav } from "@/components/OrgNav";
 import { listEventRegistrations, listEventRemovals, listEventWaitlist } from "@/lib/data/registrations";
 import { setRegistrationPayment } from "@/lib/payment-actions";
 import { EventPhotos } from "@/components/EventPhotos";
@@ -81,7 +80,6 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
   const field = "rounded-xl border border-line bg-white px-3 py-2 text-sm outline-none focus:border-ink";
   return (
           <>
-            <OrgNav lang={lang} t={t} admin={s.isAdmin} />
             <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
               <Link href={`/${lang}/organizador`} className="text-sm text-muted hover:text-ink">← {t.org.ev.back}</Link>
               <div className="mt-2 flex flex-wrap items-start justify-between gap-3">

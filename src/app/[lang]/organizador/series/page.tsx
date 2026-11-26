@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
-import { OrgNav } from "@/components/OrgNav";
 import { ArenaFilter } from "@/components/ArenaFilter";
 import { arenaKey, collectArenas, parseArenaParam } from "@/lib/arena";
 import { listOrganizerSeries } from "@/lib/data/series";
@@ -21,7 +20,6 @@ async function List({ s, lang, t, deleted, arena }: { s: Session; lang: Lang; t:
   const m = t.org.series;
   return (
     <>
-      <OrgNav lang={lang} t={t} admin={s.isAdmin} />
       <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>

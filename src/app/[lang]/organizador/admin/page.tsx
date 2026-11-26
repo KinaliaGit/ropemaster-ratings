@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
-import { OrgNav } from "@/components/OrgNav";
 import { setOrganizerVerified } from "@/lib/admin-actions";
 import { listOrganizersForAdmin, type OrganizerRow } from "@/lib/data/directory";
 import { fmtDate } from "@/lib/format";
@@ -68,7 +67,6 @@ async function Page(props: PageProps<"/[lang]/organizador/admin">) {
         const { organizers, audit } = await listOrganizersForAdmin();
         return (
           <>
-            <OrgNav lang={lang} t={t} admin />
             <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
               <h1 className="text-3xl font-semibold">{a.title}</h1>
               <p className="mt-1 text-sm text-muted">{a.blurb}</p>

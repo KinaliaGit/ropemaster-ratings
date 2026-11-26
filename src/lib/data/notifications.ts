@@ -1,7 +1,8 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import type { Unread } from "@/lib/notices";
 
-// Avisos de la persona que visita (KIN-657). Sin caché: son personales. La base solo deja leer los propios (RLS).
+// Avisos de la persona que visita (KIN-657). Sin caché: son personales. La base solo deja leer los propios (RLS) y ya no devuelve los vencidos
+// (vistos hace más de 90 días, no vistos de más de un año; los de reembolso pendiente nunca vencen): ver docs/NOTIFICACIONES.md (KIN-772).
 export type NotificationItem = { id: string; kind: "removed" | "event_deleted" | "promoted"; eventName: string; eventDate: string | null; reason: string; refundPending: boolean; createdAt: string; read: boolean };
 
 export async function listMyNotifications(limit = 50): Promise<NotificationItem[]> {

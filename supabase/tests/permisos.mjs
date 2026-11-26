@@ -1681,6 +1681,78 @@ console.log("- Resultados de un evento (0030)");
   verify("y sigue poniendo los mismos paquetes en cada rol", JSON.stringify((await db.query(rows(8))).rows) === JSON.stringify([{ role: "header", packages: 2, amount_cents: 20000 }, { role: "heeler", packages: 2, amount_cents: 20000 }]));
 }
 
+// ---- Ciclo de vida de los avisos (KIN-772): vistos expiran a los 90 días, no vistos al año, los de reembolso pendiente nunca; lo vencido se esconde y se limpia
+{
+  console.log("\n— Ciclo de vida de los avisos");
+  const verify = (label, ok) => { if (!ok) failures++; console.log(`${ok ? "✔" : "✘ FALLO"}  ${label}`); };
+  // Como la persona con sesión: lo que ve de verdad (las reglas de la base se aplican)
+  const seen = async (uid, sql = "select event_name, read_at is null as unread from notifications order by event_name") => {
+    await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${uid}', false); set role authenticated`);
+    try { return (await db.query(sql)).rows; } finally { await db.exec("reset role"); }
+  };
+  const names = (rows) => rows.map((r) => r.event_name).sort();
+  const ago = (interval) => `now() - interval '${interval}'`;
+  // (nombre, creado, leído) de la persona C. `refund` marca los de reembolso pendiente.
+  const notice = (user, name, created, read, refund = false) =>
+    `insert into notifications (user_id, kind, event_name, refund_pending, created_at, read_at) values ('${user}', 'removed', '${name}', ${refund}, ${created}, ${read})`;
+  await db.exec(`delete from notifications; ${[
+    notice(C, "visto-10-dias", ago("30 days"), ago("10 days")),
+    notice(C, "visto-89-dias", ago("200 days"), ago("89 days")),
+    notice(C, "visto-91-dias", ago("200 days"), ago("91 days")),
+    notice(C, "visto-100-dias", ago("300 days"), ago("100 days")),
+    notice(C, "nuevo-reciente", ago("2 days"), "null"),
+    notice(C, "nuevo-11-meses", ago("335 days"), "null"),
+    notice(C, "nuevo-13-meses", ago("400 days"), "null"),
+    notice(C, "nuevo-2-anios", ago("730 days"), "null"),
+    notice(C, "reembolso-visto-200-dias", ago("400 days"), ago("200 days"), true),
+    notice(C, "reembolso-nuevo-3-anios", ago("1100 days"), "null", true),
+    notice(P2, "de-otra-persona-reciente", ago("1 day"), "null"),
+    notice(P2, "de-otra-persona-vencido", ago("500 days"), ago("400 days")),
+  ].join("; ")}`);
+
+  // La regla (un solo lugar): los límites de los 90 días y del año, y la excepción del reembolso
+  const expired = async (read, created, refund = false) => (await db.query(`select private.notification_expired(${read}, ${created}, ${refund}) as e`)).rows[0].e;
+  verify("visto hace 89 días: no ha expirado; hace 91: sí", !(await expired(ago("89 days"), ago("1 year"))) && (await expired(ago("91 days"), ago("1 year"))));
+  verify("no visto de 364 días: no ha expirado; de 366: sí", !(await expired("null", ago("364 days"))) && (await expired("null", ago("366 days"))));
+  verify("un aviso nuevo (hoy, visto o no) no ha expirado", !(await expired("null", "now()")) && !(await expired("now()", "now()")));
+  verify("con reembolso pendiente nunca expira (visto o no)", !(await expired(ago("5 years"), ago("6 years"), true)) && !(await expired("null", ago("6 years"), true)));
+
+  // Lectura: lo vencido ya no se ve; lo vigente, lo no visto reciente y lo de reembolso siguen
+  const mine = await seen(C);
+  verify("la persona ve solo lo vigente (y lo de reembolso pendiente aunque sea viejo)", JSON.stringify(names(mine)) === JSON.stringify(["nuevo-11-meses", "nuevo-reciente", "reembolso-nuevo-3-anios", "reembolso-visto-200-dias", "visto-10-dias", "visto-89-dias"].sort()));
+  verify("lo vencido (visto de 91 y 100 días, no visto de 13 meses y 2 años) ya no sale", !names(mine).some((n) => ["visto-91-dias", "visto-100-dias", "nuevo-13-meses", "nuevo-2-anios"].includes(n)));
+  verify("el contador de no vistas no cuenta lo vencido (3 no vistos vigentes)", mine.filter((r) => r.unread).length === 3);
+  verify("sigue viendo solo lo suyo (nada de la otra persona)", !names(mine).some((n) => n.startsWith("de-otra-persona")));
+  const other = await seen(P2);
+  verify("la otra persona ve su aviso vigente y no el vencido ni los ajenos", JSON.stringify(names(other)) === JSON.stringify(["de-otra-persona-reciente"]));
+  await as("authenticated", D, "select id from notifications", "una tercera persona no ve avisos ajenos", "deny");
+  await as("anon", null, "select id from notifications", "anónimo NO ve avisos", "deny");
+  // Un aviso vencido ya no se puede ni marcar como leído (no se ve); uno vigente sí
+  await as("authenticated", C, "update notifications set read_at = now() where event_name = 'nuevo-2-anios'", "un aviso vencido ya no se puede tocar", "deny");
+  await as("authenticated", C, "update notifications set read_at = now() where event_name = 'nuevo-reciente'", "un aviso vigente SÍ se marca como leído", "some");
+  await as("authenticated", C, "update notifications set read_at = now() where event_name = 'de-otra-persona-reciente'", "el aviso de otra persona NO se marca", "deny");
+  await db.exec("update notifications set read_at = null where event_name = 'nuevo-reciente'");
+
+  // Limpieza: solo el administrador de la base la corre; borra lo vencido y nada más; repetirla no hace nada
+  await as("authenticated", C, "select private.purge_expired_notifications()", "una persona con sesión NO corre la limpieza", "deny");
+  await as("authenticated", A, "select private.purge_expired_notifications()", "ni un organizador", "deny");
+  await as("anon", null, "select private.purge_expired_notifications()", "ni anónimo", "deny");
+  await db.exec("reset role"); // el administrador de la base (el programador de pg_cron o el SQL Editor)
+  const finance = (await db.query("select (select count(*) from registration_removals) as r, (select count(*) from deleted_events) as d")).rows[0];
+  const first = Number((await db.query("select private.purge_expired_notifications() as n")).rows[0].n);
+  verify("la primera limpieza borra los 5 vencidos (4 de C y 1 de la otra persona)", first === 5);
+  const left = (await db.query("select event_name from notifications order by event_name")).rows.map((r) => r.event_name);
+  verify("quedan los vigentes y los de reembolso pendiente", JSON.stringify(left) === JSON.stringify(["de-otra-persona-reciente", "nuevo-11-meses", "nuevo-reciente", "reembolso-nuevo-3-anios", "reembolso-visto-200-dias", "visto-10-dias", "visto-89-dias"]));
+  verify("los avisos con reembolso pendiente siguen ahí", left.includes("reembolso-nuevo-3-anios") && left.includes("reembolso-visto-200-dias"));
+  const second = Number((await db.query("select private.purge_expired_notifications() as n")).rows[0].n);
+  verify("es idempotente: la segunda limpieza no borra nada", second === 0 && Number((await db.query("select count(*) n from notifications")).rows[0].n) === 7);
+  verify("lo financiero (retiros y eventos borrados) no se toca al limpiar avisos", JSON.stringify(finance) === JSON.stringify((await db.query("select (select count(*) from registration_removals) as r, (select count(*) from deleted_events) as d")).rows[0]));
+
+  // Regresión: la campana y la lista de la persona siguen mostrando lo vigente después de limpiar
+  verify("tras limpiar, la persona sigue viendo sus 6 avisos vigentes", (await seen(C)).length === 6);
+  await db.exec("delete from notifications");
+}
+
 // ---- Eventos que la app sube a la web (KIN-648, entrega 2)
 {
   console.log("\n— Eventos subidos desde la app");

@@ -104,6 +104,7 @@ export const es = {
     publicProfile: "Ver mi perfil público e historial", paid: "Pagado", pending: "Pago pendiente",
   },
   org: {
+    panel: { hello: "Hola,", toCollect: "por cobrar", tabs: { proximos: "Próximos", pasados: "Pasados", borradores: "Borradores" }, tabEmpty: "No hay eventos en esta pestaña.", noEnrolled: "Sin inscripciones", paidOf: (a: number, b: number) => `${a} de ${b} pagados`, spots: (a: number, b: number) => `${a}/${b} lugares`, waiting: (n: number) => `${n} en espera` },
     overview: {
       title: "Resumen", nextSeries: "Próxima serie", nextEvent: "Siguiente evento", events: "eventos", enrolledInSeries: "inscritos en la serie", inDays: (n: number) => n === 0 ? "es hoy" : n === 1 ? "mañana" : `en ${n} días`,
       noNextEvent: "No tienes un evento próximo publicado.", enrolled: "Inscritos", capacity: "cupo", spotsLeft: (n: number) => `${n} lugares libres`, full: "Cupo lleno",

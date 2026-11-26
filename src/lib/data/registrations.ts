@@ -96,6 +96,13 @@ export async function getEventWaitlistCount(eventUuid: string): Promise<number> 
   return Number((data ?? []).find((r: { event_id: string; n: number }) => r.event_id === eventUuid)?.n ?? 0);
 }
 
+// Cuántos esperan en cada evento, de una sola lectura (panel del organizador, KIN-763). Solo números; la misma función pública de arriba.
+export async function listWaitlistCounts(): Promise<Record<string, number>> {
+  const { data, error } = await createPublicClient().rpc("event_waitlist_counts");
+  if (error) throw new Error(`No se pudo leer la lista de espera: ${error.message}`);
+  return Object.fromEntries((data ?? []).map((r: { event_id: string; n: number }) => [r.event_id, Number(r.n)]));
+}
+
 export type MyWaitlistEntry = { id: string; place: number; role: string | null; packages: number; category: string; event: { slug: string | null; name: string; date: string | null; city: string | null; status: string } | null };
 
 // Mis lugares en listas de espera, con mi lugar en la fila de cada evento (la base solo devuelve los míos y un número: no revela a nadie).

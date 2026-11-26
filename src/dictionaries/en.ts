@@ -104,6 +104,7 @@ export const en: Dict = {
     publicProfile: "View my public profile and history", paid: "Paid", pending: "Payment pending",
   },
   org: {
+    panel: { hello: "Hi,", toCollect: "to collect", tabs: { proximos: "Upcoming", pasados: "Past", borradores: "Drafts" }, tabEmpty: "No events in this tab.", noEnrolled: "No registrations", paidOf: (a: number, b: number) => `${a} of ${b} paid`, spots: (a: number, b: number) => `${a}/${b} spots`, waiting: (n: number) => `${n} waiting` },
     overview: {
       title: "Overview", nextSeries: "Next series", nextEvent: "Next event", events: "events", enrolledInSeries: "registered in the series", inDays: (n: number) => n === 0 ? "today" : n === 1 ? "tomorrow" : `in ${n} days`,
       noNextEvent: "You have no upcoming published event.", enrolled: "Registered", capacity: "capacity", spotsLeft: (n: number) => `${n} spots left`, full: "Full",

@@ -48,7 +48,8 @@ async function LinksSection({ organizer, lang }: { organizer: string; lang: Lang
     listEventConnections(organizer).catch(() => []),
     listOrganizerEvents(organizer).catch(() => []),
   ]);
-  const published = events.filter((e) => e.status === "publicado" || e.status === "finalizado").map((e) => ({ id: e.id, name: e.name }));
+  // `EventItem.id` es el slug; el enlace se ata al UUID del evento.
+  const published = events.filter((e) => (e.status === "publicado" || e.status === "finalizado") && e.uuid).map((e) => ({ id: e.uuid as string, name: e.name }));
   const day = (iso: string) => fmtDate(iso.slice(0, 10), lang);
   const can = (scopes: string[]) => [d.canRead, ...(scopes.includes("results:write") ? [d.canResults] : []), ...(scopes.includes("payments:write") ? [d.canPayments] : [])].join(", ");
   return (

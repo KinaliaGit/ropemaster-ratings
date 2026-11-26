@@ -89,3 +89,38 @@ La inscripción nace `pendiente`. Tres formas de pagarla:
   el webhook `/api/stripe/webhook` verifica la firma y confirma con la service role (`confirm_stripe_payment`, idempotente por id de cobro). Un pago en línea no se deshace a mano.
 **Falta para activar Stripe:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` y `SUPABASE_SERVICE_ROLE_KEY` en `.env.local`, y guardar en la base la cuenta conectada de cada organizador
 (hoy se usa `STRIPE_TEST_CONNECTED_ACCOUNT`). Sin probar contra Stripe real.
+
+## Resumen de pagos por evento y filtro por arena (KIN-765)
+
+Contrato para el panel del organizador (H03): **una función de lectura**, sin migración ni función SQL nueva. El panel muestra lo que devuelve y no
+recalcula dinero. Código: `src/lib/data/payments.ts` (`listEventPaymentSummary`) y `src/lib/payment-summary.ts` (tipos y regla que junta los datos).
+
+```ts
+listEventPaymentSummary(organizerId: string, arenaId: string | null = null): Promise<EventPaymentSummary[]>
+
+type EventPaymentSummary = {
+  eventId: string; slug: string; name: string;
+  date: string | null;                 // "AAAA-MM-DD"; null si el evento aún no tiene fecha
+  status: string;                      // "borrador" | "publicado" | "finalizado"
+  arena: { id: string; name: string } | null;   // null: sin arena enlazada
+  paidCount: number;                   // inscripciones pagadas
+  pendingCount: number;                // inscripciones pendientes de pago
+  waitlistCount: number;               // personas en lista de espera
+  paidCents: number; pendingCents: number;
+  expectedCents: number;               // pagado + pendiente
+};
+```
+
+- **Qué cuenta.** Solo inscripciones `pendiente` y `pagado`; una `reembolsado` no es dinero esperado (misma regla que la pantalla `organizador/pagos`).
+  La lista de espera (`event_waitlist`) es una tabla aparte: no suma al dinero ni al cupo, solo se cuenta en `waitlistCount`.
+- **Misma suma que la pantalla de Pagos.** Los totales salen de `listPaymentTotals`, la consulta de la pantalla; no hay una segunda lógica financiera.
+- **Una fila por evento del organizador con slug**, también los que no tienen inscripciones (todo en cero). Orden: fecha más reciente primero, sin fecha
+  al final, luego nombre. Los montos van en **centavos** (enteros).
+- **Filtro por arena.** `arenaId` es el `id` de una arena del propio organizador (catálogo `arenas`, KIN-751); con `null` no se filtra. La pantalla de
+  Pagos usa `?arena=<llave>` (la misma llave que `arenaKey()` de `src/lib/arena.ts`), la resuelve contra el catálogo del organizador y descarta una llave
+  que no sea suya (se ven todos los eventos). Con menos de dos arenas el selector no aparece. El filtro acota totales, tabla de eventos, lista y espera.
+- **Privacidad.** Todo se lee con la sesión del organizador y SIEMPRE se filtra por `events.organizer_id`; además las reglas de la base (RLS) no dejan
+  leer inscripciones, lista de espera ni arenas de otro organizador. Cubierto en `supabase/tests/permisos.mjs` (sección «Resumen de pagos por evento y arena»).
+- **Tope.** Los eventos se leen con el tope de 1000 de la API; las inscripciones y la espera se leen por páginas.
+- **Fuera de alcance.** Precios, comisiones, reembolsos y otros procesadores de pago no cambian. Los montos pueden moverse cuando KIN-749 (paquetes por
+  rol) cambie `amount_cents`; el resumen seguirá sumando lo que diga la inscripción.

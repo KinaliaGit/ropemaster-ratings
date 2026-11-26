@@ -2019,5 +2019,60 @@ console.log("— Organizador que además compite");
   await as("authenticated", U1, solo(`e.organizer_id = '${U1}'`, 100), "filtrando por sus eventos: solo lo que él cobra", "some");
 }
 
+// Resumen de pagos por evento y filtro por arena (KIN-765): son las MISMAS consultas que hace src/lib/data/payments.ts, ejecutadas con la sesión de cada
+// organizador. Fija que cada quien solo ve el dinero y la lista de espera de SUS eventos, que el filtro por arena acota todo igual, y que un evento
+// sin inscripciones o un organizador sin arenas devuelven ceros/vacío sin error.
+console.log("— Resumen de pagos por evento y arena (KIN-765)");
+{
+  const check = (label, ok) => { if (!ok) failures++; console.log(`${ok ? "✔" : "✘ FALLO"}  ${label.padEnd(58)} → ${ok ? "ok" : "NO"}`); };
+  const U1 = "76500000-0000-0000-0000-000000000001", U2 = "76500000-0000-0000-0000-000000000002", U3 = "76500000-0000-0000-0000-000000000003";
+  const AR1 = "a7650000-0000-0000-0000-000000000001", AR2 = "a7650000-0000-0000-0000-000000000002", AR_OTRO = "a7650000-0000-0000-0000-000000000009";
+  const E1 = "e7650000-0000-0000-0000-000000000001", E2 = "e7650000-0000-0000-0000-000000000002", E3 = "e7650000-0000-0000-0000-000000000003", E_OTRO = "e7650000-0000-0000-0000-000000000009";
+  const K1 = "c7650000-0000-0000-0000-000000000001", K2 = "c7650000-0000-0000-0000-000000000002", K_OTRO = "c7650000-0000-0000-0000-000000000009";
+  const R = [1, 2, 3, 4, 5].map((i) => `37650000-0000-0000-0000-00000000000${i}`);
+  await db.exec(`reset role;
+    insert into auth.users (id, email, email_confirmed_at) values ('${U1}','k765-1@x.com',now()), ('${U2}','k765-2@x.com',now()), ('${U3}','k765-3@x.com',now());
+    insert into profiles (user_id, role, display_name) values ('${U1}','organizador','Org Uno'), ('${U2}','organizador','Org Dos'), ('${U3}','organizador','Org Sin Arenas');
+    insert into arenas (id, organizer_id, name) values ('${AR1}','${U1}','Arena Norte'), ('${AR2}','${U1}','Arena Sur'), ('${AR_OTRO}','${U2}','Arena Ajena');
+    insert into events (id, name, organizer_id, status, slug, capacity, disciplines, arena_id) values
+      ('${E1}','Norte Uno','${U1}','publicado','k765-norte-uno',10,'{lazo}','${AR1}'),
+      ('${E2}','Sur Uno','${U1}','publicado','k765-sur-uno',10,'{lazo}','${AR2}'),
+      ('${E3}','Norte Vacío','${U1}','publicado','k765-norte-vacio',10,'{lazo}','${AR1}'),
+      ('${E_OTRO}','Ajeno','${U2}','publicado','k765-ajeno',10,'{lazo}','${AR_OTRO}');
+    insert into event_categories (id, event_id, name, fee_cents) values ('${K1}','${E1}','Libre',100000), ('${K2}','${E2}','Libre',50000), ('${K_OTRO}','${E_OTRO}','Libre',70000);
+    insert into ropers (id, full_name) values ${R.map((r, i) => `('${r}','K765 Persona ${i + 1}')`).join(", ")};
+    insert into registrations (event_id, roper_id, category_id, amount_cents, payment_status) values
+      ('${E1}','${R[0]}','${K1}',100000,'pagado'), ('${E1}','${R[1]}','${K1}',100000,'pendiente'), ('${E1}','${R[2]}','${K1}',100000,'reembolsado'),
+      ('${E2}','${R[0]}','${K2}',50000,'pendiente'), ('${E_OTRO}','${R[3]}','${K_OTRO}',70000,'pagado');
+    insert into event_waitlist (event_id, roper_id, category_id) values ('${E1}','${R[3]}','${K1}'), ('${E1}','${R[4]}','${K1}'), ('${E_OTRO}','${R[0]}','${K_OTRO}');
+  `);
+  const rows = async (uid, sql) => {
+    await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${uid}', false); set role authenticated`);
+    try { return (await db.query(sql)).rows; } finally { await db.exec("reset role"); }
+  };
+  // Lo que suma listPaymentTotals: solo pendiente y pagado, solo eventos del organizador, con o sin arena.
+  const totals = (uid, arena) => rows(uid, `select r.event_id, count(*) filter (where r.payment_status = 'pagado')::int paid, count(*) filter (where r.payment_status = 'pendiente')::int pending,
+    coalesce(sum(r.amount_cents),0)::int expected from registrations r join events e on e.id = r.event_id
+    where e.organizer_id = '${uid}' and r.payment_status in ('pendiente','pagado') ${arena ? `and e.arena_id = '${arena}'` : ""} group by r.event_id order by r.event_id`);
+  const waiting = (uid, arena) => rows(uid, `select w.event_id, count(*)::int n from event_waitlist w join events e on e.id = w.event_id where e.organizer_id = '${uid}' ${arena ? `and e.arena_id = '${arena}'` : ""} group by w.event_id`);
+
+  const all = await totals(U1, null);
+  check("sin filtro: pagadas y pendientes de sus dos eventos con inscripciones", all.length === 2 && all[0].event_id === E1 && all[0].paid === 1 && all[0].pending === 1 && all[0].expected === 200000 && all[1].event_id === E2 && all[1].pending === 1);
+  check("una inscripción reembolsada NO cuenta en el dinero ni en los números", all[0].paid + all[0].pending === 2);
+  const norte = await totals(U1, AR1);
+  check("filtrar por arena deja solo los eventos de esa arena", norte.length === 1 && norte[0].event_id === E1 && norte[0].expected === 200000);
+  check("la suma por arenas es el total sin filtro", (await totals(U1, AR1)).concat(await totals(U1, AR2)).reduce((a, x) => a + x.expected, 0) === all.reduce((a, x) => a + x.expected, 0));
+  check("la lista de espera se cuenta aparte, por evento", JSON.stringify(await waiting(U1, null)) === JSON.stringify([{ event_id: E1, n: 2 }]));
+  check("la lista de espera también se filtra por arena", (await waiting(U1, AR2)).length === 0 && (await waiting(U1, AR1))[0].n === 2);
+  check("un evento sin inscripciones aparece en sus eventos y no tiene totales (cero)", (await rows(U1, `select id from events where organizer_id = '${U1}' and arena_id = '${AR1}' order by id`)).length === 2 && !norte.some((t) => t.event_id === E3));
+
+  check("otro organizador NO ve las inscripciones ni el dinero de estos eventos", (await rows(U2, `select id from registrations where event_id in ('${E1}','${E2}')`)).length === 0);
+  check("otro organizador NO ve la lista de espera de estos eventos", (await rows(U2, `select id from event_waitlist where event_id = '${E1}'`)).length === 0);
+  check("sus totales solo traen lo suyo, nunca lo de otro organizador", JSON.stringify((await totals(U2, null)).map((t) => t.event_id)) === JSON.stringify([E_OTRO]));
+  check("filtrar con la arena de OTRO organizador no devuelve nada", (await totals(U1, AR_OTRO)).length === 0 && (await waiting(U1, AR_OTRO)).length === 0);
+  check("otro organizador NO ve las arenas de este", (await rows(U2, `select id from arenas where id in ('${AR1}','${AR2}')`)).length === 0);
+  check("un organizador sin arenas ni eventos recibe todo vacío, sin error", (await rows(U3, "select id from arenas")).length === 0 && (await totals(U3, null)).length === 0 && (await waiting(U3, null)).length === 0);
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

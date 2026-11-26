@@ -153,7 +153,7 @@ export const en: Dict = {
     pays: {
       title: "Payments", blurb: "Everything you collect in one place: how much is expected, how much has been paid and who owes, event by event.",
       expected: "Expected", collected: "Paid", pending: "Pending", events: "My events", noEvents: "There are no registrations with payments to show yet.", registered: "registrations", payments: "paid", pendings: "pending", open: "See who owes",
-      filters: "Filters", event: "Event", allEvents: "All events", status: "Status", statusPending: "Pending", statusPaid: "Paid", statusAll: "All", search: "Search by name", apply: "Filter", clear: "Clear filters",
+      filters: "Filters", arena: "Arena", allArenas: "All arenas", event: "Event", allEvents: "All events", status: "Status", statusPending: "Pending", statusPaid: "Paid", statusAll: "All", search: "Search by name", apply: "Filter", clear: "Clear filters",
       listTitle: "Who owes and who paid", empty: "Nothing to show with these filters.", showing: "Showing", of: "of", refine: "Narrow the filters to see the rest.",
       person: "Person", category: "Category", amount: "Amount", since: "Owed since", paidOn: "Paid on", method: "Method", action: "Action", eventCol: "Event", paidState: "Paid", pendingState: "Pending",
       loadError: "We couldn't load the payments. Try again.", unverified: "You need a valid license or an administrator's approval to see payments.",

@@ -4,7 +4,9 @@ import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
 import { OrgNav } from "@/components/OrgNav";
+import { listArenas } from "@/lib/data/arenas";
 import { listPaymentRows, listPaymentTotals, PAYMENT_ROWS_LIMIT, type PaymentRow } from "@/lib/data/payments";
+import { arenaKey } from "@/lib/arena";
 import { parsePaymentFilters, paymentFiltersQuery, type PaymentFilters } from "@/lib/payment-filters";
 import { setRegistrationPayment } from "@/lib/payment-actions";
 import { fmtDate, mxn, type Lang } from "@/lib/format";
@@ -13,6 +15,8 @@ import type { Dict } from "@/dictionaries/es";
 
 // Gestión general de pagos del organizador (KIN-754): qué eventos tiene, cuánto se espera, cuánto se pagó y quién debe.
 // Solo pagado y pendiente. Marcar un pago aquí cambia la misma inscripción que ve el evento y la app (no hay otra copia).
+// Filtro por arena (KIN-765, ?arena=<llave>): acota los totales, la tabla de eventos y la lista a los eventos de esa arena. Una llave que no es de
+// ninguna arena del organizador se ignora (se ve todo), y con menos de dos arenas el selector no aparece.
 
 const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : "");
 
@@ -28,12 +32,19 @@ function PayForm({ lang, row, query, method, label, tone }: { lang: Lang; row: P
 
 async function Content({ organizerId, lang, t, f, pagoError }: { organizerId: string; lang: Lang; t: Dict; f: PaymentFilters; pagoError: boolean }) {
   const p = t.org.pays;
-  let totals, list;
-  try { [totals, list] = await Promise.all([listPaymentTotals(organizerId), listPaymentRows(organizerId, f)]); } catch { return <p role="alert" className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-800">{p.loadError}</p>; }
+  let totals, list, arenas;
+  try {
+    arenas = await listArenas();
+    const arenaId = f.arena ? arenas.find((a) => arenaKey(a.name) === f.arena)?.id ?? null : null;
+    [totals, list] = await Promise.all([listPaymentTotals(organizerId, arenaId), listPaymentRows(organizerId, f, arenaId)]);
+  } catch { return <p role="alert" className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-800">{p.loadError}</p>; }
   const sum = totals.reduce((a, x) => ({ expected: a.expected + x.expectedCents, paid: a.paid + x.paidCents, pending: a.pending + x.pendingCents }), { expected: 0, paid: 0, pending: 0 });
   const query = paymentFiltersQuery(f);
-  const filtered = Boolean(f.event || f.q || f.status !== "pendiente");
-  const link = (slug: string) => `/${lang}/organizador/pagos?evento=${encodeURIComponent(slug)}&estado=pendiente`;
+  const arenaOptions = arenas.map((a) => ({ key: arenaKey(a.name), name: a.name, count: a.events })).filter((o) => o.key);
+  const arenaSelected = arenaOptions.some((o) => o.key === f.arena) ? f.arena : "";
+  const showArena = arenaOptions.length > 1 || Boolean(arenaSelected);
+  const filtered = Boolean(f.event || f.q || f.status !== "pendiente" || arenaSelected);
+  const link = (slug: string) => `/${lang}/organizador/pagos?evento=${encodeURIComponent(slug)}&estado=pendiente${arenaSelected ? `&arena=${encodeURIComponent(arenaSelected)}` : ""}`;
   return (
     <>
       {pagoError && <p role="alert" className="mt-6 rounded-2xl bg-red-50 p-4 text-sm text-red-800">{t.pay.error}</p>}
@@ -64,7 +75,15 @@ async function Content({ organizerId, lang, t, f, pagoError }: { organizerId: st
       )}
 
       <h2 id="lista" className="mt-10 scroll-mt-24 text-xl font-semibold">{p.listTitle}</h2>
-      <form method="get" className="card mt-3 grid gap-3 p-4 sm:grid-cols-[1fr_11rem_1fr_auto] sm:items-end" role="search" aria-label={p.filters}>
+      <form method="get" className={`card mt-3 grid gap-3 p-4 sm:items-end ${showArena ? "sm:grid-cols-[1fr_1fr_11rem_1fr_auto]" : "sm:grid-cols-[1fr_11rem_1fr_auto]"}`} role="search" aria-label={p.filters}>
+        {showArena && (
+          <label className="block text-sm font-medium">{p.arena}
+            <select name="arena" defaultValue={arenaSelected} className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-2.5 outline-none focus:border-ink" data-testid="pays-arena">
+              <option value="">{p.allArenas}</option>
+              {arenaOptions.map((o) => <option key={o.key} value={o.key}>{o.name} ({o.count})</option>)}
+            </select>
+          </label>
+        )}
         <label className="block text-sm font-medium">{p.event}
           <select name="evento" defaultValue={f.event ?? ""} className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-2.5 outline-none focus:border-ink">
             <option value="">{p.allEvents}</option>

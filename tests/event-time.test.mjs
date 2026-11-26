@@ -85,3 +85,14 @@ test("KIN-656: la fecha pasada cierra el evento, en la zona del evento y no ante
   assert.equal(statusByDate({ ...ev, status: "borrador" }, at("2026-11-10T00:00:00Z")), "borrador"); // solo cierra los publicados
   assert.equal(statusByDate({ ...ev, date: "" }, at("2026-11-10T00:00:00Z")), "publicado"); // sin fecha no se cierra
 });
+
+test("KIN-768: en vivo solo el publicado cuya fecha es hoy en la zona del evento", async () => {
+  const { isLiveToday } = await import("../src/lib/event-time.ts");
+  const now = Date.parse("2026-11-27T03:00:00Z"); // 26 nov, 21:00 en Ciudad de México
+  const e = { status: "publicado", date: "2026-11-26", timezone: "America/Mexico_City" };
+  assert.equal(isLiveToday(e, now), true);
+  assert.equal(isLiveToday({ ...e, date: "2026-11-27" }, now), false);
+  assert.equal(isLiveToday({ ...e, date: "2026-11-25" }, now), false);
+  assert.equal(isLiveToday({ ...e, status: "finalizado" }, now), false);
+  assert.equal(isLiveToday({ ...e, status: "borrador" }, now), false);
+});

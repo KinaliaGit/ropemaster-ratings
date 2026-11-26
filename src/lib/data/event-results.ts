@@ -3,6 +3,7 @@ import { createPublicClient } from "@/lib/supabase/public";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { EVENT_RESULTS_PAGE_SIZE, isUuid, toEventResultsPage, type EventResultsPage } from "@/lib/event-results";
 import { toRounds, type Round } from "@/lib/results-history";
+import { matchesName } from "@/lib/search";
 
 // Lecturas PÚBLICAS de los resultados de un evento (KIN-608). Los resultados solo se ven si el evento es visible (migración 0029),
 // así que los de un borrador no salen aunque se pidan por su id.
@@ -18,6 +19,21 @@ export async function getEventResults(eventUuid: string, discipline: string, aft
   });
   if (error) throw new Error(`No se pudieron leer los resultados: ${error.message}`);
   return toEventResultsPage((data ?? []) as Parameters<typeof toEventResultsPage>[0], EVENT_RESULTS_PAGE_SIZE);
+}
+
+// KIN-768: los resultados de quienes coinciden con un nombre, con su lugar real. Recorre las páginas ya en caché (la base no cambia) y se
+// detiene en un tope para que un evento enorme no dispare consultas sin fin.
+const SEARCH_MAX_PAGES = 100;
+export async function searchEventResults(eventUuid: string, discipline: string, query: string): Promise<EventResultsPage> {
+  const rows: EventResultsPage["rows"] = [];
+  let after: number | null = null;
+  for (let i = 0; i < SEARCH_MAX_PAGES; i++) {
+    const page: EventResultsPage = await getEventResults(eventUuid, discipline, after);
+    rows.push(...page.rows.filter((r) => matchesName(r.name, query)));
+    after = page.next;
+    if (after === null) break;
+  }
+  return { rows, next: null, total: rows.length };
 }
 
 // Rondas de UN resultado de ese evento (null si no existe, es de otro evento o el evento no es público).

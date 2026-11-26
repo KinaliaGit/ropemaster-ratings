@@ -16,7 +16,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/notificaciones"> }) {
         const items = await listMyNotifications();
         const unread = items.filter((i) => !i.read).length;
         return (
-          <div className="mx-auto max-w-2xl px-5 pb-10 pt-12">
+          <div className="page">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <h1 className="text-3xl font-semibold">{n.title}</h1>
               {unread > 0 && (
@@ -26,8 +26,8 @@ async function Page({ props }: { props: PageProps<"/[lang]/notificaciones"> }) {
                 </form>
               )}
             </div>
-            <div className="mt-6 space-y-3">
-              {items.length === 0 && <p className="rounded-2xl bg-sand p-6 text-center text-muted">{n.empty}</p>}
+            <div className="mt-6 grid items-start gap-3 md:grid-cols-2 [&>:only-child]:col-span-full">
+              {items.length === 0 && <p className="rounded-2xl bg-sand p-6 text-center text-muted md:col-span-2">{n.empty}</p>}
               {items.map((i) => (
                 <article key={i.id} className={`card p-4 ${i.read ? "" : "border-brand"}`} aria-label={i.eventName}>
                   <div className="flex flex-wrap items-start justify-between gap-2">

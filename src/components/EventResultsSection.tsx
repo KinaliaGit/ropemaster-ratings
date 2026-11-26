@@ -15,7 +15,7 @@ export async function EventResultsSection({ slug, uuid, disciplines, lang, t }: 
   return (
     <EventResults
       slug={slug} lang={lang} sets={sets}
-      labels={{ loadMore: t.people.loadMore, loadError: t.people.loadError, retry: t.people.retry, viewRounds: t.people.viewRounds, hideRounds: t.people.hideRounds, noRounds: t.people.noRounds, results: t.event.results }}
+      labels={{ loadMore: t.people.loadMore, loadError: t.people.loadError, retry: t.people.retry, viewRounds: t.people.viewRounds, hideRounds: t.people.hideRounds, noRounds: t.people.noRounds, results: t.event.results, findRoper: t.event.findRoper, showAll: t.event.showAll, noRoper: t.event.noRoper }}
     />
   );
 }

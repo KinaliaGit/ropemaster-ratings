@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
-import { OrgNav } from "@/components/OrgNav";
 import { EventForm } from "@/components/EventForm";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { listArenas } from "@/lib/data/arenas";
@@ -21,8 +20,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/eventos/n
         const arenas = await listArenas();
         return (
         <>
-          <OrgNav lang={lang} t={t} admin={s.isAdmin} />
-          <div className="mx-auto max-w-2xl px-5 pb-10 pt-8">
+          <div className="page">
             <h1 className="text-3xl font-semibold">{f.title}</h1>
             <p className="mt-1 text-sm text-muted">{f.blurb}</p>
             <p className="mt-1 text-sm text-muted" data-testid="new-event-series-hint">{f.seriesHint} <Link href={`/${lang}/organizador/series/nueva`} className="font-medium text-brand-hot hover:underline">{f.seriesLink}</Link></p>

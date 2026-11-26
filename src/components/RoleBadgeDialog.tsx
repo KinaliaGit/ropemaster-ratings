@@ -14,17 +14,18 @@ export function RoleBadgeDialog({ action, lang, initial, text, l }: {
   return (
     <>
       <button type="button" onClick={() => ref.current?.showModal()} aria-haspopup="dialog" aria-label={`${text}. ${l.edit}`} title={l.edit}
-        className={`inline-flex max-w-full items-center rounded-full px-3 py-1 text-sm font-medium ${initial ? "bg-sand text-ink hover:bg-line" : "bg-brand-soft text-brand-hot hover:bg-line"}`}>
+        className={`inline-flex min-h-8 max-w-full items-center rounded-full px-2.5 py-1 text-[13px] sm:px-3 sm:text-sm font-medium ${initial ? "bg-sand text-ink hover:bg-line" : "bg-brand-soft text-brand-hot hover:bg-line"}`}>
         <span className="break-words text-left">{initial ? text : l.choose}</span>
+        <svg aria-hidden viewBox="0 0 24 24" className="ml-1.5 size-3.5 shrink-0 opacity-60" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" /></svg>
       </button>
       <dialog ref={ref} onClick={(e) => { if (e.target === ref.current) ref.current?.close(); }} aria-labelledby="rol-dialogo" className="m-auto w-[min(92vw,28rem)] rounded-2xl p-0 backdrop:bg-black/40">
         <form action={action} onSubmit={() => ref.current?.close()} className="p-6">
           <h3 id="rol-dialogo" className="text-lg font-semibold">{l.title}</h3>
           <input type="hidden" name="lang" value={lang} />
           <div className="mt-4 space-y-4"><RoleFields labels={l.fields} initial={initial} /></div>
-          <div className="mt-5 flex justify-end gap-2">
-            <button type="button" onClick={() => ref.current?.close()} className="rounded-full bg-sand px-4 py-2 text-sm font-medium hover:bg-line">{l.cancel}</button>
-            <button className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white hover:bg-brand-hot">{l.save}</button>
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <button type="button" onClick={() => ref.current?.close()} className="rounded-full bg-sand px-4 min-h-11 py-2 text-sm sm:min-h-0 font-medium hover:bg-line">{l.cancel}</button>
+            <button className="rounded-full bg-ink px-5 min-h-11 py-2 text-sm sm:min-h-0 font-medium text-white hover:bg-brand-hot">{l.save}</button>
           </div>
         </form>
       </dialog>

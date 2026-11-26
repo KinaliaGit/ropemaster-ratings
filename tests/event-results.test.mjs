@@ -21,9 +21,9 @@ test("after es un entero positivo; cualquier otra cosa se rechaza", () => {
     assert.equal(parseEventResultsQuery(url(`?discipline=lazo&after=${encodeURIComponent(after)}`), ACTIVE).ok, false, after);
   }
   const ok = parseEventResultsQuery(url("?discipline=lazo&after=30"), ACTIVE);
-  assert.deepEqual(ok.ok && ok.value, { discipline: "lazo", after: 30 });
+  assert.deepEqual(ok.ok && ok.value, { discipline: "lazo", after: 30, q: "" });
   const first = parseEventResultsQuery(url("?discipline=lazo&after="), ACTIVE);
-  assert.deepEqual(first.ok && first.value, { discipline: "lazo", after: null });
+  assert.deepEqual(first.ok && first.value, { discipline: "lazo", after: null, q: "" });
 });
 
 test("isUuid acepta ids válidos y rechaza lo demás", () => {
@@ -62,4 +62,11 @@ test("un descalificado conserva su marca y no trae lugar", () => {
 test("paquetes y tiros (Lazada Sorteada) pasan a la fila y, sin ellos, quedan en null", () => {
   const page = toEventResultsPage([row(1, { packages: 3, shots: 9 }), row(2), row(3, { packages: null, shots: null })], EVENT_RESULTS_PAGE_SIZE);
   assert.deepEqual(page.rows.map((r) => [r.packages, r.shots]), [[3, 9], [null, null], [null, null]]);
+});
+
+test("KIN-768: la búsqueda de lazador llega recortada y con tope", () => {
+  const found = parseEventResultsQuery(url("?discipline=lazo&q=%20ana%20"), ACTIVE);
+  assert.equal(found.ok && found.value.q, "ana");
+  const long = parseEventResultsQuery(url(`?discipline=lazo&q=${"a".repeat(200)}`), ACTIVE);
+  assert.equal(long.ok && long.value.q.length, 80);
 });

@@ -33,7 +33,7 @@ export function RoundsDetail({ state, labels, onRetry }: { state: RoundsState | 
       <ul className="space-y-2">
         {groups.map((g) => g.items.length === 1 ? (
           <li key={g.items[0].key} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-            <span className="min-w-44 font-medium">{g.title}</span>
+            <span className="min-w-24 font-medium sm:min-w-44">{g.title}</span>
             <Value item={g.items[0]} />
             <Tags item={g.items[0]} />
           </li>

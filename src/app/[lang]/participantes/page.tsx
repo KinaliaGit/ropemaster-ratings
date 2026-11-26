@@ -1,28 +1,27 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { ParticipantList } from "@/components/ParticipantList";
+import { RoperGrid } from "@/components/RoperGrid";
 import { RankingSkeleton } from "@/components/ListSkeletons";
-import { listRankingPage } from "@/lib/data/ropers";
-import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
+import { listDirectoryPage } from "@/lib/data/ropers";
+import { DEFAULT_DISCIPLINE } from "@/lib/disciplines";
 import type { Lang } from "@/lib/format";
-import { toParticipantRow } from "@/lib/ranking-view";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 import type { Dict } from "@/dictionaries/es";
 
-// Buscador y primera página del ranking: lo único que depende de la base. Va aparte para que el título salga al instante (KIN-611).
-async function Ranking({ lang, t }: { lang: Lang; t: Dict }) {
+// Buscador, filtros y primera tanda del directorio: lo único que depende de la base. Va aparte para que el título salga al instante (KIN-611).
+async function Directory({ lang, t }: { lang: Lang; t: Dict }) {
   // Los datos públicos se leen al atender la visita, no al compilar (así el build no necesita conectarse a la base).
   await connection();
-  // Una lista por modalidad activa, solo con su primera página (KIN-613). "Ver más" y la búsqueda piden el resto al servidor (/api/ranking),
-  // que ordena y numera todo el ranking: cada quien conserva su lugar real.
-  const sets = await Promise.all(ACTIVE_DISCIPLINES.map(async (d) => {
-    const page = await listRankingPage(d.id);
-    return { id: d.id, label: t.disc[d.id].persons, rows: page.rows.map((r) => toParticipantRow(r, lang, t)), next: page.next };
-  }));
+  // Si la primera lectura falla, la pantalla sale igual y ofrece reintentar.
+  const initial = await listDirectoryPage({ discipline: DEFAULT_DISCIPLINE, search: "", role: null, offset: 0 }).catch(() => null);
+  const p = t.people;
   return (
-    <ParticipantList
-      sets={sets} lang={lang}
-      labels={{ search: t.people.search, noResults: t.people.noResults, empty: t.people.empty, loadMore: t.people.loadMore, loadError: t.people.loadError, retry: t.people.retry }}
+    <RoperGrid
+      discipline={DEFAULT_DISCIPLINE} lang={lang} initial={initial}
+      labels={{
+        search: p.search, noResults: p.noMatches, loadMore: p.loadMore, loadError: p.loadError, retry: p.retry, rating: p.rating, position: p.position,
+        all: p.allRopers, headers: p.headers, heelers: p.heelers, header: t.roles.header, heeler: t.roles.heeler, both: t.roles.both,
+      }}
     />
   );
 }
@@ -31,11 +30,10 @@ export default async function Participantes({ params }: PageProps<"/[lang]/parti
   const lang = await resolveLang(params);
   const t = getDictionary(lang);
   return (
-    <div className="mx-auto max-w-6xl px-5 pb-10 pt-12">
-      <h1 className="text-4xl font-semibold sm:text-5xl">{t.people.title}</h1>
-      <p className="mt-3 text-lg text-muted">{t.people.subtitle}</p>
+    <div className="page">
+      <h1 className="text-2xl font-semibold sm:text-3xl">{t.people.title}</h1>
       <Suspense fallback={<RankingSkeleton />}>
-        <Ranking lang={lang} t={t} />
+        <Directory lang={lang} t={t} />
       </Suspense>
     </div>
   );

@@ -98,3 +98,32 @@ export function reopenResponse(outcome: string, eventId: string): { status: numb
   }
   return { status: 404, body: { error: "Evento no encontrado" } };
 }
+
+// ---- Pagos (KIN-706) ----
+
+export type PaymentsBody = { ok: true; payments: unknown[]; clientBatchId: string | null };
+
+export function parsePaymentsBody(text: string): PaymentsBody | Failure {
+  const read = readBody(text);
+  if (!read.ok) return read;
+  const { payments, client_batch_id: batch } = read.body;
+  if (!Array.isArray(payments)) return fail(400, "invalid_body", "payments debe ser un arreglo.");
+  if (payments.length > MAX_BATCH) return fail(413, "payload_too_large", `Máximo ${MAX_BATCH} pagos por lote: parte el lote en mitades.`);
+  if (batch !== undefined && batch !== null && !isUuid(batch)) return fail(400, "invalid_body", "client_batch_id debe ser un UUID.");
+  return { ok: true, payments, clientBatchId: typeof batch === "string" ? batch.toLowerCase() : null };
+}
+
+export type PaymentRow = { r_id: string; r_status: string; r_code: string | null; r_message: string | null; r_revision: number | null; r_retry: boolean };
+
+/** Una entrada por pago, en el mismo orden. Solo lo del contrato: nada interno de la base. */
+export function buildPaymentsResponse(rows: PaymentRow[], clientBatchId: string | null) {
+  return {
+    contract_version: CONTRACT_VERSION,
+    client_batch_id: clientBatchId,
+    payments: rows.map((row) =>
+      row.r_status === "rejected"
+        ? { id: row.r_id, status: "rejected", code: row.r_code, message: row.r_message, retry: row.r_retry === true }
+        : { id: row.r_id, status: row.r_status, revision: row.r_revision },
+    ),
+  };
+}

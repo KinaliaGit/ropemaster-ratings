@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseRoleChoice, roleFromRow, roleText } from "../src/lib/roles.ts";
+import { canChangeRole, parseRoleChoice, roleFromRow, roleText } from "../src/lib/roles.ts";
 
 const L = { header: "Cabecero", heeler: "Pialador", both: "Ambos", favorite: "favorito", undefined: "Sin definir" };
 
@@ -30,4 +30,14 @@ test("el texto del rol se ve claro", () => {
   assert.equal(roleText({ role: "header", favorite: null }, L), "Cabecero");
   assert.equal(roleText({ role: "heeler", favorite: null }, L), "Pialador");
   assert.equal(roleText({ role: "both", favorite: "heeler" }, L), "Ambos · favorito: Pialador");
+});
+
+test("KIN-746: con los dos roles en la misma categoría no se ofrece cambiar; en los demás casos sí", () => {
+  const reg = (id, category, slug) => ({ id, category, event: { slug } });
+  const header = reg("1", "Libre", "a"), heeler = reg("2", "Libre", "a"), otherCategory = reg("3", "Amateur", "a"), otherEvent = reg("4", "Libre", "b");
+  const mine = [header, heeler, otherCategory, otherEvent];
+  assert.equal(canChangeRole(header, mine), false);
+  assert.equal(canChangeRole(heeler, mine), false);
+  assert.equal(canChangeRole(otherCategory, mine), true);
+  assert.equal(canChangeRole(otherEvent, mine), true);
 });

@@ -5,7 +5,7 @@ export const en: Dict = {
   meta: { title: "Rope Master Ratings", description: "The global registry of ropers: rating, history and results from every event." },
   common: { brand: "Rope Master", ratings: "Ratings", loading: "Loading…", back: "Back", of: "of" },
   roles: { legend: "Which role do you usually compete in?", header: "Header", heeler: "Heeler", both: "Both", favoriteLegend: "Which is your favorite role, the one you use most?", favorite: "favorite", undefined: "Not set" },
-  nav: { myLazador: "My roper profile", createLazador: "Create my roper profile", events: "Events", participants: "Participants", signIn: "Sign in", myPanel: "My dashboard", myAccount: "My account", signOut: "Sign out", publicSite: "Public site", language: "Language" },
+  nav: { panel: "My dashboard", payments: "Payments", series: "Series", arenas: "Arenas", myLazador: "My roper profile", createLazador: "Create my roper profile", events: "Events", participants: "Participants", myPanel: "My organizer dashboard", signInOrUp: "Sign in / Sign up", signIn: "Sign in", menu: "Menu", localApp: "Local app", myAccount: "My account", signOut: "Sign out", publicSite: "View public site", language: "Language" },
   promo: {
     label: "Rope Master", title: "The software to run your roping event.",
     text: "Rope Master is the app used to manage roping series and events: teams, times, judges and results in one system, synced in real time.",
@@ -26,6 +26,7 @@ export const en: Dict = {
   },
   status: { open: "Registration open", full: "Full", finished: "Finished", draft: "Draft", published: "Published", paid: "Paid", pending: "Pending" },
   home: {
+    phase: { draft: "Draft", upcoming: "Upcoming", open: "Open", full: "Full", closed: "Closed", finished: "Finished" }, tabEmpty: "No events in this tab.", live: "Live", searchLabel: "Search events", searchPlaceholder: "Name, arena, city or month", searchBtn: "Search", searchEmpty: (q: string) => `No events match “${q}”. Try another name, the city or the month.`,
     empty: "There are no published events yet.",
     title: "Events", subtitle: "Find your next event, register and follow your rating.",
     openEvents: "open events", registered: "registered", participants: "participants", upcoming: "Upcoming", finished: "Finished",
@@ -33,7 +34,7 @@ export const en: Dict = {
   event: {
     from: "From", 
     organizedBy: "Hosted by", photos: "Photos", noPhotos: "The organizer hasn't uploaded photos yet.", enrolled: "Registered", noEnrolled: "No one has registered yet.",
-    results: "Results", resultsClosed: "Final results", resultsInReview: "Results being corrected", noResults: "No results yet.",
+    findRoper: "Find a roper", showAll: "Show all results", noRoper: "Nobody by that name has results here. Check the spelling.", results: "Results", resultsClosed: "Final results", resultsInReview: "Results being corrected", noResults: "No results yet.",
     joinWaitlist: "Join the waitlist", waitlistCount: (n: number) => (n === 1 ? "1 person on the waitlist" : `${n} people on the waitlist`), enrollment: "Registration", enroll: "Register", needAccount: "You need a participant account.", eventFinished: "Event finished", full: "Full", closesOn: "Closes on", drawType: "Draw type", roundRobin: "Round Robin", lazadaSorteada: "Lazada Sorteada", shotsPerPackage: "Shots per package", roundsWord: "rounds", maxTeamRating: "Maximum team rating", packageFee: "per package", maxRating: "Maximum rating to register", registrationClosed: "Registration closed", opensOn: "Registration opens on", notYetOpen: "Registration opens soon",
   },
   series: {
@@ -58,7 +59,7 @@ export const en: Dict = {
     initialRating: "Starting rating · no events yet",
     empty: "There are no participants with a rating in this discipline yet.", dq: "Disqualified",
     title: "Participants", subtitle: "Ropers and barrel racers with their rating and history. Public, no account needed.",
-    search: "Search by name or ID (RM-0001)", idLabel: "ID", copyId: "Copy", idCopied: "Copied", noResults: "No results for", noRating: "No events in this discipline",
+    noMatches: "Nobody matches that search.", position: "Position", allRopers: "All", headers: "Headers", heelers: "Heelers", search: "Search by name or ID (RM-0001)", idLabel: "ID", copyId: "Copy", idCopied: "Copied", noResults: "No results for", noRating: "No events in this discipline",
     verified: "Verified profile", unclaimed: "Unclaimed profile", rating: "Rating", eventsWord: "events", winsWord: "wins", resultsWord: "results",
     history: "Event history", noHistory: "No results recorded yet.", event: "Event", date: "Date", discipline: "Discipline", time: "Time", place: "Place",
     contactNote: "Contact details are not public. Not you, or something's wrong?", report: "Report", verifiedEvent: "Verified event",
@@ -97,12 +98,13 @@ export const en: Dict = {
   account: {
     createTitle: "Create your roper profile", createText: "Your account is an organizer account. If you also compete, create your roper profile: you'll get your rating and history and can register for events. If another organizer already registered you with your email, you claim that profile.", createBtn: "Create my roper profile", profileCreated: "Done! Your roper profile is created.", typeOrganizer: "Organizer · roper profile",
     photo: { add: "Add photo", change: "Change photo", remove: "Remove", saving: "Saving…", tooBig: `The photo is larger than ${MAX_UPLOAD_MB} MB. Choose a lighter one.`, error: "Couldn't save the photo. Use a JPG, PNG or WebP image." },
-    type: "Participant account", roleTitle: "My role", roleUndefined: "You haven't chosen the role you compete in yet. Pick it so organizers can see it; nothing is blocked in the meantime.", roleSave: "Save role", roleCancel: "Cancel", roleChoose: "+ Choose role", roleEdit: "Change my role", roleSaved: "Done, we saved your role.", upcoming: "Upcoming events", payHow: "How to pay (transfer or cash)", ratingEvolution: "Rating evolution", noRatingChanges: "No rating changes yet. You will see how it evolves here once it changes.", afterEvent: "after", pendingPayments: "Pending payments", noPending: "You have no pending payments.", pastEvents: "Past events", noPast: "You have no past events yet.", pendingTotal: "Total to pay:", currentRating: "Current rating", alreadyVerified: "Your account is already verified. Here is your space.", notFoundTitle: "We couldn't find that page", notFoundText: "The link may be misspelled or no longer exist.", notFoundBack: "Back to home", myRegistrations: "My registrations",
-    noRegistrations: "You haven't registered for any event yet.", available: "Available events", noneAvailable: "No new events right now.",
+    type: "Participant account", roleTitle: "My role", roleUndefined: "You haven't chosen the role you compete in yet. Pick it so organizers can see it; nothing is blocked in the meantime.", roleSave: "Save role", roleCancel: "Cancel", roleChoose: "+ Choose role", roleEdit: "Change my role", roleSaved: "Done, we saved your role.", moreOptions: "More options", noUpcoming: "You have no upcoming events.", seeEvents: "See events", refunded: "Refunded", upcoming: "Upcoming events", ratingEvolution: "Rating evolution", noRatingChanges: "No rating changes yet. You will see how it evolves here once it changes.", afterEvent: "after", pastEvents: "Past events", noPast: "You have no past events yet.", pendingTotal: "to pay", currentRating: "Current rating", alreadyVerified: "Your account is already verified. Here is your space.", notFoundTitle: "We couldn't find that page", notFoundText: "The link may be misspelled or no longer exist.", notFoundBack: "Back to home", myRegistrations: "My registrations",
+    
     enrolledOk: "Done! Your spot is reserved. Below you can see how to pay.", regRole: "Role in this event:", changeRole: "Change role", roleChanged: "Done: we changed your registration role.", noRole: "Not set", canceledOk: "Registration canceled.", waitlistTitle: "On the waitlist", waitlistPlace: (n: number) => `Place ${n} in line`, waitlistHint: "You take no spot and pay nothing. If one opens, the organizer moves you to registered and we let you know.", waitlistLeave: "Leave the waitlist", waitlistJoined: "You are on the waitlist. We will let you know if a spot opens.", waitlistLeft: "You left the waitlist.", removedTitle: "Events you were removed from", removedOn: "Removed on", removedReason: "Reason:", removedRefund: "You had already paid: the organizer will refund you manually (refund pending).", removedRefundDone: "The organizer marked your refund as done.", removedCanReturn: "The organizer allows you to register again.", removedBlocked: "To register again, ask the organizer.", cancel: "Cancel",
-    ranking: "Ranking", seeAll: "See all", publicProfile: "View my public profile and history", paid: "Paid", pending: "Payment pending",
+    publicProfile: "View my public profile and history", paid: "Paid", pending: "Payment pending",
   },
   org: {
+    panel: { hello: "Hi,", toCollect: "to collect", tabs: { proximos: "Upcoming", pasados: "Past", borradores: "Drafts", series: "Series" }, seriesEvents: (n: number) => `${n} ${n === 1 ? "event" : "events"}`, seriesOpen: (n: number) => `${n} open`, tabEmpty: "No events in this tab.", noEnrolled: "No registrations", paidOf: (a: number, b: number) => `${a} of ${b} paid`, spots: (a: number, b: number) => `${a}/${b} spots`, waiting: (n: number) => `${n} waiting` },
     overview: {
       title: "Overview", nextSeries: "Next series", nextEvent: "Next event", events: "events", enrolledInSeries: "registered in the series", inDays: (n: number) => n === 0 ? "today" : n === 1 ? "tomorrow" : `in ${n} days`,
       noNextEvent: "You have no upcoming published event.", enrolled: "Registered", capacity: "capacity", spotsLeft: (n: number) => `${n} spots left`, full: "Full",
@@ -135,7 +137,7 @@ export const en: Dict = {
     },
     welcome: "Account created! You can now create your first event.", noEvents: "You have no events yet. Create a series and add the first one inside it.", noParticipants: "No participants have registered yet.",
     accountType: "Organizer account", newSeries: "+ New series", newEvent: "+ Individual event", events: "Events", enrolled: "Registered", collected: "Collected", myEvents: "My events", manage: "Manage",
-    tabs: { series: "Series", appShort: "App", adminShort: "Admin", admin: "Administration", summary: "Overview", participants: "Participants", payments: "Payments", arenas: "Arenas", app: "Local app" },
+    tabs: { series: "Series", adminShort: "Admin", admin: "Administration", summary: "Overview", participants: "Participants", payments: "Payments", arenas: "Arenas" },
     arenas: {
       title: "Arenas", blurb: "The places where you hold your events. Save them once and reuse them when creating events and series; each arena has its own history.",
       newTitle: "Add arena", name: "Name", city: "City", notes: "Basic details (address, contact, notes)", add: "Add arena",
@@ -151,6 +153,9 @@ export const en: Dict = {
       errors: { invalid: "Check the arena name.", duplicate: "You already have an arena with that name (case, accents and punctuation are ignored). If they are duplicates, merge them.", failed: "Could not save. Try again.", mergeFailed: "The arenas could not be merged.", inUse: "It can't be deleted: it has events or series." },
     },
     pays: {
+      noneInArena: "This arena has no payments yet.",
+      owing: "Still owing", completeTab: "Paid up", noneOwing: "Nobody owes you: everything is collected.", allPayments: "All payments", seeEvent: "See the event", ofTotal: (m: string) => `of ${m}`,
+      ringLabel: "collected", byEvent: "By event", complete: "Complete", paidOf: (a: number, b: number) => `${a} of ${b} paid`, missing: (m: string) => `${m} to go`,
       title: "Payments", blurb: "Everything you collect in one place: how much is expected, how much has been paid and who owes, event by event.",
       expected: "Expected", collected: "Paid", pending: "Pending", events: "My events", noEvents: "There are no registrations with payments to show yet.", registered: "registrations", payments: "paid", pendings: "pending", open: "See who owes",
       filters: "Filters", event: "Event", allEvents: "All events", status: "Status", statusPending: "Pending", statusPaid: "Paid", statusAll: "All", search: "Search by name", apply: "Filter", clear: "Clear filters",

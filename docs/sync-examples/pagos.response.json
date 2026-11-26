@@ -1,0 +1,10 @@
+{
+  "contract_version": 1,
+  "client_batch_id": "7c2d1e90-5a43-4b8e-8f11-3e6a9b0d4c21",
+  "payments": [
+    { "id": "b2d3f4a5-0000-4000-8000-000000000001", "status": "accepted", "revision": 1 },
+    { "id": "b2d3f4a5-0000-4000-8000-000000000002", "status": "accepted", "revision": 1 },
+    { "id": "b2d3f4a5-0000-4000-8000-000000000003", "status": "accepted", "revision": 1 },
+    { "id": "b2d3f4a5-0000-4000-8000-000000000004", "status": "rejected", "code": "paid_online", "message": "Pagó en línea: no se puede deshacer desde la app", "retry": false }
+  ]
+}

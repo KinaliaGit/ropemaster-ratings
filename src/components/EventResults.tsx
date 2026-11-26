@@ -1,13 +1,13 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { RoundsDetail, type RoundsState } from "@/components/RoundsDetail";
 import type { ResultItem } from "@/lib/event-results-view";
 import type { RoundItem } from "@/lib/results-view";
 
 export type ResultSet = { id: string; label: string; rows: ResultItem[]; next: number | null; total: number };
-type Labels = { loadMore: string; loadError: string; retry: string; viewRounds: string; hideRounds: string; noRounds: string; results: string };
+type Labels = { loadMore: string; loadError: string; retry: string; viewRounds: string; hideRounds: string; noRounds: string; results: string; findRoper: string; showAll: string; noRoper: string };
 type Entry = { rows: ResultItem[]; next: number | null; total: number };
 
 // Resultados de un evento: la página trae la primera tanda de cada modalidad; "Ver más" pide las siguientes (por lugar) y las rondas de
@@ -21,6 +21,30 @@ export function EventResults({ slug, lang, sets, labels }: { slug: string; lang:
   const [rounds, setRounds] = useState<Record<string, RoundsState>>({});
 
   const entry = data[current];
+
+  // KIN-768: buscar un lazador dentro del evento. `query` es lo ya «asentado»; la respuesta se guarda por modalidad y texto.
+  const [q, setQ] = useState("");
+  const [query, setQuery] = useState("");
+  const [found, setFound] = useState<Record<string, ResultItem[]>>({});
+  const [searchFailed, setSearchFailed] = useState<string | null>(null);
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(q.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [q]);
+  const key = `${current}\n${query}`;
+  const pending = query !== "" && found[key] === undefined && searchFailed !== key;
+  useEffect(() => {
+    if (!pending) return;
+    const controller = new AbortController();
+    fetch(`/api/eventos/${encodeURIComponent(slug)}/resultados?${new URLSearchParams({ discipline: current, lang, q: query })}`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("falló"))))
+      .then((json: Entry) => setFound((f) => ({ ...f, [key]: json.rows })))
+      .catch((e: unknown) => { if (!(e instanceof DOMException && e.name === "AbortError")) setSearchFailed(key); });
+    return () => controller.abort();
+  }, [pending, key, slug, current, lang, query]);
+  const searching = q.trim() !== "";
+  const shown = searching ? found[key] ?? [] : entry?.rows ?? [];
+  const showAll = () => { setQ(""); setQuery(""); setOpen(null); };
 
   async function loadMore() {
     if (!entry || entry.next === null || loadingMore) return;
@@ -69,8 +93,16 @@ export function EventResults({ slug, lang, sets, labels }: { slug: string; lang:
           ))}
         </div>
       )}
-      <div className="mt-2" aria-live="polite">
-        {entry?.rows.map((r) => (
+      <div className="mt-3 flex flex-wrap items-center gap-2" role="search">
+        <input type="search" value={q} maxLength={80} onChange={(e) => { setQ(e.target.value); setOpen(null); setSearchFailed(null); }} placeholder={labels.findRoper} aria-label={labels.findRoper} autoComplete="off"
+          className="min-h-11 w-full min-w-0 rounded-full border border-line bg-white px-4 text-sm outline-none focus:border-ink sm:max-w-sm" />
+        {searching && <button type="button" onClick={showAll} className="min-h-11 rounded-full border border-line bg-white px-4 text-sm font-medium hover:border-ink">{labels.showAll}</button>}
+      </div>
+      <div className="mt-2" aria-live="polite" aria-busy={searching && (pending || q.trim() !== query)}>
+        {searching && (pending || q.trim() !== query) && shown.length === 0 && <div className="mt-4 h-5 w-48 animate-pulse rounded bg-sand" aria-hidden />}
+        {searching && searchFailed === key && <p className="mt-4 text-muted">{labels.loadError}{" "}<button type="button" onClick={() => setSearchFailed(null)} className="underline">{labels.retry}</button></p>}
+        {searching && q.trim() === query && found[key]?.length === 0 && <p className="mt-4 rounded-2xl bg-sand p-4 text-muted">{labels.noRoper}</p>}
+        {shown.map((r) => (
           <div key={r.id} className="border-b border-line">
             <div className="flex items-center gap-4 py-4 sm:px-2">
               <span className="w-6 text-sm tabular-nums text-muted">{r.place}</span>
@@ -96,7 +128,7 @@ export function EventResults({ slug, lang, sets, labels }: { slug: string; lang:
           </div>
         ))}
       </div>
-      {entry && entry.next !== null && (
+      {!searching && entry && entry.next !== null && (
         <div className="mt-6 text-center">
           <button onClick={loadMore} disabled={loadingMore} className="rounded-full border border-line bg-white px-6 py-2.5 text-sm font-medium transition hover:border-ink disabled:opacity-60">{labels.loadMore}</button>
           {moreFailed && <p className="mt-3 text-sm text-muted">{labels.loadError}</p>}

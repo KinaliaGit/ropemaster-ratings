@@ -6,7 +6,7 @@ export const EVENT_RESULTS_PAGE_SIZE = 30;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (value: unknown): value is string => typeof value === "string" && UUID.test(value);
 
-export type EventResultsQuery = { discipline: string; after: number | null };
+export type EventResultsQuery = { discipline: string; after: number | null; q: string };
 export type ParsedEventResultsQuery = { ok: true; value: EventResultsQuery } | { ok: false; error: string };
 
 /** Lee `?discipline=&after=`. `active` son las modalidades activas; `after` es la última posición recibida (entero >= 1). */
@@ -19,7 +19,8 @@ export function parseEventResultsQuery(url: URL, active: readonly string[]): Par
     if (!/^\d{1,9}$/.test(rawAfter) || Number(rawAfter) < 1) return { ok: false, error: "after no es válido" };
     after = Number(rawAfter);
   }
-  return { ok: true, value: { discipline, after } };
+  const q = (url.searchParams.get("q") ?? "").trim().slice(0, 80); // KIN-768: nombre del lazador que se busca
+  return { ok: true, value: { discipline, after, q } };
 }
 
 export type EventResultRow = {

@@ -1,20 +1,16 @@
 // Esqueletos de la portada y del ranking (KIN-611): respetan el tamaño de lo que reemplazan para que nada salte al cargar.
 
-const GRID = "grid grid-cols-1 gap-x-4 gap-y-8 min-[480px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
-
-// Cifras y cuadrícula de carteles 2:3 de la portada (lo que depende de los eventos).
+// Buscador, pestañas y cuadrícula de carteles 2:3 de la portada (lo que depende de los eventos).
 export function EventsSkeleton() {
   return (
     <div className="animate-pulse" aria-hidden>
-      <div className="mt-8 flex gap-8 border-y border-line py-5">
-        {[0, 1].map((i) => <div key={i} className="space-y-2"><div className="h-7 w-10 rounded bg-sand" /><div className="h-3 w-24 rounded bg-sand/70" /></div>)}
-      </div>
-      <div className="mt-12 h-6 w-48 rounded bg-sand" />
-      <div className={`mt-5 ${GRID}`}>
+      <div className="mt-4 h-12 rounded-full bg-sand sm:max-w-lg" />
+      <div className="mt-3 h-12 rounded-full bg-sand/70 sm:max-w-sm" />
+      <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-4 sm:gap-y-8 md:grid-cols-3 lg:grid-cols-4">
         {[0, 1, 2, 3].map((i) => (
           <div key={i}>
-            <div className="aspect-[2/3] rounded-[24px] bg-sand" />
-            <div className="mt-3 space-y-2 px-1"><div className="h-4 w-3/4 rounded bg-sand" /><div className="h-3 w-1/2 rounded bg-sand/70" /></div>
+            <div className="aspect-[2/3] rounded-[20px] bg-sand sm:rounded-[24px]" />
+            <div className="mt-2 space-y-2 px-1"><div className="h-4 w-3/4 rounded bg-sand" /><div className="h-3 w-1/2 rounded bg-sand/70" /></div>
           </div>
         ))}
       </div>

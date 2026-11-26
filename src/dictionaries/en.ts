@@ -26,6 +26,7 @@ export const en: Dict = {
   },
   status: { open: "Registration open", full: "Full", finished: "Finished", draft: "Draft", published: "Published", paid: "Paid", pending: "Pending" },
   home: {
+    phase: { draft: "Draft", upcoming: "Upcoming", open: "Open", full: "Full", closed: "Closed", finished: "Finished" }, tabEmpty: "No events in this tab.", live: "Live", searchLabel: "Search events", searchPlaceholder: "Name, arena, city or month", searchBtn: "Search", searchEmpty: (q: string) => `No events match “${q}”. Try another name, the city or the month.`,
     empty: "There are no published events yet.",
     title: "Events", subtitle: "Find your next event, register and follow your rating.",
     openEvents: "open events", registered: "registered", participants: "participants", upcoming: "Upcoming", finished: "Finished",
@@ -33,7 +34,7 @@ export const en: Dict = {
   event: {
     from: "From", 
     organizedBy: "Hosted by", photos: "Photos", noPhotos: "The organizer hasn't uploaded photos yet.", enrolled: "Registered", noEnrolled: "No one has registered yet.",
-    results: "Results", resultsClosed: "Final results", resultsInReview: "Results being corrected", noResults: "No results yet.",
+    findRoper: "Find a roper", showAll: "Show all results", noRoper: "Nobody by that name has results here. Check the spelling.", results: "Results", resultsClosed: "Final results", resultsInReview: "Results being corrected", noResults: "No results yet.",
     joinWaitlist: "Join the waitlist", waitlistCount: (n: number) => (n === 1 ? "1 person on the waitlist" : `${n} people on the waitlist`), enrollment: "Registration", enroll: "Register", needAccount: "You need a participant account.", eventFinished: "Event finished", full: "Full", closesOn: "Closes on", drawType: "Draw type", roundRobin: "Round Robin", lazadaSorteada: "Lazada Sorteada", shotsPerPackage: "Shots per package", roundsWord: "rounds", maxTeamRating: "Maximum team rating", packageFee: "per package", maxRating: "Maximum rating to register", registrationClosed: "Registration closed", opensOn: "Registration opens on", notYetOpen: "Registration opens soon",
   },
   series: {

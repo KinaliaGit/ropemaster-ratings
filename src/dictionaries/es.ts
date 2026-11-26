@@ -26,6 +26,7 @@ export const es = {
   },
   status: { open: "Inscripciones abiertas", full: "Cupo lleno", finished: "Finalizado", draft: "Borrador", published: "Publicado", paid: "Pagado", pending: "Pendiente" },
   home: {
+    phase: { draft: "Borrador", upcoming: "Próximo", open: "Abierto", full: "Lleno", closed: "Cerrado", finished: "Finalizado" }, tabEmpty: "No hay eventos en esta pestaña.", live: "En vivo", searchLabel: "Buscar eventos", searchPlaceholder: "Nombre, arena, ciudad o mes", searchBtn: "Buscar", searchEmpty: (q: string) => `No encontramos eventos con «${q}». Prueba con otro nombre, la ciudad o el mes.`,
     empty: "Aún no hay eventos publicados.",
     title: "Eventos", subtitle: "Encuentra tu próximo evento, inscríbete y sigue tu rating.",
     openEvents: "eventos abiertos", registered: "inscritos", participants: "participantes", upcoming: "Próximos", finished: "Finalizados",
@@ -33,7 +34,7 @@ export const es = {
   event: {
     from: "Desde", 
     organizedBy: "Organiza", photos: "Fotos", noPhotos: "El organizador aún no ha subido fotos.", enrolled: "Inscritos", noEnrolled: "Aún no hay inscritos.",
-    results: "Resultados", resultsClosed: "Resultados cerrados", resultsInReview: "Resultados en corrección", noResults: "Aún no hay resultados.",
+    findRoper: "Buscar un lazador", showAll: "Ver todos los resultados", noRoper: "Nadie con ese nombre tiene resultados aquí. Revisa cómo se escribe.", results: "Resultados", resultsClosed: "Resultados cerrados", resultsInReview: "Resultados en corrección", noResults: "Aún no hay resultados.",
     joinWaitlist: "Entrar a lista de espera", waitlistCount: (n: number) => (n === 1 ? "1 persona en lista de espera" : `${n} personas en lista de espera`), enrollment: "Inscripción", enroll: "Inscribirme", needAccount: "Necesitas una cuenta de participante.", eventFinished: "Evento finalizado", full: "Cupo lleno", closesOn: "Cierra el", drawType: "Tipo de sorteo", roundRobin: "Round Robin", lazadaSorteada: "Lazada Sorteada", shotsPerPackage: "Tiros por paquete", roundsWord: "rondas", maxTeamRating: "Rating máximo por equipo", packageFee: "por paquete", maxRating: "Rating máximo para inscribirse", registrationClosed: "Inscripciones cerradas", opensOn: "Las inscripciones abren el", notYetOpen: "Inscripciones próximamente",
   },
   series: {

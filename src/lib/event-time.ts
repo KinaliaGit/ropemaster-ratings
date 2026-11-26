@@ -65,6 +65,11 @@ export function statusByDate<S extends string>(e: { status: S; date: string; tim
   return e.status === "publicado" && hasEventPassed(e, now) ? "finalizado" : e.status;
 }
 
+// KIN-768: «en vivo» = publicado y su fecha es HOY en la zona del evento. El evento solo tiene fecha (sin hora) y la web aún no recibe tiempos
+// en vivo (KIN-787): esto dice qué eventos son de hoy.
+export const isLiveToday = (e: { status: string; date: string; timezone: string }, now: number = Date.now()) =>
+  e.status === "publicado" && e.date === todayIn(e.timezone, now);
+
 // Ventana de inscripción: puede abrirse en una fecha programada (KIN-625; vacía = desde que el evento se publica) y cerrarse en otra (KIN-626).
 export type RegistrationWindow = { opensAt?: string | null; closesAt: string | null; closed: boolean };
 

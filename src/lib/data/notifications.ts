@@ -21,3 +21,20 @@ export async function getMyUnread(): Promise<Unread | null> {
 }
 
 export const countMyUnread = async () => (await getMyUnread())?.count ?? 0;
+
+/** Lo que enseña la campana al picarle: los últimos avisos (vistos y sin ver, el más reciente primero), cuántos hay en total y cuántos sin ver. null si falla. */
+export type Bell = { items: NotificationItem[]; total: number; unread: Unread };
+
+export async function getMyBell(limit = 5): Promise<Bell | null> {
+  const supabase = await createServerSupabase();
+  const [list, unread] = await Promise.all([
+    supabase.from("notifications").select("id, kind, event_name, event_date, reason, refund_pending, created_at, read_at", { count: "exact" })
+      .order("created_at", { ascending: false }).limit(limit),
+    getMyUnread(),
+  ]);
+  if (list.error || !unread) return null;
+  const items = (list.data ?? []).map((n) => ({
+    id: n.id, kind: n.kind, eventName: n.event_name, eventDate: n.event_date, reason: n.reason, refundPending: n.refund_pending, createdAt: n.created_at, read: n.read_at !== null,
+  }));
+  return { items, total: list.count ?? items.length, unread };
+}

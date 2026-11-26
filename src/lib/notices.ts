@@ -3,6 +3,10 @@
 
 export type Unread = { count: number; latest: string | null };
 
+/** El evento que avisa a la página que cambió lo «visto» en este navegador y la llave donde se guarda (por cuenta). Lo comparten el banner y la campana. */
+export const NOTICES_CHANGED = "rm-avisos";
+export const seenKeyFor = (userId: string) => `rm-avisos-vistos:${userId}`;
+
 /** ¿`latest` es posterior a `previous`? Sin `previous`, cualquier aviso cuenta como nuevo. */
 export function isNewer(latest: string | null, previous: string | null): boolean {
   if (!latest) return false;

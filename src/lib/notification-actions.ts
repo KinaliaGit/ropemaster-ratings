@@ -17,3 +17,13 @@ export async function markNotificationsRead(formData: FormData) {
   revalidatePath(`/${l}`, "layout");
   redirect(`/${l}/notificaciones`);
 }
+
+// Marcar como leído desde la campana (el menú del encabezado): un aviso (id) o todos, SIN salir de la página donde estás. Igual que arriba, la base solo
+// deja tocar los propios. Sin sesión no hace nada (la campana solo se ve con sesión).
+export async function markBellRead(lang: string, id?: string) {
+  const l = lang === "en" ? "en" : "es";
+  if (!(await getSession())) return;
+  const q = (await createServerSupabase()).from("notifications").update({ read_at: new Date().toISOString() }).is("read_at", null);
+  await (id && UUID.test(id) ? q.eq("id", id) : q);
+  revalidatePath(`/${l}`, "layout"); // el contador y la lista de la campana viven en el encabezado (layout)
+}

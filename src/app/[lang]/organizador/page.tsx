@@ -69,19 +69,21 @@ async function Panel({ s, lang, t, welcome, deleted, verified, arena, passwordCh
           )}
         </div>
 
-        {arenaOptions.length > 1 && (
-          <nav aria-label={t.org.arenas.filter.label} className="mt-4 flex gap-1.5 overflow-x-auto pb-1" data-testid="arena-filter">
-            <Link href={`/${lang}/organizador`} aria-current={!arena ? "page" : undefined} className={chip(!arena)}>{t.org.arenas.filter.all}</Link>
-            {arenaOptions.map((a) => <Link key={a.key} href={`/${lang}/organizador?arena=${encodeURIComponent(a.key)}`} scroll={false} aria-current={arena === a.key ? "page" : undefined} className={chip(arena === a.key)}>{a.name}</Link>)}
-          </nav>
-        )}
-
-        {s.verified ? (
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:max-w-sm">
-            <Link href={`/${lang}/organizador/eventos/nuevo`} data-testid="new-individual-event" className="rounded-full bg-sand py-2.5 text-center text-sm font-medium hover:bg-line">{t.org.newEvent}</Link>
-            <Link href={`/${lang}/organizador/series/nueva`} className="rounded-full bg-brand py-2.5 text-center text-sm font-medium text-white hover:bg-brand-hot">{t.org.newSeries}</Link>
-          </div>
-        ) : <p className="mt-4 inline-block rounded-full bg-sand px-5 py-2.5 text-sm font-medium text-muted">{t.org.newEvent}</p>}
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          {arenaOptions.length > 1 && (
+            <nav aria-label={t.org.arenas.filter.label} className="flex min-w-0 gap-1.5 overflow-x-auto" data-testid="arena-filter">
+              <Link href={`/${lang}/organizador`} aria-current={!arena ? "page" : undefined} className={chip(!arena)}>{t.org.arenas.filter.all}</Link>
+              {arenaOptions.map((a) => <Link key={a.key} href={`/${lang}/organizador?arena=${encodeURIComponent(a.key)}`} scroll={false} aria-current={arena === a.key ? "page" : undefined} className={chip(arena === a.key)}>{a.name}</Link>)}
+            </nav>
+          )}
+  
+          {s.verified ? (
+            <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex sm:shrink-0">
+              <Link href={`/${lang}/organizador/eventos/nuevo`} data-testid="new-individual-event" className="rounded-full bg-sand px-4 py-2.5 text-center text-sm font-medium hover:bg-line">{t.org.newEvent}</Link>
+              <Link href={`/${lang}/organizador/series/nueva`} className="rounded-full bg-brand px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-brand-hot">{t.org.newSeries}</Link>
+            </div>
+          ) : <p className="self-start rounded-full bg-sand px-5 py-2.5 text-sm font-medium text-muted sm:ml-auto">{t.org.newEvent}</p>}
+        </div>
         {s.verified && !overview && <p role="alert" className="mt-4 rounded-2xl bg-red-50 p-4 text-sm text-red-800">{t.org.overview.loadError}</p>}
         {STRIPE_ENABLED && <StripeConnectButton lang={lang} {...t.org.stripe} />}
 
@@ -102,7 +104,7 @@ async function Panel({ s, lang, t, welcome, deleted, verified, arena, passwordCh
         {/* La actividad reciente sigue aquí, plegada, hasta que tenga su propia pantalla (KIN-747). */}
         {overview && overview.activity.length > 0 && (
           <details className="card mt-8 p-4">
-            <summary className="cursor-pointer py-1 text-sm font-medium">{t.org.overview.activity}</summary>
+            <summary className="cursor-pointer py-2.5 text-sm font-medium">{t.org.overview.activity}</summary>
             <ul className="mt-2 space-y-1.5 text-sm">
               {overview.activity.map((a, i) => <li key={i} className="break-words"><span className="font-medium">{a.who}</span> {a.kind === "enrolled" ? t.org.overview.enrolledAct : t.org.overview.removedAct} {a.event} <span className="text-xs text-muted">· {fmtDate(a.at.slice(0, 10), lang)}</span></li>)}
             </ul>

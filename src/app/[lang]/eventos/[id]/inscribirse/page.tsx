@@ -27,7 +27,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
     <Gate lang={lang} role="any" next={`/${lang}/eventos/${id}/inscribirse`}>
       {(s) => (
         <div className="mx-auto max-w-lg px-5 pb-10 pt-12">
-          <Link href={`/${lang}/eventos/${e.id}`} className="text-sm text-muted hover:text-ink">← {e.name}</Link>
+          <Link href={`/${lang}/eventos/${e.id}`} className="inline-block py-2 text-sm text-muted hover:text-ink">← {e.name}</Link>
           <h1 className="mt-3 text-3xl font-semibold">{t.enroll.title}</h1>
           {regOpen && e.registrationClosesAt && <p className="mt-2 text-sm text-muted">{t.event.closesOn} {fmtDeadline(e.registrationClosesAt, e.timezone, lang)}</p>}
           {!regOpen && <p role="alert" className="mt-4 rounded-xl bg-sand p-3 text-sm font-medium">{notYet && e.registrationOpensAt ? `${t.enroll.errors.not_open_yet} ${t.event.opensOn} ${fmtDeadline(e.registrationOpensAt, e.timezone, lang)}` : t.enroll.errors.registration_closed}</p>}

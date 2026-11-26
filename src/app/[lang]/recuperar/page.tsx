@@ -26,7 +26,7 @@ async function Form({ props }: { props: PageProps<"/[lang]/recuperar"> }) {
         <label className="block text-sm font-medium">{t.auth.email}<input required type="email" name="email" autoComplete="email" className={field} /></label>
         <button className="w-full rounded-full bg-ink py-3 text-sm font-medium text-white transition hover:bg-brand-hot">{r.send}</button>
       </form>
-      <p className="mt-6 text-center text-sm"><Link href={`/${lang}/entrar?role=${role}`} className="font-medium text-brand-hot underline">{r.back}</Link></p>
+      <p className="mt-6 text-center text-sm"><Link href={`/${lang}/entrar?role=${role}`} className="inline-block py-2 font-medium text-brand-hot underline">{r.back}</Link></p>
     </div>
   );
 }

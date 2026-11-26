@@ -29,7 +29,7 @@ export function OrgEvents({ events, info, lang, t }: { events: EventItem[]; info
                 {notes.map((n) => <span key={n} className={`${pill} bg-amber-50 text-amber-900`}>{n}</span>)}
               </div>
             }>
-            <Link href={href} className="mt-3 block" aria-label={`${t.org.manage}: ${e.name}`}>
+            <Link href={href} className="mt-1.5 block py-1.5" aria-label={`${t.org.manage}: ${e.name}`}>
               {charged > 0 && <span className="block h-1.5 overflow-hidden rounded-full bg-sand" aria-hidden><span className="block h-full rounded-full bg-emerald-600" style={{ width: `${Math.round((paid / charged) * 100)}%` }} /></span>}
               <span className="mt-1.5 flex flex-wrap justify-between gap-x-3 text-[13px] text-muted">
                 <span className="tabular-nums">{charged > 0 ? o.paidOf(paid, charged) : o.noEnrolled}{e.capacity > 0 ? ` · ${o.spots(e.enrolled, e.capacity)}` : ""}</span>

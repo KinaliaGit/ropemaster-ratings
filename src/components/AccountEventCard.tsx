@@ -17,7 +17,7 @@ export function AccountEventCard({ date, lang, name, href, meta, status, menu, m
       </div>
       <div className="min-w-0 flex-1">
         <div className="relative">
-          <p className={`break-words font-medium ${menu ? "pr-11" : ""}`}>{href ? <Link href={href} className="hover:text-brand-hot">{name}</Link> : name}</p>
+          <p className={`break-words font-medium ${menu ? "pr-11" : ""}`}>{href ? <Link href={href} className="-my-1.5 inline-block py-1.5 hover:text-brand-hot">{name}</Link> : name}</p>
           <p className={`break-words text-sm text-muted ${menu ? "pr-11" : ""}`}>{meta}</p>
           {menu && (
             <details className="group">

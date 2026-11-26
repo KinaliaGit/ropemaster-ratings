@@ -62,3 +62,23 @@ series (lista, detalle y nueva), participantes, pagos, arenas (lista y detalle),
 | Arena (detalle) | «Mis arenas» de 17 px | Edgar | Pendiente |
 | Serie (detalle) | Acciones de 20 a 28 px | Sin dueño asignado en el plan | Pendiente |
 | Administración | «Verificar» y «Revocar» de 28 a 30 px | Sin dueño asignado en el plan | Pendiente |
+
+## Auditoría final (KIN-781, 2026-11-26)
+28 pantallas a 375, 768 y 1280 px (84 mediciones) con sesión de organizador con perfil de lazador, sobre la versión posterior a los
+rediseños. **Sustituye a las tablas anteriores** donde difieran. A 768 y 1280 px no se detectaron desbordes ni elementos por revisar.
+
+| Pantalla (a 375 px) | Defecto | Responsable | Estado |
+|---|---|---|---|
+| Nuevo evento, editar evento | La página medía 420 px (rejilla de categorías `grid-cols-[1fr_9.5rem]`) | Edgar (formulario) | Corregido: la rejilla ya encoge; la página mide 375 px. Avisar a Edgar |
+| Nueva serie | La página medía 436 px, misma rejilla | Edgar (formulario) | Corregido igual que el anterior. Avisar a Edgar |
+| Formularios de evento y serie | «+ Agregar categoría» y «volver» de 17 a 20 px | Edgar | Pendiente |
+| Portada | Campo de búsqueda de 20 px de alto | Anita | Corregido |
+| Nombres en tarjetas y resultados | Enlaces de 20 px | Anita | Corregido |
+| Panel, entrar, recuperar, inscribirse | «Actividad reciente» y enlaces sueltos de 17 a 28 px | Anita | Corregido |
+| Perfil y registro | «Reportar» y «Términos» dentro de un párrafo | — | Exentos |
+| Evento del organizador | «Volver», nombres y «Deshacer» de 17 a 26 px | Emiliano | Pendiente |
+| Participantes del organizador (sin enlace en la barra) | Nombres de 24 px | Emiliano | Pendiente |
+| Detalle de serie | Acciones de 17 a 28 px | Sin dueño asignado | Pendiente |
+| Detalle de arena | «Mis arenas» de 17 px | Edgar | Pendiente |
+
+**No cubierto:** cuenta de solo participante, diálogos abiertos y prueba en un teléfono físico (la hace una persona).

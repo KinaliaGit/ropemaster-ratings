@@ -12,7 +12,7 @@ export function EventSearch({ action, query, arena, view, arenas, labels: l }: {
       <button aria-label={l.apply} className={`${icon} text-muted hover:bg-sand hover:text-ink`}>
         <svg aria-hidden viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="m13.5 13.5 4 4M8.5 15a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13Z" /></svg>
       </button>
-      <input key={`q:${query}`} type="search" name="q" defaultValue={query} maxLength={80} placeholder={l.placeholder} aria-label={l.label} autoComplete="off" enterKeyHint="search" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+      <input key={`q:${query}`} type="search" name="q" defaultValue={query} maxLength={80} placeholder={l.placeholder} aria-label={l.label} autoComplete="off" enterKeyHint="search" className="min-h-10 min-w-0 flex-1 bg-transparent text-sm outline-none" />
       {(arenas.length > 1 || arena) && (
         <details key={`a:${arena}`}>
           <summary aria-label={l.arena} title={l.arena} className={`${icon} list-none [&::-webkit-details-marker]:hidden ${arena ? "bg-ink text-white" : "bg-sand hover:bg-line"}`}>

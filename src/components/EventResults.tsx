@@ -108,7 +108,7 @@ export function EventResults({ slug, lang, sets, labels }: { slug: string; lang:
               <span className="w-6 text-sm tabular-nums text-muted">{r.place}</span>
               <Avatar name={r.name} initials={r.initials} url={r.photo} />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{r.href ? <Link href={r.href} className="hover:text-brand-hot">{r.name}</Link> : r.name}</p>
+                <p className="truncate font-medium">{r.href ? <Link href={r.href} className="-my-1.5 inline-block max-w-full truncate py-1.5 align-top hover:text-brand-hot">{r.name}</Link> : r.name}</p>
                 {r.sub && <p className="text-sm text-muted">{r.sub}</p>}
                 {r.hasRounds && (
                   <button type="button" onClick={() => toggle(r.id)} aria-expanded={open === r.id} className="mt-0.5 text-xs text-muted py-2 underline-offset-2 hover:text-ink hover:underline">

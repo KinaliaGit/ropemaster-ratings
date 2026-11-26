@@ -7,6 +7,7 @@ import { getPublicEvent } from "@/lib/data/events";
 import { mxn, type Lang } from "@/lib/format";
 import { fmtDeadline, isNotOpenYet, isRegistrationOpen, statusByDate } from "@/lib/event-time";
 import { Gate } from "@/components/Gate";
+import { EnrollRoleAndPackages } from "@/components/EnrollRoleAndPackages";
 import { enroll, joinWaitlist } from "@/lib/registration-actions";
 import { STRIPE_ENABLED } from "@/lib/flags";
 import { getDictionary, resolveLang } from "@/lib/i18n";
@@ -25,7 +26,13 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
   const notYet = !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt });
   return (
     <Gate lang={lang} role="any" next={`/${lang}/eventos/${id}/inscribirse`}>
-      {(s) => (
+      {(s) => {
+        // KIN-793: en Lazada Sorteada TODOS eligen su rol y sus paquetes juntos, sea cual sea el rol de su perfil (viene marcado el del perfil, o el
+        // favorito si es "Ambos"): con un solo rol, un número de paquetes; con "los dos", los paquetes de cada lado por separado.
+        const pickRoleAndPackages = e.drawType === "lazada_sorteada";
+        const profileRole = s.roleChoice?.role ?? null;
+        const markedRole = profileRole === "both" ? (s.roleChoice?.favorite ?? null) : profileRole;
+        return (
         <div className="page">
           <BackLink href={`/${lang}/eventos/${e.id}`}>{e.name}</BackLink>
           <h1 className="mt-3 text-3xl font-semibold">{t.enroll.title}</h1>
@@ -44,7 +51,15 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
                 </label>
               ))}
             </fieldset>
-            {s.roleChoice?.role === "both" && (
+            {pickRoleAndPackages && (
+              <EnrollRoleAndPackages lang={lang} categories={e.categories.map((c) => ({ id: c.id, fee: c.fee }))} shotsPerPackage={e.lazadaShotsPerPackage} defaultRole={markedRole ?? "header"} markedRole={markedRole}
+                labels={{
+                  roleTitle: t.enroll.roleTitleAny, roleHint: t.enroll.roleHintAny, header: t.roles.header, heeler: t.roles.heeler, both: t.enroll.both, marked: profileRole === "both" ? t.roles.favorite : t.enroll.yourRole,
+                  packages: t.enroll.packages, packagesHint: t.enroll.packagesHint, packagesHeader: t.enroll.packagesHeader, packagesHeeler: t.enroll.packagesHeeler, sidesHint: t.enroll.packagesSidesHint, needOne: t.enroll.errors.packages_side,
+                  total: t.enroll.packagesTotal, package: t.people.packageOne, packagesWord: t.people.packageMany, shot: t.people.shotOne, shots: t.people.shotMany,
+                }} />
+            )}
+            {s.roleChoice?.role === "both" && !pickRoleAndPackages && (
               <fieldset>
                 <legend className="text-sm font-medium">{t.enroll.roleTitle}</legend>
                 {(["header", "heeler", "both"] as const).map((r) => (
@@ -57,7 +72,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
                 <p className="mt-2 text-xs text-muted">{t.enroll.roleHint}</p>
               </fieldset>
             )}
-            {e.drawType === "lazada_sorteada" && (
+            {e.drawType === "lazada_sorteada" && !pickRoleAndPackages && (
               <label className="block text-sm font-medium">{t.enroll.packages}
                 <input name="packages" type="number" required min={1} max={99} step={1} defaultValue={1} inputMode="numeric" className="mt-1 w-28 rounded-xl border border-line bg-white px-3 py-2 tabular-nums outline-none focus:border-ink" />
                 <span className="mt-1 block text-xs font-normal text-muted">{t.enroll.packagesHint.replace("{shots}", e.lazadaShotsPerPackage === null ? "—" : String(e.lazadaShotsPerPackage))}</span>
@@ -68,7 +83,8 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
             {!full && <p className="text-center text-xs text-muted">{STRIPE_ENABLED ? t.enroll.pendingNote : t.enroll.pendingNoteOffline}</p>}
           </form>}
         </div>
-      )}
+        );
+      }}
     </Gate>
   );
 }

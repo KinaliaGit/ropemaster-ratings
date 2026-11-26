@@ -27,21 +27,47 @@ async function enrollmentInput(formData: FormData) {
   if (statusByDate(event) !== "publicado") return back("registration_closed"); // fecha pasada (KIN-656); la base lo vuelve a validar
   // Quien tiene el rol "Ambos" elige con cuál entra a este evento (cabecero, pialador o los dos): son dos inscripciones si elige los dos.
   // Para los demás perfiles el rol sale del perfil y no se manda nada (la base valida contra el perfil, no contra el navegador).
+  // KIN-793: en Lazada Sorteada TODOS eligen su rol al inscribirse (viene marcado el de su perfil, pero puede cambiarlo): la inscripción lleva su
+  // propio rol y no cambia el perfil. En los demás tipos de sorteo todo sigue igual.
   const picked = String(formData.get("role") ?? "");
-  const role = s.roleChoice?.role === "both" && ["header", "heeler", "both"].includes(picked) ? picked : null;
+  const lazada = event.drawType === "lazada_sorteada";
+  const validPick = ["header", "heeler", "both"].includes(picked);
+  const role = (lazada || s.roleChoice?.role === "both") && validPick ? picked : null;
+  if (lazada && !role) return back("role_required");
   // Lazada Sorteada (KIN-649): cuántos paquetes de tiros compra en cada rol (1 a 99). La base valida que solo ese tipo acepte más de uno y el monto
   // sale del costo de la categoría * paquetes, nunca del navegador. Los demás tipos de sorteo siguen con las firmas de siempre.
   const packages = Math.floor(Number(formData.get("packages") ?? 1));
-  return { l, s, event: { ...event, uuid: event.uuid }, category, role, packages: Number.isFinite(packages) ? packages : 0, back };
+  // KIN-793: en Lazada Sorteada los paquetes van POR LADO (cada lado con paquetes es una inscripción con su rol). Con un solo rol, el número de
+  // `packages` (1 a 99) va a ese lado; con "los dos", `packages_header` y `packages_heeler` (0 a 99 cada uno, al menos 1 en total). La base lo vuelve a validar.
+  const bySide = lazada;
+  const sidePackages = (name: string) => { const n = Number(formData.get(name) ?? ""); return Number.isInteger(n) && n >= 0 && n <= 99 ? n : -1; };
+  let header = 0, heeler = 0;
+  if (lazada && role === "both") {
+    header = sidePackages("packages_header");
+    heeler = sidePackages("packages_heeler");
+    if (header < 0 || heeler < 0 || header + heeler < 1) return back("packages_side");
+  } else if (lazada) {
+    if (!Number.isInteger(packages) || packages < 1 || packages > 99) return back("invalid_packages");
+    header = role === "header" ? packages : 0;
+    heeler = role === "heeler" ? packages : 0;
+  }
+  return { l, s, event: { ...event, uuid: event.uuid }, category, role, packages: Number.isFinite(packages) ? packages : 0, bySide, header, heeler, back };
 }
+
+// Con paquetes por lado, un error de paquetes de la base se muestra con el mensaje de ese formulario (0 a 99 por lado y al menos 1 en total).
+const sideCodeOf = (message: string) => { const code = codeOf(message); return code === "invalid_packages" ? "packages_side" : code; };
 
 // Inscribirse a un evento. La base valida todo (evento publicado, categoría del evento, no repetir, cupo con bloqueo) y el precio
 // sale de la categoría, nunca del navegador. Queda en "pendiente" hasta que exista el pago.
 export async function enroll(formData: FormData) {
-  const { l, s, event, category, role, packages, back } = await enrollmentInput(formData);
-  const args = event.drawType === "lazada_sorteada"
-    ? { p_event: event.uuid, p_category: category, p_role: role, p_packages: packages }
-    : s.roleChoice?.role === "both" ? { p_event: event.uuid, p_category: category, p_role: role } : { p_event: event.uuid, p_category: category };
+  const { l, s, event, category, role, bySide, header, heeler, back } = await enrollmentInput(formData);
+  if (bySide) { // Lazada Sorteada: rol y paquetes por lado (KIN-793)
+    const { error } = await (await createServerSupabase()).rpc("register_for_event_by_side", { p_event: event.uuid, p_category: category, p_header_packages: header, p_heeler_packages: heeler });
+    if (error) return back(sideCodeOf(error.message));
+    updateTag("registrations");
+    redirect(`/${l}/mi-cuenta?inscrito=1`);
+  }
+  const args = s.roleChoice?.role === "both" ? { p_event: event.uuid, p_category: category, p_role: role } : { p_event: event.uuid, p_category: category };
   const { error } = await (await createServerSupabase()).rpc("register_for_event", args);
   if (error) return back(codeOf(error.message));
   updateTag("registrations");
@@ -51,8 +77,14 @@ export async function enroll(formData: FormData) {
 // Entrar a la lista de espera de un evento lleno (KIN-726). La base solo la acepta si inscribirse hoy fallaría por cupo y aplica las mismas reglas
 // (ventana de inscripción, categoría, rol, rating máximo, no repetir). Esperar no ocupa lugar ni se cobra. Si ya hay lugar, "not_full": hay que inscribirse normal.
 export async function joinWaitlist(formData: FormData) {
-  const { l, event, category, role, packages, back } = await enrollmentInput(formData);
-  const { error } = await (await createServerSupabase()).rpc("join_waitlist", { p_event: event.uuid, p_category: category, p_role: role, p_packages: event.drawType === "lazada_sorteada" ? packages : 1 });
+  const { l, event, category, role, bySide, header, heeler, back } = await enrollmentInput(formData);
+  if (bySide) { // Lazada Sorteada: rol y paquetes por lado (KIN-793)
+    const { error } = await (await createServerSupabase()).rpc("join_waitlist_by_side", { p_event: event.uuid, p_category: category, p_header_packages: header, p_heeler_packages: heeler });
+    if (error) return back(sideCodeOf(error.message));
+    updateTag("registrations");
+    redirect(`/${l}/mi-cuenta?espera=1`);
+  }
+  const { error } = await (await createServerSupabase()).rpc("join_waitlist", { p_event: event.uuid, p_category: category, p_role: role, p_packages: 1 });
   if (error) return back(codeOf(error.message));
   updateTag("registrations");
   redirect(`/${l}/mi-cuenta?espera=1`);

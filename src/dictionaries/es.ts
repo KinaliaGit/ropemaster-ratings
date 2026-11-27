@@ -90,7 +90,7 @@ export const es = {
     changed: "Cambiaste tu contraseña. Cerramos tus otras sesiones.",
   },
   notifications: {
-    title: "Avisos", empty: "No tienes avisos.", markAll: "Marcar todo como leído", markRead: "Marcar como leído", new: "Nuevo", reason: "Motivo:", eventOn: "evento del",
+    title: "Avisos", empty: "No tienes avisos.", markAll: "Marcar todo como leído", markRead: "Marcar como leído", new: "Nuevo", viewAll: "Ver todos los avisos", refundShort: "Reembolso pendiente", reason: "Motivo:", eventOn: "evento del",
     removedTitle: (e: string) => `Te sacaron del evento ${e}`, deletedTitle: (e: string) => `Se canceló el evento ${e}`,
     refund: "Tu pago ya estaba registrado. No hay reembolso automático: contacta al organizador para que te lo devuelva.",
     promotedTitle: (e: string) => `Ya estás inscrito en ${e}`, promotedText: "Se abrió un lugar y el organizador te pasó de la lista de espera a inscrito. Tu inscripción está pendiente de pago: en Mi cuenta ves cuánto es y cómo pagar.", bell: "Avisos", bannerOne: "Tienes 1 aviso nuevo", bannerMany: (n: number) => `Tienes ${n} avisos nuevos`, bannerLink: "Verlos",

@@ -2,11 +2,10 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
-import { isNewer, showBanner, type Unread } from "@/lib/notices";
+import { isNewer, NOTICES_CHANGED as CHANGED, seenKeyFor, showBanner, type Unread } from "@/lib/notices";
 import { playChime, unlockSound } from "@/lib/chime";
 
 const POLL_MS = 30_000;
-const CHANGED = "rm-avisos";
 
 type Props = Unread & { userId: string; href: string; text: string; linkLabel: string };
 
@@ -15,7 +14,7 @@ type Props = Unread & { userId: string; href: string; text: string; linkLabel: s
 export function NoticeWatcher({ userId, count, latest, href, text, linkLabel }: Props) {
   const router = useRouter();
   const onNotices = usePathname() === href;
-  const seenKey = `rm-avisos-vistos:${userId}`;
+  const seenKey = seenKeyFor(userId);
   // En el servidor no se sabe qué se vio: `undefined` deja el texto oculto y así no parpadea al cargar.
   const seen = useSyncExternalStore(subscribe, () => localStorage.getItem(seenKey), () => undefined);
 

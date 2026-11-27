@@ -6,7 +6,7 @@ import type { RoleChoice } from "@/lib/roles";
 export type Category = { id: string; name: string; fee: number };
 
 export type EventItem = {
-  id: string; name: string; date: string; city: string; venue: string;
+  id: string; name: string; date: string; time: string | null; city: string; venue: string; // `time`: hora del evento "HH:MM", opcional (KIN-778)
   disciplines: string[]; categories: Category[]; capacity: number; enrolled: number;
   organizer: string; uuid?: string; organizerId?: string; tone: number; cover?: string; photos: { id: string; url: string }[];
   timezone: string; registrationOpensAt: string | null; registrationClosesAt: string | null; registrationClosed: boolean; series: { slug: string; name: string } | null; updatedAt: string; description: string; status: "publicado" | "borrador" | "finalizado";

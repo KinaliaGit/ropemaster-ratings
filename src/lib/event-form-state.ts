@@ -39,14 +39,15 @@ export type ErrorTarget = {
   advanced: boolean;
 };
 
-const opens: ErrorTarget = { field: "opensAt", advanced: true };
-const closes: ErrorTarget = { field: "closesAt", advanced: true };
+const opens: ErrorTarget = { field: "opensOn", advanced: true };
+const closes: ErrorTarget = { field: "closesOn", advanced: true };
 
 const TARGETS: Record<string, ErrorTarget> = {
   arena: { field: "arena", advanced: false },
   capacity: { field: "capacity", advanced: true },
   capacityInvalid: { field: "capacity", advanced: true },
   outsideSeries: { field: "date", advanced: false },
+  eventTimeInvalid: { field: "eventTime", advanced: false },
   drawType: { field: "drawType", advanced: false },
   drawLocked: { field: "drawType", advanced: false },
   invalidShots: { field: "shotsPerPackage", advanced: false },

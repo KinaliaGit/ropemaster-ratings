@@ -75,7 +75,8 @@ inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
 |---|---|---|
 | `id` | UUID | Id del evento en la web (el mismo `event_id` que se usa al subir resultados). |
 | `slug` | texto | Parte de la dirección pública del evento. |
-| `date` | `AAAA-MM-DD` o `""` | Sin hora. |
+| `date` | `AAAA-MM-DD` o `""` | Solo la fecha; la hora, si la hay, va aparte en `event_time`. |
+| `event_time` | `HH:MM` o `null` | Hora local del evento (KIN-778), 24 h y **sin zona horaria**. `null` (o ausente en una web anterior) = el evento no tiene hora. La app la guarda como espejo de solo lectura y no la usa para decidir nada. La zona horaria del evento es un dato interno de la web y **no se manda**. |
 | `status` | `publicado` \| `finalizado` | |
 | `disciplines` | lista de ids de modalidad | `lazo`, `barriles` (ver *Modalidades*). |
 | `capacity` | entero o `null` | `null` = sin límite. |
@@ -83,7 +84,7 @@ inscritos con el estado de pago. Un organizador nunca recibe eventos de otro.
 | `draw_type` | `round_robin` \| `lazada_sorteada` | Tipo de sorteo del evento casual (KIN-648/649). Los eventos que ya existían son `round_robin`. Lo fija quien crea el evento y **no cambia** una vez que hay inscritos o resultados. Campo opcional: una web anterior no lo manda y la app entiende `round_robin`. |
 | `lazada_shots_per_package` | entero >= 1 o `null` | Solo en `lazada_sorteada`: tiros que trae un paquete (uno por evento). Tiros de una persona en un rol = `registrations[].packages` * este valor. `null` en `round_robin` o mientras el organizador no lo define. |
 | `rounds` | entero 1 a 10 o `null` | Rondas del evento (KIN-655). `null` = el organizador aún no las define: la app importa su valor por defecto (3). Aplica a los dos tipos de sorteo. No cambia una vez que hay resultados (`rounds_locked`). Campo opcional: una web anterior no lo manda y se entiende `null`. |
-| `max_team_rating` | número (0 a 20, un decimal) o `null` | Rating máximo de la SUMA de un equipo (cabecero + pialador); `null` = sin tope. En Lazada Sorteada la app lo usa como restricción dura al sortear. Distinto de `max_roper_rating`, que es el individual. |
+| `max_team_rating` | número (0 a 20, un decimal) o `null` | Rating máximo de la SUMA de un equipo (cabecero + pialador); `null` = sin tope. **Solo aplica a `lazada_sorteada`** (KIN-776): en `round_robin` va siempre `null`, aunque la web tenga un valor guardado de antes. En Lazada Sorteada la app lo usa como restricción dura al sortear. Distinto de `max_roper_rating`, que es el individual. |
 | `updated_at` | fecha ISO-8601 UTC | Último cambio del evento, sus inscripciones o sus categorías. |
 | `categories[].fee_cents` | entero >= 0 | Montos SIEMPRE en centavos. |
 | `registrations[].id` | UUID | Id de la inscripción. Una persona puede tener una por categoría y rol (ver `role`). |

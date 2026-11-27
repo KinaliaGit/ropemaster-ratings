@@ -48,7 +48,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   if (resultDisciplines.length === 0) resultDisciplines.push(DEFAULT_DISCIPLINE);
   const gallery = e.photos.filter((p) => p.url !== e.cover); // el flyer de portada ya se ve arriba
   const fromFee = e.categories.length ? Math.min(...e.categories.map((c) => c.fee)) : 0;
-  const meta = [e.date ? fmtDate(e.date, lang) : "", [e.venue, e.city].filter(Boolean).join(", ")].filter(Boolean);
+  const meta = [e.date ? [fmtDate(e.date, lang), e.time].filter(Boolean).join(" · ") : "", [e.venue, e.city].filter(Boolean).join(", ")].filter(Boolean);
   return (
     <div className="page">
       {/* Celular: barra fija abajo con el botón de inscripción siempre a la mano (a todo el ancho; el selector de idioma en celular va en el pie). */}

@@ -2,7 +2,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { createEvent, updateEvent } from "@/lib/event-actions";
-import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/event-time";
+import type { CloseMode } from "@/lib/event-time";
 import { fieldForError, firstValue, focusSelector, INITIAL_EVENT_FORM_STATE, type FormValues } from "@/lib/event-form-state";
 import { ArenaFields, type ArenaChoice, type ArenaLabels } from "@/components/ArenaFields";
 import { PublishDialog, type VisibilityLabels } from "@/components/PublishDialog";
@@ -12,12 +12,12 @@ type Labels = {
   visibility: VisibilityLabels;
   name: string; date: string; capacity: string; disciplines: string; costLabel: string; costPackageLabel: string; costFree: string; maxRoperRating: string; maxRoperRatingHint: string;
   error: string; description: string; saveDraft: string; publish: string; photosLater: string; save: string; errors: Record<string, string>; paymentInfo: string; paymentInfoHint: string; paymentInfoPlaceholder: string;
-  opens: string; opensHint: string; closes: string; closesHint: string; timezone: string;
+  opens: string; opensHint: string; closes: string; closesHint: string; opensPublish: string; opensDay: string; closeNone: string; closeEvent: string; closeDay: string; eventTime: string;
   drawType: string; drawTypeHint: string; drawLocked: string; roundRobin: string; lazadaSorteada: string; shotsPerPackage: string; shotsPerPackageHint: string; maxTeamRating: string; maxTeamRatingHint: string; rounds: string; roundsHint: string;
   advanced: string; required: string; optional: string; capGroup: string; capLimit: string; capLimitHint: string; ratingGroup: string; ratingLimit: string; teamLimit: string; regGroup: string;
-  chipCapNone: string; chipCap: string; chipRating: string; chipTeam: string; chipOpens: string; chipCloses: string;
+  chipCapNone: string; chipCap: string; chipRating: string; chipTeam: string; chipOpens: string; chipCloses: string; chipCloseEvent: string;
 };
-export type EventInitial = { arenaId?: string | null; slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; paymentInfo: string; opensAt: string; closesAt: string; timezone: string; disciplines: string[]; maxRoperRating: number | null; drawType: "round_robin" | "lazada_sorteada"; shotsPerPackage: number | null; maxTeamRating: number | null; rounds: number | null; drawLocked: boolean; cats: { id: string; name: string; fee: number }[] };
+export type EventInitial = { arenaId?: string | null; slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; paymentInfo: string; eventTime: string; opensMode: "publish" | "day"; opensOn: string; closeMode: CloseMode; closesOn: string; disciplines: string[]; maxRoperRating: number | null; drawType: "round_robin" | "lazada_sorteada"; shotsPerPackage: number | null; maxTeamRating: number | null; rounds: number | null; drawLocked: boolean; cats: { id: string; name: string; fee: number }[] };
 
 type Cat = { id: string; name: string; fee: number };
 type DrawType = "round_robin" | "lazada_sorteada";
@@ -33,6 +33,19 @@ function catsFrom(values: FormValues | undefined): Cat[] | null {
   const names = values?.catName;
   if (!names) return null;
   return names.map((name, i) => ({ id: values.catId?.[i] ?? "", name, fee: Number(values.catFee?.[i]) || 0 }));
+}
+
+// Opciones cerradas en una fila de botones (una sola elegida). Viaja en un campo oculto con el nombre dado.
+function Segmented<T extends string>({ name, label, value, onChange, options }: { name: string; label: string; value: T; onChange: (v: T) => void; options: { value: T; label: string }[] }) {
+  return (
+    <div role="radiogroup" aria-label={label} className="mt-2 flex overflow-hidden rounded-xl border border-line">
+      {options.map((o) => (
+        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} onClick={() => onChange(o.value)}
+          className={`min-h-10 flex-1 px-2 text-sm transition-colors ${value === o.value ? "bg-sand font-medium text-ink" : "text-muted hover:bg-sand/60"}`}>{o.label}</button>
+      ))}
+      <input type="hidden" name={name} value={value} />
+    </div>
+  );
 }
 
 function Switch({ on, onChange, label }: { on: boolean; onChange: (on: boolean) => void; label: string }) {
@@ -101,8 +114,10 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
   const [ratingVal, setRatingVal] = useState(() => v("maxRoperRating", initial?.maxRoperRating));
   const [teamOn, setTeamOn] = useState(() => wasOn("maxTeamRating", initial?.maxTeamRating != null));
   const [teamVal, setTeamVal] = useState(() => v("maxTeamRating", initial?.maxTeamRating));
-  const [opensAt, setOpensAt] = useState(() => v("opensAt", initial?.opensAt));
-  const [closesAt, setClosesAt] = useState(() => v("closesAt", initial?.closesAt));
+  const [opensMode, setOpensMode] = useState<"publish" | "day">(() => (v("opensMode", initial?.opensMode ?? "publish") === "day" ? "day" : "publish"));
+  const [opensOn, setOpensOn] = useState(() => v("opensOn", initial?.opensOn));
+  const [closeMode, setCloseMode] = useState<CloseMode>(() => { const m = v("closeMode", initial?.closeMode ?? "none"); return m === "event" || m === "day" ? m : "none"; });
+  const [closesOn, setClosesOn] = useState(() => v("closesOn", initial?.closesOn));
   const locked = initial?.drawLocked ?? false; // con inscritos o resultados el tipo y los tiros por paquete ya no cambian (la base lo impone)
   const advanced = useRef<HTMLDetailsElement>(null);
 
@@ -136,7 +151,6 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
   const arenaInitial = values
     ? { arenaId: v("arenaId", "") || null, venue: v("venue", ""), city: v("city", "") }
     : initial ? { arenaId: initial.arenaId ?? null, venue: initial.venue, city: initial.city } : undefined;
-  const tz = v("timezone", initial?.timezone ?? DEFAULT_TIMEZONE);
   // KIN-776: el rating por equipo solo se pide en Lazada Sorteada; en Round Robin no se muestra ni se envía (el servidor también lo ignora).
   const showTeam = teamLimitApplies(drawType);
 
@@ -144,8 +158,8 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
     capOn && capVal ? { text: `${l.chipCap} ${capVal}`, on: true } : { text: l.chipCapNone, on: false },
     ...(ratingOn && ratingVal ? [{ text: `${l.chipRating} ${ratingVal}`, on: true }] : []),
     ...(showTeam && teamOn && teamVal ? [{ text: `${l.chipTeam} ${teamVal}`, on: true }] : []),
-    ...(opensAt ? [{ text: l.chipOpens, on: true }] : []),
-    ...(closesAt ? [{ text: l.chipCloses, on: true }] : []),
+    ...(opensMode === "day" ? [{ text: l.chipOpens, on: true }] : []),
+    ...(closeMode === "event" ? [{ text: l.chipCloseEvent, on: true }] : closeMode === "day" ? [{ text: l.chipCloses, on: true }] : []),
   ];
   const group = "border-t border-line pt-4 first:border-0 first:pt-0";
 
@@ -153,7 +167,10 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
     <>
       <p className="text-xs text-muted">{req} {l.required}</p>
       <label className="block text-sm font-medium">{l.name}{req}<input required name="name" maxLength={120} defaultValue={v("name", initial?.name)} {...a("name")} />{msg("name")}</label>
-      <label className="block text-sm font-medium">{l.date}{req}<input required name="date" type="date" defaultValue={v("date", initial?.date)} {...a("date")} />{msg("date")}</label>
+      <div className="grid items-start gap-4 sm:grid-cols-2">
+        <label className="block text-sm font-medium">{l.date}{req}<input required name="date" type="date" defaultValue={v("date", initial?.date)} {...a("date")} />{msg("date")}</label>
+        <label className="block text-sm font-medium">{l.eventTime}{opt}<input name="eventTime" type="time" defaultValue={v("eventTime", initial?.eventTime)} {...a("eventTime")} />{msg("eventTime")}</label>
+      </div>
       <div>
         <ArenaFields arenas={arenas} labels={arenaLabels} initial={arenaInitial} invalid={bad("arena")} describedBy="err-arena" />
         {msg("arena")}
@@ -260,19 +277,16 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
             <fieldset className="mt-2">
               <legend className="text-sm font-medium">{l.opens}</legend>
               <p className="mt-0.5 text-xs text-muted">{l.opensHint}</p>
-              <input name="opensAt" type="datetime-local" value={opensAt} onChange={(e) => setOpensAt(e.target.value)} aria-label={l.opens} {...a("opensAt", "mt-2 sm:w-1/2")} />
-              {msg("opensAt")}
+              <Segmented name="opensMode" label={l.opens} value={opensMode} onChange={setOpensMode} options={[{ value: "publish", label: l.opensPublish }, { value: "day", label: l.opensDay }]} />
+              {opensMode === "day" && <input name="opensOn" type="date" required value={opensOn} onChange={(e) => setOpensOn(e.target.value)} aria-label={l.opens} {...a("opensOn", "mt-2 sm:w-1/2")} />}
+              {msg("opensOn")}
             </fieldset>
             <fieldset className="mt-4">
               <legend className="text-sm font-medium">{l.closes}</legend>
               <p className="mt-0.5 text-xs text-muted">{l.closesHint}</p>
-              <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                <input name="closesAt" type="datetime-local" value={closesAt} onChange={(e) => setClosesAt(e.target.value)} aria-label={l.closes} {...a("closesAt", "")} />
-                <select name="timezone" defaultValue={tz} aria-label={l.timezone} className={`${BASE} border-line`}>
-                  {((TIMEZONES as readonly string[]).includes(tz) ? TIMEZONES : [tz, ...TIMEZONES]).map((z) => <option key={z} value={z}>{z.replace(/_/g, " ")}</option>)}
-                </select>
-              </div>
-              {msg("closesAt")}
+              <Segmented name="closeMode" label={l.closes} value={closeMode} onChange={setCloseMode} options={[{ value: "none", label: l.closeNone }, { value: "event", label: l.closeEvent }, { value: "day", label: l.closeDay }]} />
+              {closeMode === "day" && <input name="closesOn" type="date" required value={closesOn} onChange={(e) => setClosesOn(e.target.value)} aria-label={l.closes} {...a("closesOn", "mt-2 sm:w-1/2")} />}
+              {msg("closesOn")}
             </fieldset>
           </div>
         </div>

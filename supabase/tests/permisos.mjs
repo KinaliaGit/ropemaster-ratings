@@ -2535,5 +2535,21 @@ console.log("- Pagos que sube la app (0053)");
   await check("el servidor SÍ ejecuta la función", (await pay(A, [request.payments[0]])).length === 1);
 }
 
+console.log("- Hora del evento (0060, KIN-778)");
+{
+  const EVT = "e0000000-0000-0000-0000-000000000002";
+  const NEW = "e0000000-0000-0000-0000-0000000000f7";
+  await as("authenticated", A, `update events set event_time = '10:30' where id = '${EVT}'`, "el organizador dueño SÍ pone la hora del evento", "some");
+  await as("authenticated", B, `update events set event_time = '11:00' where id = '${EVT}'`, "otro organizador NO cambia la hora", "deny");
+  await as("authenticated", C, `update events set event_time = '12:00' where id = '${EVT}'`, "un participante NO cambia la hora", "deny");
+  await as("anon", null, `update events set event_time = '13:00' where id = '${EVT}'`, "anónimo NO cambia la hora", "deny");
+  await as("anon", null, "select event_time from events where status = 'publicado'", "anónimo SÍ lee la hora de los eventos públicos", "some");
+  await as("authenticated", A, `insert into events (id, name, organizer_id, status, slug, event_time) values ('${NEW}', 'Con hora', '${A}', 'borrador', 'con-hora', '09:00')`, "el organizador SÍ crea un evento con hora", "some");
+  const t = await db.query(`select to_char(event_time, 'HH24:MI') as t from events where id = '${EVT}'`);
+  await check("la hora se guarda como HH:MM, sin zona horaria", t.rows[0].t === "10:30");
+  const sinHora = await db.query(`select count(*)::int as n from events where event_time is not null and id not in ('${EVT}', '${NEW}')`);
+  await check("los eventos que ya existían quedan sin hora (null)", sinHora.rows[0].n === 0);
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

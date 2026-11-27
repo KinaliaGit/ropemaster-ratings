@@ -17,6 +17,7 @@
       "lazada_shots_per_package": 3,
       "max_team_rating": 12.5,
       "rounds": 4,
+      "event_time": "10:00",
       "series": { "id": "5e000000-0000-0000-0000-0000000000a1", "slug": "temporada-norte-2026", "name": "Temporada Norte 2026", "start_date": "2026-01-01", "end_date": "2026-12-31" },
       "arena": { "id": "a0000000-0000-0000-0000-0000000000a1", "name": "Lienzo Charro del Norte", "city": "Monterrey" },
       "description": "Rodeo de fin de año, lazo en equipo.",

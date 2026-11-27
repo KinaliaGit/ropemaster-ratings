@@ -42,8 +42,9 @@ test("cada error con campo señala ese campo y dice si está en Configuración a
   assert.deepEqual(fieldForError("ratingLimit"), { field: "maxRoperRating", advanced: true });
   assert.deepEqual(fieldForError("invalidRounds"), { field: "rounds", advanced: true });
   assert.deepEqual(fieldForError("roundsLocked"), { field: "rounds", advanced: true });
-  assert.deepEqual(fieldForError("closeAfterEvent"), { field: "closesAt", advanced: true });
-  assert.deepEqual(fieldForError("opensAfterClose"), { field: "opensAt", advanced: true });
+  assert.deepEqual(fieldForError("closeAfterEvent"), { field: "closesOn", advanced: true });
+  assert.deepEqual(fieldForError("opensAfterClose"), { field: "opensOn", advanced: true });
+  assert.deepEqual(fieldForError("eventTimeInvalid"), { field: "eventTime", advanced: false });
   assert.deepEqual(fieldForError("catInUse"), { field: "catName", advanced: true });
 });
 

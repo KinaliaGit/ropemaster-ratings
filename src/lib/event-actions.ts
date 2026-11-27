@@ -9,7 +9,7 @@ import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { slugify } from "@/lib/slug";
 import { resolveArena } from "@/lib/arena-resolve";
 import { emailParticipant } from "@/lib/notify";
-import { closesAfterEvent, DEFAULT_TIMEZONE, isValidTimezone, zonedLocalToIso } from "@/lib/event-time";
+import { closesAfterEvent, DEFAULT_TIMEZONE, endOfDayIso, parseEventTime, startOfDayIso } from "@/lib/event-time";
 import { visibilityForCreate } from "@/lib/event-visibility";
 import { serializeFormValues, type EventFormState } from "@/lib/event-form-state";
 import { parseCapacity } from "@/lib/event-capacity";
@@ -57,31 +57,33 @@ function drawFields(formData: FormData): DrawFields | "invalid" | "invalidShots"
   return { drawType, shots, teamLimit, rounds };
 }
 
-type Close = { ok: true; timezone: string; closesAt: string | null; opensAt: string | null } | { ok: false; error: "closeInvalid" | "closeAfterEvent" | "opensInvalid" | "opensAfterEvent" | "opensAfterClose" };
+type CloseError = "closeInvalid" | "closeAfterEvent" | "opensInvalid" | "opensAfterEvent" | "opensAfterClose";
+type Close = { ok: true; closesAt: string | null; opensAt: string | null } | { ok: false; error: CloseError };
 
-// Cierre de inscripciones (KIN-626): fecha y hora LOCALES del evento + su zona horaria. Vacío = sin fecha límite (abiertas hasta que el organizador cierre).
-// No puede caer después del día del evento (el evento solo tiene fecha, así que se permite el mismo día). La base lo vuelve a comprobar.
-function parseClose(formData: FormData, eventDate: string): Close {
-  const tzRaw = text(formData.get("timezone"), 60) || DEFAULT_TIMEZONE;
-  if (!isValidTimezone(tzRaw)) return { ok: false, error: "closeInvalid" };
-  const local = text(formData.get("closesAt"), 16);
+// Apertura y cierre de inscripciones (KIN-625, KIN-626, KIN-778). La persona elige DÍAS, sin hora ni zona: la apertura es el inicio de ese día y el cierre el final de ese día,
+// en la zona horaria del evento (un dato interno que el formulario ya no pide: en un evento nuevo la de siempre y en uno guardado la suya).
+//   closeMode: none (sin fecha: abiertas hasta que el organizador cierre) | event (al terminar el día del evento) | day (al terminar el día `closesOn`).
+//   opensMode: publish (desde que se publica el evento) | day (desde el inicio del día `opensOn`).
+// El cierre y la apertura no pueden caer después del día del evento, y la apertura va antes del cierre. La base lo vuelve a comprobar.
+function parseClose(formData: FormData, eventDate: string, tz: string): Close {
+  const closeMode = text(formData.get("closeMode"), 10);
   let closesAt: string | null = null;
-  if (local) {
-    closesAt = zonedLocalToIso(local, tzRaw);
+  if (closeMode === "event") closesAt = endOfDayIso(eventDate, tz);
+  else if (closeMode === "day") {
+    closesAt = endOfDayIso(text(formData.get("closesOn"), 10), tz);
     if (!closesAt) return { ok: false, error: "closeInvalid" };
-    if (closesAfterEvent(closesAt, eventDate, tzRaw)) return { ok: false, error: "closeAfterEvent" };
-  }
-  // Apertura de inscripciones (KIN-625): vacía = desde que el evento se publica; con fecha y hora, antes de ella nadie se inscribe solo.
-  // Debe ser anterior al cierre y no puede caer después del día del evento.
-  const opensLocal = text(formData.get("opensAt"), 16);
+    if (closesAfterEvent(closesAt, eventDate, tz)) return { ok: false, error: "closeAfterEvent" };
+  } else if (closeMode && closeMode !== "none") return { ok: false, error: "closeInvalid" };
+
+  const opensMode = text(formData.get("opensMode"), 10);
   let opensAt: string | null = null;
-  if (opensLocal) {
-    opensAt = zonedLocalToIso(opensLocal, tzRaw);
+  if (opensMode === "day") {
+    opensAt = startOfDayIso(text(formData.get("opensOn"), 10), tz);
     if (!opensAt) return { ok: false, error: "opensInvalid" };
-    if (closesAfterEvent(opensAt, eventDate, tzRaw)) return { ok: false, error: "opensAfterEvent" };
+    if (closesAfterEvent(opensAt, eventDate, tz)) return { ok: false, error: "opensAfterEvent" };
     if (closesAt && Date.parse(opensAt) >= Date.parse(closesAt)) return { ok: false, error: "opensAfterClose" };
-  }
-  return { ok: true, timezone: tzRaw, closesAt, opensAt };
+  } else if (opensMode && opensMode !== "publish") return { ok: false, error: "opensInvalid" };
+  return { ok: true, closesAt, opensAt };
 }
 
 // Crea un evento individual (KIN-750): uno que no pertenece a ninguna serie (`series_id` null). Pide lo mismo que cada evento de una serie
@@ -111,8 +113,10 @@ export async function createEvent(prev: EventFormState, formData: FormData): Pro
   const draw = drawFields(formData);
   if (typeof draw === "string") return back(draw === "invalid" ? "drawType" : draw);
   if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || categories.length === 0 || categories.length > 20 || disciplines.length === 0) return back("1");
-  const close = parseClose(formData, date);
+  const close = parseClose(formData, date, DEFAULT_TIMEZONE);
   if (!close.ok) return back(close.error);
+  const eventTime = parseEventTime(formData.get("eventTime"));
+  if (eventTime === "invalid") return back("eventTimeInvalid");
 
   const status = formData.get("intent") === "publish" ? "publicado" : "borrador";
   // KIN-769: quién puede ver el evento se elige al PUBLICAR (ventana de «Publicar»); un borrador no lo decide. Se manda a la base solo si es privado: lo público es el valor por
@@ -129,7 +133,7 @@ export async function createEvent(prev: EventFormState, formData: FormData): Pro
     id, slug: eventSlug, name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, disciplines, status, max_roper_rating: limit,
     draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds,
     description: text(formData.get("description"), 1000), organizer_id: session.id, organizer_name: session.name,
-    timezone: close.timezone, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt,
+    event_time: eventTime, timezone: DEFAULT_TIMEZONE, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt,
   });
   if (error) {
     console.error("createEvent: no se pudo crear el evento", error.code, error.message);
@@ -170,7 +174,7 @@ export async function updateEvent(prev: EventFormState, formData: FormData): Pro
   const back = (error: string): EventFormState => ({ attempt: prev.attempt + 1, error, values: serializeFormValues(formData) });
 
   const supabase = await createServerSupabase();
-  const { data: ev } = await supabase.from("events").select("id, status").eq("slug", eventSlug).eq("organizer_id", session.id).maybeSingle();
+  const { data: ev } = await supabase.from("events").select("id, status, timezone").eq("slug", eventSlug).eq("organizer_id", session.id).maybeSingle();
   if (!ev || ev.status === "finalizado") redirect(`/${l}/organizador`);
 
   const name = text(formData.get("name"), 120);
@@ -189,8 +193,10 @@ export async function updateEvent(prev: EventFormState, formData: FormData): Pro
   const draw = drawFields(formData);
   if (typeof draw === "string") return back(draw === "invalid" ? "drawType" : draw);
   if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || rows.length === 0 || disciplines.length === 0) return back("1");
-  const close = parseClose(formData, date);
+  const close = parseClose(formData, date, ev.timezone); // la zona del evento ya no se edita: se conserva la que tiene
   if (!close.ok) return back(close.error);
+  const eventTime = parseEventTime(formData.get("eventTime"));
+  if (eventTime === "invalid") return back("eventTimeInvalid");
 
   const [{ count: enrolled }, { data: current }, { data: used }] = await Promise.all([
     supabase.from("registrations").select("id", { count: "exact", head: true }).eq("event_id", ev.id),
@@ -206,7 +212,7 @@ export async function updateEvent(prev: EventFormState, formData: FormData): Pro
 
   const arena = await resolveArena(supabase, session.id, formData);
   if (!arena) return back("arena");
-  const { error } = await supabase.from("events").update({ name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, disciplines, max_roper_rating: limit, draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds, description: text(formData.get("description"), 1000), timezone: close.timezone, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt }).eq("id", ev.id);
+  const { error } = await supabase.from("events").update({ name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, disciplines, max_roper_rating: limit, draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds, description: text(formData.get("description"), 1000), event_time: eventTime, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt }).eq("id", ev.id);
   // Un evento de una serie debe seguir dentro de las fechas de su serie (la base lo exige).
   if (error) return back(error.message.includes("draw_type_locked") ? "drawLocked" : error.message.includes("rounds_locked") ? "roundsLocked" : error.message.includes("outside_series") ? "outsideSeries" : error.message.includes("open_after") ? "opensAfterClose" : "1");
   for (const r of rows) {

@@ -98,3 +98,40 @@ export function eventPhase(e: { status: string; enrolled: number; capacity: numb
 export function fmtDeadline(iso: string, tz: string, lang: "es" | "en"): string {
   return new Intl.DateTimeFormat(lang === "en" ? "en-US" : "es-MX", { timeZone: tz, dateStyle: "long", timeStyle: "short" }).format(new Date(iso));
 }
+
+// ---- KIN-778: fechas de inscripción sin zona horaria visible y hora del evento ----
+// La persona elige DÍAS: la apertura es el inicio de ese día y el cierre es el final de ese día, en la zona horaria del evento (un dato interno: el formulario ya no la pide).
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+export const isDay = (v: unknown): v is string => typeof v === "string" && DAY.test(v) && zonedLocalToIso(`${v}T00:00`, "UTC") !== null;
+
+/** Inicio de ese día (00:00) en la zona del evento, como instante ISO. null si el día no es válido. */
+export const startOfDayIso = (day: string, tz: string): string | null => (isDay(day) ? zonedLocalToIso(`${day}T00:00`, tz) : null);
+
+/** Final de ese día (23:59:59.999) en la zona del evento, como instante ISO: las inscripciones cierran al terminar el día. null si el día no es válido. */
+export function endOfDayIso(day: string, tz: string): string | null {
+  const last = isDay(day) ? zonedLocalToIso(`${day}T23:59`, tz) : null;
+  return last ? new Date(Date.parse(last) + 59_999).toISOString() : null;
+}
+
+export type CloseMode = "none" | "event" | "day";
+/** Cómo se ve un cierre ya guardado: sin fecha, el día del evento, u otro día. */
+export function closeModeOf(closesIso: string | null | undefined, eventDate: string, tz: string): CloseMode {
+  if (!closesIso) return "none";
+  return zonedDateOf(closesIso, tz) === eventDate ? "event" : "day";
+}
+
+/** Hora del evento escrita en el formulario: "HH:MM" (24 h). Vacía = sin hora (null). Otra cosa = "invalid". */
+export function parseEventTime(value: unknown): string | null | "invalid" {
+  const raw = typeof value === "string" ? value.trim() : "";
+  if (raw === "") return null;
+  const m = /^(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(raw);
+  if (!m) return "invalid";
+  return Number(m[1]) <= 23 && Number(m[2]) <= 59 ? `${m[1]}:${m[2]}` : "invalid";
+}
+
+/** Hora guardada en la base ("10:00:00") como "HH:MM" para mostrar y para la app; null si no hay o no es válida. */
+export function formatEventTime(value: unknown): string | null {
+  const t = parseEventTime(value);
+  return t === "invalid" ? null : t;
+}

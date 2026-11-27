@@ -86,7 +86,7 @@ async function Manage({ s, id, lang, t, justCreated, justCreatedPrivate, justEdi
               <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h1 className="text-3xl font-semibold">{e.name}</h1>
-                  <p className="text-muted">{e.date ? fmtDate(e.date, lang) : "–"} · {e.venue}, {e.city}</p>
+                  <p className="text-muted">{e.date ? [fmtDate(e.date, lang), e.time].filter(Boolean).join(" · ") : "–"} · {e.venue}, {e.city}</p>
                   <p className="mt-1 text-sm text-muted" data-testid="org-draw-type">
                     {t.event.drawType}: {e.drawType === "lazada_sorteada" ? t.event.lazadaSorteada : t.event.roundRobin}
                     {e.rounds !== null && ` · ${e.rounds} ${t.event.roundsWord}`}

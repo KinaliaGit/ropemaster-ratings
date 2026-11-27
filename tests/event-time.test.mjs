@@ -96,3 +96,54 @@ test("KIN-768: en vivo solo el publicado cuya fecha es hoy en la zona del evento
   assert.equal(isLiveToday({ ...e, status: "finalizado" }, now), false);
   assert.equal(isLiveToday({ ...e, status: "borrador" }, now), false);
 });
+
+// ---- KIN-778 ----
+import { closeModeOf, endOfDayIso, formatEventTime, isDay, parseEventTime, startOfDayIso } from "../src/lib/event-time.ts";
+
+test("el inicio y el final del día se calculan en la zona del evento", () => {
+  assert.equal(startOfDayIso("2026-12-05", MX), "2026-12-05T06:00:00.000Z"); // 00:00 en México = 06:00 UTC
+  assert.equal(endOfDayIso("2026-12-05", MX), "2026-12-06T05:59:59.999Z"); // 23:59:59.999 en México
+  assert.equal(zonedDateOf(endOfDayIso("2026-12-05", MX), MX), "2026-12-05"); // sigue siendo el mismo día en la zona del evento
+});
+
+test("el cierre al final del día no se pasa al día siguiente en el borde (23:59 y cambio de día)", () => {
+  const close = Date.parse(endOfDayIso("2026-12-05", MX));
+  assert.equal(isRegistrationOpen({ closesAt: new Date(close).toISOString(), closed: false }, Date.parse("2026-12-06T05:59:00.000Z")), true); // 23:59 en México: aún abierto
+  assert.equal(isRegistrationOpen({ closesAt: new Date(close).toISOString(), closed: false }, Date.parse("2026-12-06T06:00:00.000Z")), false); // 00:00 del día siguiente: cerrado
+});
+
+test("un cierre al final del día del evento no cuenta como después del evento", () => {
+  assert.equal(closesAfterEvent(endOfDayIso("2026-12-05", MX), "2026-12-05", MX), false);
+  assert.equal(closesAfterEvent(endOfDayIso("2026-12-06", MX), "2026-12-05", MX), true);
+});
+
+test("días inválidos no dan instante", () => {
+  for (const bad of ["", "2026-13-01", "2026-02-30", "05/12/2026", "2026-12-5"]) {
+    assert.equal(isDay(bad), false, bad);
+    assert.equal(startOfDayIso(bad, MX), null, bad);
+    assert.equal(endOfDayIso(bad, MX), null, bad);
+  }
+});
+
+test("closeModeOf distingue sin fecha, el día del evento y otro día", () => {
+  assert.equal(closeModeOf(null, "2026-12-05", MX), "none");
+  assert.equal(closeModeOf(endOfDayIso("2026-12-05", MX), "2026-12-05", MX), "event");
+  assert.equal(closeModeOf(endOfDayIso("2026-12-03", MX), "2026-12-05", MX), "day");
+  assert.equal(closeModeOf(zonedLocalToIso("2026-12-05T18:00", MX), "2026-12-05", MX), "event"); // un cierre viejo a las 18:00 del mismo día
+});
+
+test("la hora del evento: vacía es sin hora; HH:MM válido se conserva; lo demás es inválido", () => {
+  assert.equal(parseEventTime(""), null);
+  assert.equal(parseEventTime(undefined), null);
+  assert.equal(parseEventTime("10:00"), "10:00");
+  assert.equal(parseEventTime("09:05"), "09:05");
+  assert.equal(parseEventTime("23:59"), "23:59");
+  assert.equal(parseEventTime("10:00:00"), "10:00"); // así la entrega la base
+  for (const bad of ["24:00", "10:60", "1000", "10:0", "abc", "9:00"]) assert.equal(parseEventTime(bad), "invalid", bad);
+});
+
+test("formatEventTime muestra HH:MM y trata lo inválido o vacío como sin hora", () => {
+  assert.equal(formatEventTime("10:00:00"), "10:00");
+  assert.equal(formatEventTime(null), null);
+  assert.equal(formatEventTime("25:00"), null);
+});

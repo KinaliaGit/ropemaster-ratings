@@ -114,6 +114,8 @@ export type EventRow = {
   lazada_shots_per_package?: number | null;
   /** Rondas del evento (KIN-655), 1 a 10; `null` = el organizador aún no las define. La ruta lo agrega. */
   rounds?: number | null;
+  /** Hora del evento (KIN-778), `HH:MM` o `HH:MM:SS` tal como la entrega la base; `null` = sin hora. La ruta lo agrega. */
+  event_time?: string | null;
   /** Rating máximo de la SUMA de un equipo (KIN-649); `null` = sin tope. La ruta lo agrega. */
   max_team_rating?: number | null;
   /** Serie del evento (KIN-625). La función SQL no la trae: la ruta la agrega. `null`/ausente = evento suelto. */
@@ -164,6 +166,8 @@ export function buildEventsPage(rows: EventRow[], organizer: string, snapshot: s
       // KIN-776: el tope por equipo solo aplica a Lazada Sorteada; en Round Robin viaja `null` aunque la base tenga un valor de antes.
       max_team_rating: row.draw_type === "lazada_sorteada" && row.max_team_rating !== undefined && row.max_team_rating !== null ? Number(row.max_team_rating) : null,
       rounds: row.rounds === undefined || row.rounds === null ? null : Number(row.rounds),
+      // KIN-778: hora local del evento ("HH:MM", sin zona horaria), opcional. La app la guarda como espejo de solo lectura. La zona horaria no se manda: es un dato interno de la web.
+      event_time: typeof row.event_time === "string" && /^\d{2}:\d{2}/.test(row.event_time) ? row.event_time.slice(0, 5) : null,
       series: row.series ? { id: row.series.id, slug: row.series.slug ?? "", name: row.series.name, start_date: row.series.start_date, end_date: row.series.end_date } : null,
       arena: row.arena ? { id: row.arena.id, name: row.arena.name, city: row.arena.city ?? "" } : null,
       description: row.description ?? "",

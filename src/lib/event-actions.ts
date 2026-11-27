@@ -13,6 +13,7 @@ import { closesAfterEvent, DEFAULT_TIMEZONE, endOfDayIso, parseEventTime, startO
 import { visibilityForCreate } from "@/lib/event-visibility";
 import { serializeFormValues, type EventFormState } from "@/lib/event-form-state";
 import { parseCapacityFields } from "@/lib/event-capacity";
+import { dbErrorCode, missingBasics } from "@/lib/event-required";
 import { teamLimitApplies } from "@/lib/rating-limits";
 import { parseRounds } from "@/lib/event-rounds";
 
@@ -92,7 +93,10 @@ export async function createEvent(prev: EventFormState, formData: FormData): Pro
   const session = await getSession();
   if (session?.role !== "organizador") redirect(`/${l}/entrar?role=organizador`);
   if (!session.verified) redirect(`/${l}/organizador`); // sin licencia vigente ni aprobación no se crean eventos (la base también lo impone)
-  const back = (error: string): EventFormState => ({ attempt: prev.attempt + 1, error, values: serializeFormValues(formData) });
+  const back = (error: string | string[]): EventFormState => {
+    const errors = Array.isArray(error) ? error : [error];
+    return { attempt: prev.attempt + 1, error: errors[0], errors, values: serializeFormValues(formData) };
+  };
 
   const name = text(formData.get("name"), 120);
   const date = text(formData.get("date"), 10);
@@ -111,7 +115,9 @@ export async function createEvent(prev: EventFormState, formData: FormData): Pro
   if (limit === "invalid") return back("ratingLimit");
   const draw = drawFields(formData);
   if (typeof draw === "string") return back(draw === "invalid" ? "drawType" : draw);
-  if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || categories.length === 0 || categories.length > 20 || disciplines.length === 0) return back("1");
+  // Lo obligatorio se revisa junto y se devuelve TODO lo que falta o está mal, cada cosa con su mensaje.
+  const missing = missingBasics({ name, date, city, venue, categories: categories.length, disciplines: disciplines.length });
+  if (missing.length) return back(missing);
   const close = parseClose(formData, date, DEFAULT_TIMEZONE);
   if (!close.ok) return back(close.error);
   const eventTime = parseEventTime(formData.get("eventTime"));
@@ -136,14 +142,14 @@ export async function createEvent(prev: EventFormState, formData: FormData): Pro
   });
   if (error) {
     console.error("createEvent: no se pudo crear el evento", error.code, error.message);
-    return back("1");
+    return back(dbErrorCode(error));
   }
 
   const { error: catError } = await supabase.from("event_categories").insert(categories.map((c) => ({ event_id: id, name: c.name, fee_cents: c.fee * 100 })));
   if (catError) {
     console.error("createEvent: no se pudieron crear las categorías", catError.code, catError.message);
     await supabase.from("events").delete().eq("id", id); // no dejar un evento sin categorías
-    return back("1");
+    return back(dbErrorCode(catError));
   }
 
   await savePaymentInfo(supabase, id, formData.get("paymentInfo"));
@@ -173,7 +179,10 @@ export async function updateEvent(prev: EventFormState, formData: FormData): Pro
   const session = await getSession();
   if (session?.role !== "organizador") redirect(`/${l}/entrar?role=organizador`);
   if (!session.verified) redirect(`/${l}/organizador`);
-  const back = (error: string): EventFormState => ({ attempt: prev.attempt + 1, error, values: serializeFormValues(formData) });
+  const back = (error: string | string[]): EventFormState => {
+    const errors = Array.isArray(error) ? error : [error];
+    return { attempt: prev.attempt + 1, error: errors[0], errors, values: serializeFormValues(formData) };
+  };
 
   const supabase = await createServerSupabase();
   const { data: ev } = await supabase.from("events").select("id, status, timezone").eq("slug", eventSlug).eq("organizer_id", session.id).maybeSingle();
@@ -195,7 +204,8 @@ export async function updateEvent(prev: EventFormState, formData: FormData): Pro
   if (limit === "invalid") return back("ratingLimit");
   const draw = drawFields(formData);
   if (typeof draw === "string") return back(draw === "invalid" ? "drawType" : draw);
-  if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || rows.length === 0 || disciplines.length === 0) return back("1");
+  const missing = missingBasics({ name, date, city, venue, categories: rows.length, disciplines: disciplines.length });
+  if (missing.length) return back(missing);
   const close = parseClose(formData, date, ev.timezone); // la zona del evento ya no se edita: se conserva la que tiene
   if (!close.ok) return back(close.error);
   const eventTime = parseEventTime(formData.get("eventTime"));
@@ -222,7 +232,7 @@ export async function updateEvent(prev: EventFormState, formData: FormData): Pro
   if (!arena) return back("arena");
   const { error } = await supabase.from("events").update({ name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, capacity_headers: capacityHeaders, capacity_heelers: capacityHeelers, disciplines, max_roper_rating: limit, draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds, short_go: draw.shortGo, description: text(formData.get("description"), 1000), event_time: eventTime, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt }).eq("id", ev.id);
   // Un evento de una serie debe seguir dentro de las fechas de su serie (la base lo exige).
-  if (error) return back(error.message.includes("draw_type_locked") ? "drawLocked" : error.message.includes("rounds_locked") ? "roundsLocked" : error.message.includes("outside_series") ? "outsideSeries" : error.message.includes("open_after") ? "opensAfterClose" : "1");
+  if (error) return back(error.message.includes("draw_type_locked") ? "drawLocked" : error.message.includes("rounds_locked") ? "roundsLocked" : error.message.includes("outside_series") ? "outsideSeries" : error.message.includes("open_after") ? "opensAfterClose" : dbErrorCode(error));
   for (const r of rows) {
     if (r.id && owned.has(r.id)) await supabase.from("event_categories").update({ name: r.name, fee_cents: r.fee * 100 }).eq("id", r.id);
     else await supabase.from("event_categories").insert({ event_id: ev.id, name: r.name, fee_cents: r.fee * 100 });

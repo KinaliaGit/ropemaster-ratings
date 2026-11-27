@@ -7,7 +7,10 @@ export type FormValues = Record<string, string[]>;
 export type EventFormState = {
   /** Cuántas veces se rechazó el envío; sirve para volver a montar los campos con los valores devueltos y para mover el foco. */
   attempt: number;
+  /** El primer problema (recibe el foco). */
   error?: string;
+  /** Todos los problemas encontrados, en el orden del formulario (cada uno con su campo y su mensaje). */
+  errors?: string[];
   values?: FormValues;
   /** El evento ya se creó y el formulario tiene fotos por subir: en vez de redirigir, devuelve a dónde ir; el navegador sube las fotos y luego navega. */
   created?: { slug: string; url: string };
@@ -46,6 +49,10 @@ const closes: ErrorTarget = { field: "closesOn", advanced: true };
 
 const TARGETS: Record<string, ErrorTarget> = {
   arena: { field: "arena", advanced: false },
+  arenaRequired: { field: "arena", advanced: false },
+  nameRequired: { field: "name", advanced: false },
+  dateInvalid: { field: "date", advanced: false },
+  costRequired: { field: "catFee", advanced: false },
   capacity: { field: "capacity", advanced: true },
   capacityInvalid: { field: "capacity", advanced: true },
   capacitySidesInvalid: { field: "capacity", advanced: true },

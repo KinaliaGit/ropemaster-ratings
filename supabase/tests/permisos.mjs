@@ -2632,5 +2632,22 @@ console.log("- Cupo por lado (0062, KIN-775)");
   check("los eventos que ya existían quedan sin cupo por lado (null)", await n(`select count(*) n from events where (capacity_headers is not null or capacity_heelers is not null) and id not in ('${E1}','${E2}','${E3}','${E4}')`) === 0);
 }
 
+console.log("- Evento completo tal como lo manda el formulario (KIN-774 a 778)");
+{
+  const FE = "e0000000-0000-0000-0000-00000075f001";
+  // Las mismas columnas que arma createEvent: cupo igual por lado (15 + 15 = 30), 3 rondas con short-go, hora 12:00, cierre al final del día del evento y la zona interna.
+  await as("authenticated", A, `insert into events (id, slug, name, event_date, city, venue, arena_id, capacity, capacity_headers, capacity_heelers, disciplines, status, max_roper_rating,
+      draw_type, lazada_shots_per_package, max_team_rating, rounds, short_go, description, organizer_id, organizer_name, event_time, timezone, registration_opens_at, registration_closes_at)
+    values ('${FE}', 'prueba-nuevo-formulario', 'Prueba nuevo formulario', '2026-12-28', 'Meoqui', 'Las fuentes', null, 30, 15, 15, '{lazo}', 'borrador', null,
+      'round_robin', null, null, 3, true, '', '${A}', 'Org Verificado', '12:00', 'America/Mexico_City', null, '2026-12-29T05:59:59.999Z')`,
+    "el organizador verificado SÍ crea el evento completo del formulario (cupo por lado, short-go, hora y cierre)", "some");
+  const r = await db.query(`select capacity, capacity_headers, capacity_heelers, short_go, rounds, to_char(event_time, 'HH24:MI') as t from events where id = '${FE}'`);
+  await check("quedó guardado como se mandó (30 = 15 + 15, short-go, 3 rondas y las 12:00)", r.rows[0].capacity === 30 && r.rows[0].capacity_headers === 15 && r.rows[0].capacity_heelers === 15 && r.rows[0].short_go === true && r.rows[0].rounds === 3 && r.rows[0].t === "12:00");
+  // Sin cupo ni hora: también se manda capacity_headers/capacity_heelers/event_time en null y debe aceptarse.
+  await as("authenticated", A, `insert into events (id, slug, name, event_date, city, venue, capacity, capacity_headers, capacity_heelers, disciplines, status, draw_type, rounds, short_go, organizer_id, organizer_name, event_time, timezone)
+    values ('e0000000-0000-0000-0000-00000075f002', 'sin-cupo-ni-hora', 'Sin cupo ni hora', '2026-12-28', 'Meoqui', 'Las fuentes', null, null, null, '{lazo}', 'borrador', 'round_robin', null, true, '${A}', 'Org Verificado', null, 'America/Mexico_City')`,
+    "un evento sin cupo ni hora (todo null) SÍ se crea", "some");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

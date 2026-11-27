@@ -48,11 +48,18 @@ test("cada error con campo señala ese campo y dice si está en Configuración a
   assert.deepEqual(fieldForError("closeAfterEvent"), { field: "closesOn", advanced: true });
   assert.deepEqual(fieldForError("opensAfterClose"), { field: "opensOn", advanced: true });
   assert.deepEqual(fieldForError("eventTimeInvalid"), { field: "eventTime", advanced: false });
+  assert.deepEqual(fieldForError("nameRequired"), { field: "name", advanced: false });
+  assert.deepEqual(fieldForError("dateInvalid"), { field: "date", advanced: false });
+  assert.deepEqual(fieldForError("arenaRequired"), { field: "arena", advanced: false });
+  assert.deepEqual(fieldForError("costRequired"), { field: "catFee", advanced: false });
   assert.deepEqual(fieldForError("catInUse"), { field: "catName", advanced: true });
 });
 
 test("un error general («faltan datos») o desconocido no señala ningún campo", () => {
   assert.equal(fieldForError("1"), undefined);
+  assert.equal(fieldForError("saveFailed"), undefined); // un fallo al guardar o migraciones pendientes se muestran arriba, sin campo
+  assert.equal(fieldForError("schemaMissing"), undefined);
+  assert.equal(fieldForError("disciplineRequired"), undefined);
   assert.equal(fieldForError("algo-nuevo"), undefined);
   assert.equal(fieldForError(undefined), undefined);
 });

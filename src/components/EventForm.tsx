@@ -16,7 +16,7 @@ import { formatRounds, MAX_ROUNDS, MIN_ROUNDS_WITH_SHORT_GO } from "@/lib/event-
 type Labels = {
   visibility: VisibilityLabels;
   name: string; date: string; capacity: string; disciplines: string; costLabel: string; costPackageLabel: string; costFree: string; maxRoperRating: string; maxRoperRatingHint: string;
-  error: string; description: string; saveDraft: string; publish: string; photosTitle: string; photosProgress: string; photosPartial: string; goToEvent: string; save: string; errors: Record<string, string>; paymentInfo: string; paymentInfoHint: string; paymentInfoPlaceholder: string;
+  error: string; description: string; saveDraft: string; publish: string; errorsHeading: string; photosTitle: string; photosProgress: string; photosPartial: string; goToEvent: string; save: string; errors: Record<string, string>; paymentInfo: string; paymentInfoHint: string; paymentInfoPlaceholder: string;
   opens: string; opensHint: string; closes: string; closesHint: string; opensPublish: string; opensDay: string; closeNone: string; closeEvent: string; closeDay: string; eventTime: string;
   drawType: string; drawTypeHint: string; drawLocked: string; roundRobin: string; lazadaSorteada: string; shotsPerPackage: string; shotsPerPackageHint: string; maxTeamRating: string; maxTeamRatingHint: string; rounds: string; roundsHint: string; shortGo: string; roundsWord: string; shortGoWord: string;
   advanced: string; required: string; optional: string; capGroup: string; capLimit: string; capLimitHint: string; ratingGroup: string; ratingLimit: string; teamLimit: string; regGroup: string;
@@ -28,7 +28,7 @@ export type EventInitial = { arenaId?: string | null; slug: string; name: string
 type Cat = { id: string; name: string; fee: number };
 type DrawType = "round_robin" | "lazada_sorteada";
 type CapMode = "total" | "eq" | "per";
-type Invalid = { field: string; message: string } | null;
+type Invalid = { field: string; message: string };
 type UploadState = { done: number; total: number; failed: number; finished: boolean };
 type Discipline = { id: string; label: string };
 
@@ -86,14 +86,15 @@ export function EventForm({ lang, labels: l, disciplines, initial, arenas, arena
   const [seenAttempt, setSeenAttempt] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const target = fieldForError(state.error);
-  // Ajuste de estado al recibir un rechazo nuevo: si el campo con error está en «Configuración avanzada», se abre antes de pintar (así el foco sí lo alcanza).
+  // Todos los problemas del último envío, cada uno con su campo (si tiene) y su mensaje.
+  const found = (state.errors ?? (state.error ? [state.error] : [])).map((code) => ({ code, target: fieldForError(code), message: l.errors[code] ?? l.error }));
+  // Ajuste de estado al recibir un rechazo nuevo: si algún campo con error está en «Configuración avanzada», se abre antes de pintar (así el foco sí lo alcanza).
   if (state.attempt !== seenAttempt) {
     setSeenAttempt(state.attempt);
-    if (target?.advanced) setAdvOpen(true);
+    if (found.some((x) => x.target?.advanced)) setAdvOpen(true);
   }
-  const invalid: Invalid = state.error && target ? { field: target.field, message: l.errors[state.error] ?? l.error } : null;
-  const banner = state.error && !target ? (l.errors[state.error] ?? l.error) : null;
+  const invalid: Invalid[] = found.flatMap((x) => (x.target ? [{ field: x.target.field, message: x.message }] : []));
+  const summary = found.map((x) => x.message);
 
   // El evento ya se creó: se suben sus fotos en orden (la primera queda de portada) y luego se navega a su página. Si alguna falla, se avisa y se ofrece ir al evento.
   useEffect(() => {
@@ -132,7 +133,12 @@ export function EventForm({ lang, labels: l, disciplines, initial, arenas, arena
     <form ref={formRef} action={formAction} className="mt-6 space-y-5 card p-6">
       <input type="hidden" name="lang" value={lang} />
       {initial && <input type="hidden" name="slug" value={initial.slug} />}
-      {banner && <p id="event-form-error" tabIndex={-1} role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{banner}</p>}
+      {summary.length > 0 && (
+        <div id="event-form-error" tabIndex={-1} role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800" data-testid="form-errors">
+          <p className="font-medium">{l.errorsHeading}</p>
+          <ul className="mt-1 list-disc pl-5">{summary.map((m, i) => <li key={i}>{m}</li>)}</ul>
+        </div>
+      )}
       {/* `key` vuelve a montar los campos con lo que devolvió el servidor: así lo escrito no se pierde ni se reinicia al fallar el envío. */}
       <EventFields
         key={state.attempt} l={l} disciplines={disciplines} initial={initial} arenas={arenas} arenaLabels={arenaLabels}
@@ -145,7 +151,7 @@ export function EventForm({ lang, labels: l, disciplines, initial, arenas, arena
 
 function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, invalid, pending, advOpen, setAdvOpen, photos, setPhotos, photoLabels, created, upload }: {
   l: Labels; disciplines: Discipline[]; initial?: EventInitial; arenas: ArenaChoice[]; arenaLabels: ArenaLabels;
-  values: FormValues | undefined; invalid: Invalid; pending: boolean; advOpen: boolean; setAdvOpen: (open: boolean) => void;
+  values: FormValues | undefined; invalid: Invalid[]; pending: boolean; advOpen: boolean; setAdvOpen: (open: boolean) => void;
   photos: PhotoDraft[]; setPhotos: Dispatch<SetStateAction<PhotoDraft[]>>; photoLabels?: PhotoDraftLabels; created?: { slug: string; url: string }; upload: UploadState | null;
 }) {
   const v = (name: string, fallback: string | number | null | undefined) => firstValue(values, name, fallback);
@@ -191,14 +197,14 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
     return () => el.removeEventListener("invalid", open, true);
   }, [setAdvOpen]);
 
-  const bad = (field: string) => invalid?.field === field;
+  const bad = (field: string) => invalid.some((i) => i.field === field);
   // Clases y atributos de accesibilidad de un campo; `margin` cambia el margen superior cuando el campo no va dentro de una etiqueta.
   const a = (field: string, margin = "mt-1") => ({
     className: `${margin} ${BASE} ${bad(field) ? "border-red-600" : "border-line"}`,
     "aria-invalid": bad(field) || undefined,
     "aria-describedby": bad(field) ? `err-${field}` : undefined,
   });
-  const msg = (field: string) => bad(field) ? <p id={`err-${field}`} role="alert" className="mt-1 text-xs font-medium text-red-700">{invalid!.message}</p> : null;
+  const msg = (field: string) => bad(field) ? <p id={`err-${field}`} role="alert" className="mt-1 text-xs font-medium text-red-700">{invalid.find((i) => i.field === field)?.message}</p> : null;
   const req = <span aria-hidden className="ml-0.5 text-red-700">*</span>;
   const opt = <span className="ml-1.5 text-xs font-normal text-muted">{l.optional}</span>;
 
@@ -279,6 +285,7 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
           <input type="hidden" name="catName" value={first.name} />
           <input required name="catFee" type="number" min={0} inputMode="numeric" defaultValue={costDefault} {...a("catFee")} />
           <span className="mt-1 block text-xs font-normal text-muted">{l.costFree}</span>
+          {msg("catFee")}
         </label>
         <div>
           <label className="block text-sm font-medium">{l.rounds}{opt}

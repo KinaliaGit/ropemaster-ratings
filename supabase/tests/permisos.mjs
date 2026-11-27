@@ -2414,7 +2414,7 @@ console.log("- Pagos que sube la app (0053)");
   await check("el servidor SÍ ejecuta la función", (await pay(A, [request.payments[0]])).length === 1);
 }
 
-console.log("— Enlace privado por evento (0056, KIN-783)");
+console.log("— Enlace privado por evento (0057, KIN-783)");
 {
   const O1 = "f5600000-0000-0000-0000-0000000000a1", O2 = "f5600000-0000-0000-0000-0000000000b1";
   const EVN = "e5600000-0000-0000-0000-000000000001", EVN2 = "e5600000-0000-0000-0000-000000000002", EVB = "e5600000-0000-0000-0000-000000000003", EVO = "e5600000-0000-0000-0000-000000000004";

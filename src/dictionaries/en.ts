@@ -197,7 +197,7 @@ export const en: Dict = {
       },
       ev: {
         title: "Events in the series", none: "No events yet. Add them below.", addTitle: "Add events", addHint: "Each event copies the series configuration (venue, capacity, categories and payment). Add one or several at once; you can edit each one afterwards.",
-        name: "Event name", date: "Date", opens: "Registration opens", opensHint: "Empty = opens as soon as you publish the event. With a date and time it opens by itself.", addRow: "+ Add another event", removeRow: "Remove", createDraft: "Create as drafts", createPublish: "Create and publish",
+        name: "Event name", date: "Date", opens: "Registration opens", opensHint: "Empty = opens as soon as you publish the event. With a date it opens by itself at the start of that day.", addRow: "+ Add another event", removeRow: "Remove", createDraft: "Create as drafts", createPublish: "Create and publish",
         newEvent: "+ New event", publishDrafts: "Publish all drafts", delete: "Delete", deleteTitle: "Delete this event", deleteText: "The event is deleted and this can't be undone. Only possible if it has no registrations or results.", deleteConfirm: "Yes, delete", keep: "Cancel",
         manage: "Manage", edit: "Edit", enrolled: "Registered", range: "Allowed dates:", defaultName: "Round", opensOn: "Opens", opensNow: "As soon as it's published", closesOn: "Closes",
         msg: { agregados: "Done: we created", agregadosEnd: "event(s).", borrado: "Event deleted.", publicados: "Done: complete drafts published.", incompletos: "draft(s) not published: they are missing city, venue, capacity or a category. Complete them and publish them one by one." },

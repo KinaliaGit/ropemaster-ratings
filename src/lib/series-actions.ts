@@ -4,7 +4,7 @@ import { updateTag } from "next/cache";
 import { getSession } from "@/lib/session";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { DEFAULT_DISCIPLINE } from "@/lib/disciplines";
-import { DEFAULT_TIMEZONE, zonedLocalToIso } from "@/lib/event-time";
+import { DEFAULT_TIMEZONE, startOfDayIso } from "@/lib/event-time";
 import { serializeFormValues, type EventFormState } from "@/lib/event-form-state";
 import { parseCapacityFields } from "@/lib/event-capacity";
 import { dbErrorCode } from "@/lib/event-required";
@@ -150,7 +150,7 @@ export async function addSeriesEvents(formData: FormData) {
 
   const names = formData.getAll("evName").map((v) => text(v, 120));
   const dates = formData.getAll("evDate").map((v) => text(v, 10));
-  const opens = formData.getAll("evOpens").map((v) => text(v, 16));
+  const opens = formData.getAll("evOpens").map((v) => text(v, 10));
   const rows = names.map((name, i) => ({ name, date: dates[i] ?? "", opens: opens[i] ?? "" })).filter((r) => r.name || r.date);
   if (rows.length === 0 || rows.length > MAX_EVENTS) return back("noEvents");
   const items = [];
@@ -159,7 +159,7 @@ export async function addSeriesEvents(formData: FormData) {
     if (r.date < s.start_date || r.date > s.end_date) return back("outsideRange");
     let opensAt: string | null = null;
     if (r.opens) {
-      opensAt = zonedLocalToIso(r.opens, s.timezone);
+      opensAt = startOfDayIso(r.opens, s.timezone); // por día, sin hora: abren al empezar ese día (KIN-798)
       if (!opensAt) return back("invalidRow");
     }
     items.push({ id: crypto.randomUUID(), slug: slugify(r.name), name: r.name, date: r.date, opens_at: opensAt });

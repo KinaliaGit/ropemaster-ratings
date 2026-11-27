@@ -197,7 +197,7 @@ export const es = {
       },
       ev: {
         title: "Eventos de la serie", none: "Aún no hay eventos. Agrégalos abajo.", addTitle: "Agregar eventos", addHint: "Cada evento copia la configuración de la serie (sede, cupo, categorías y pago). Agrega uno o varios de golpe; después puedes editar cada uno.",
-        name: "Nombre del evento", date: "Fecha", opens: "Apertura de inscripciones", opensHint: "Vacío = abren desde que publicas el evento. Con fecha y hora se abren solas.", addRow: "+ Agregar otro evento", removeRow: "Quitar", createDraft: "Crear como borradores", createPublish: "Crear y publicar",
+        name: "Nombre del evento", date: "Fecha", opens: "Apertura de inscripciones", opensHint: "Vacío = abren desde que publicas el evento. Con una fecha se abren solas al empezar ese día.", addRow: "+ Agregar otro evento", removeRow: "Quitar", createDraft: "Crear como borradores", createPublish: "Crear y publicar",
         newEvent: "+ Evento nuevo", publishDrafts: "Publicar todos los borradores", delete: "Eliminar", deleteTitle: "Eliminar este evento", deleteText: "Se borra el evento y no se puede deshacer. Solo se puede si no tiene inscritos ni resultados.", deleteConfirm: "Sí, eliminar", keep: "Cancelar",
         manage: "Gestionar", edit: "Editar", enrolled: "Inscritos", range: "Fechas permitidas:", defaultName: "Fecha", opensOn: "Abren el", opensNow: "Desde que se publica", closesOn: "Cierran el",
         msg: { agregados: "Listo: creamos", agregadosEnd: "evento(s).", borrado: "Evento eliminado.", publicados: "Listo: publicamos los borradores completos.", incompletos: "borrador(es) sin publicar: les falta ciudad, lugar, cupo o categoría. Complétalos y publícalos uno por uno." },

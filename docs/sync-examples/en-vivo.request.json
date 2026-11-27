@@ -1,0 +1,14 @@
+{
+  "contract_version": 1,
+  "revision": 1764212345678,
+  "round": 2,
+  "rounds": 3,
+  "total": 4,
+  "done": 2,
+  "current": { "n": 3, "header": "Diego Mora", "heeler": "Pablo Cano", "total_ms": null },
+  "pending": [{ "n": 4, "header": "Hugo Lara", "heeler": "Luis Soto", "total_ms": null }],
+  "standings": [
+    { "n": 1, "header": "Andrés Vega", "heeler": "Saúl Gil", "total_ms": 8200 },
+    { "n": 2, "header": "Marco Ríos", "heeler": "Víctor Paz", "total_ms": 9100 }
+  ]
+}

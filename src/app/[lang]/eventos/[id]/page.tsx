@@ -8,7 +8,7 @@ import { ACTIVE_DISCIPLINES, DEFAULT_DISCIPLINE, type DisciplineId } from "@/lib
 import { toEnrolledItem } from "@/lib/enrolled-view";
 import { fmtDate, mxn, type Lang } from "@/lib/format";
 import { fmtDeadline, isLiveToday, isNotOpenYet, isRegistrationOpen, statusByDate } from "@/lib/event-time";
-import { LIVE_DEMO } from "@/lib/flags";
+import { LIVE_VIEW } from "@/lib/flags";
 import Image from "next/image";
 import { EnrolledList } from "@/components/EnrolledList";
 import { EventResultsSection } from "@/components/EventResultsSection";
@@ -76,7 +76,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
 
         <div>
           <h1 className="text-3xl font-semibold sm:text-4xl">{e.name}</h1>
-          {LIVE_DEMO && isLiveToday(found) && (
+          {LIVE_VIEW && isLiveToday(found) && (
             <Link href={`/${lang}/eventos/${e.id}/en-vivo`} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-full bg-red-600 px-5 text-sm font-medium text-white hover:bg-red-700">
               <span aria-hidden className="size-2 animate-pulse rounded-full bg-white motion-reduce:animate-none" />{t.live.watch}
             </Link>

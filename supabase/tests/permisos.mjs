@@ -2663,5 +2663,73 @@ console.log("— Enlace privado por evento (0059, KIN-783)");
   await as("anon", null, "select id from event_connections", "anónimo NO ve enlaces", "deny");
 }
 
+console.log("— Resultados en vivo (0063, KIN-787)");
+{
+  const OL = "f6300000-0000-0000-0000-0000000000a1", OL2 = "f6300000-0000-0000-0000-0000000000b1";
+  const EP = "e6300000-0000-0000-0000-000000000001", EPRIV = "e6300000-0000-0000-0000-000000000002", EBOR = "e6300000-0000-0000-0000-000000000003", EAJ = "e6300000-0000-0000-0000-000000000004", EFIN = "e6300000-0000-0000-0000-000000000005";
+  await db.exec(`
+    insert into auth.users (id, email, email_confirmed_at) values ('${OL}','ol-63@x.com',now()), ('${OL2}','ol2-63@x.com',now());
+    insert into profiles (user_id, role, display_name, organizer_verified) values ('${OL}','organizador','Org 63 A',true), ('${OL2}','organizador','Org 63 B',true);
+    insert into events (id, name, organizer_id, status, slug, venue, city, event_date, visibility) values
+      ('${EP}','En vivo público','${OL}','publicado','e63-1','Arena Uno','Monterrey', current_date, 'publico'),
+      ('${EPRIV}','En vivo privado','${OL}','publicado','e63-2','Arena Dos','Saltillo', current_date, 'privado'),
+      ('${EBOR}','En vivo borrador','${OL}','borrador','e63-3',null,null, current_date, 'publico'),
+      ('${EAJ}','En vivo de otro','${OL2}','publicado','e63-4',null,null, current_date, 'publico'),
+      ('${EFIN}','En vivo finalizado','${OL}','finalizado','e63-5',null,null, current_date - 3, 'publico');
+  `);
+  const svc = async (sql, params = []) => { await db.exec("reset role; set role service_role"); try { return (await db.query(sql, params)).rows; } finally { await db.exec("reset role"); } };
+  const put = async (org, ev, rev, snap = { round: 1, rounds: 3, total: 2, done: 1, current: null, pending: [], standings: [] }) =>
+    (await svc("select * from public.app_put_live_snapshot($1, $2, $3, $4::jsonb)", [org, ev, rev, JSON.stringify(snap)]))[0];
+  const fails = async (sql, params, code) => { try { await svc(sql, params); return false; } catch (e) { return String(e.message ?? e).includes(code); } };
+  const snapOf = (round) => ({ round, rounds: 3, total: 2, done: 1, current: null, pending: [], standings: [] });
+
+  // --- guardar
+  const first = await put(OL, EP, 5, snapOf(1));
+  await check("la primera foto de un evento publicado se guarda", first.outcome === "stored" && Number(first.revision) === 5);
+  const again = await put(OL, EP, 5, snapOf(1));
+  await check("reenviar la misma revisión es inofensivo (unchanged)", again.outcome === "unchanged");
+  const stale = await put(OL, EP, 4, snapOf(9));
+  await check("una revisión más vieja NO pisa a la nueva (stale) y avisa la que tiene", stale.outcome === "stale" && Number(stale.revision) === 5);
+  await check("la foto vieja no cambió nada", (await db.query(`select (snapshot->>'round')::int as r from event_live_snapshots where event_id = '${EP}'`)).rows[0].r === 1);
+  const newer = await put(OL, EP, 6, snapOf(2));
+  await check("una revisión mayor reemplaza la foto (una sola fila por evento)", newer.outcome === "stored"
+    && (await db.query(`select count(*)::int as n, max((snapshot->>'round')::int) as r from event_live_snapshots where event_id = '${EP}'`)).rows[0].n === 1
+    && (await db.query(`select (snapshot->>'round')::int as r from event_live_snapshots where event_id = '${EP}'`)).rows[0].r === 2);
+  await check("un borrador NO guarda foto (not_found)", (await put(OL, EBOR, 1)).outcome === "not_found");
+  await check("un evento de otro organizador NO guarda foto (not_found)", (await put(OL, EAJ, 1)).outcome === "not_found");
+  await check("un evento inexistente NO guarda foto (not_found)", (await put(OL, "e6300000-0000-0000-0000-0000000000ff", 1)).outcome === "not_found");
+  await check("un evento finalizado sí guarda su última foto", (await put(OL, EFIN, 1)).outcome === "stored");
+  await check("un evento privado guarda foto, aunque nadie la lea en público", (await put(OL, EPRIV, 1)).outcome === "stored");
+  await check("una revisión en cero se rechaza", await fails("select * from public.app_put_live_snapshot($1, $2, 0, '{}'::jsonb)", [OL, EP], "inválida"));
+  await check("una foto que no es objeto se rechaza", await fails("select * from public.app_put_live_snapshot($1, $2, 9, '[]'::jsonb)", [OL, EP], "inválida"));
+
+  // --- leer: solo eventos públicos publicados o finalizados
+  await as("anon", null, `select revision, snapshot, event_name, venue, city from public.get_live_snapshot('${EP}')`, "anónimo lee la foto de un evento público", "some");
+  const read = (await svc("select * from public.get_live_snapshot($1)", [EP]))[0];
+  await check("la lectura trae el nombre y la arena reales del evento", read.event_name === "En vivo público" && read.venue === "Arena Uno" && read.city === "Monterrey");
+  await check("la lectura trae la revisión para el ETag", Number(read.revision) === 6);
+  await as("anon", null, `select * from public.get_live_snapshot('${EFIN}')`, "anónimo lee la foto de un evento finalizado", "some");
+  await as("anon", null, `select * from public.get_live_snapshot('${EPRIV}')`, "anónimo NO lee la foto de un evento privado", "deny");
+  await as("authenticated", OL2, `select * from public.get_live_snapshot('${EPRIV}')`, "otro organizador NO lee la foto de un evento privado", "deny");
+  await as("anon", null, `select * from public.get_live_snapshot('${EBOR}')`, "anónimo NO lee la foto de un borrador", "deny");
+  await as("anon", null, "select * from public.get_live_snapshot('e6300000-0000-0000-0000-0000000000ff')", "un evento sin foto o inexistente contesta vacío", "deny");
+  await db.exec(`update events set status = 'borrador' where id = '${EP}'`);
+  await as("anon", null, `select * from public.get_live_snapshot('${EP}')`, "si el evento vuelve a borrador la foto deja de verse", "deny");
+  await db.exec(`update events set status = 'publicado' where id = '${EP}'`);
+  await check("la lectura pública no trae correos, celulares ni pagos", Object.keys(read).sort().join() === "city,event_name,revision,snapshot,updated_at,venue");
+
+  // --- permisos: la tabla y la escritura son solo del servidor
+  await as("anon", null, "select event_id from event_live_snapshots", "anónimo NO lee la tabla directo", "deny");
+  await as("authenticated", OL, "select event_id from event_live_snapshots", "un organizador NO lee la tabla directo", "deny");
+  await as("authenticated", OL, `insert into event_live_snapshots (event_id, revision, snapshot) values ('${EAJ}', 1, '{}')`, "un organizador NO escribe la tabla directo", "deny");
+  await as("authenticated", OL, `update event_live_snapshots set revision = 99 where event_id = '${EP}'`, "un organizador NO edita la tabla directo", "deny");
+  await as("anon", null, `select public.app_put_live_snapshot('${OL}', '${EP}', 50, '{}'::jsonb)`, "anónimo NO ejecuta app_put_live_snapshot", "deny");
+  await as("authenticated", OL, `select public.app_put_live_snapshot('${OL}', '${EP}', 50, '{}'::jsonb)`, "un organizador NO ejecuta app_put_live_snapshot", "deny");
+  await check("borrar el evento borra su foto", await (async () => {
+    await db.exec(`delete from events where id = '${EFIN}'`);
+    return (await db.query(`select count(*)::int as n from event_live_snapshots where event_id = '${EFIN}'`)).rows[0].n === 0;
+  })());
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

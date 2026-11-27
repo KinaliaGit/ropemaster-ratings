@@ -3,7 +3,7 @@ import { type Lang } from "@/lib/format";
 import { type EventItem } from "@/lib/types";
 import { EventCover } from "@/components/EventCover";
 import { eventPhase, isLiveToday, statusByDate } from "@/lib/event-time";
-import { LIVE_DEMO } from "@/lib/flags";
+import { LIVE_VIEW } from "@/lib/flags";
 import type { Dict } from "@/dictionaries/es";
 
 // Tarjeta tipo cartel: el flyer vertical (2:3) se ve completo, sin nada encima, y debajo nombre, fecha, lugar y estado (KIN-768).
@@ -21,7 +21,7 @@ export function EventCard({ e, lang, t, eager = false }: { e: EventItem; lang: L
   const icon = "mt-0.5 size-3.5 shrink-0";
   const live = isLiveToday(e);
   return (
-    <Link href={`/${lang}/eventos/${e.id}${live && LIVE_DEMO ? "/en-vivo" : ""}`} className="group block min-w-0">
+    <Link href={`/${lang}/eventos/${e.id}${live && LIVE_VIEW ? "/en-vivo" : ""}`} className="group block min-w-0">
       <div className="relative aspect-[2/3] overflow-hidden rounded-[20px] bg-sand shadow-[0_10px_30px_-18px_rgba(20,19,17,0.5)] sm:rounded-[24px]">
         <div className="absolute inset-0 transition duration-500 group-hover:scale-[1.03]"><EventCover e={e} sizes={CARD_SIZES} eager={eager} /></div>
         {!e.cover && (

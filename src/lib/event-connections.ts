@@ -2,7 +2,7 @@ import "server-only";
 import { adminClient } from "@/lib/supabase/admin";
 import { hashToken, isUuid, newEventToken, newInviteToken, type EventGrant, type Scope } from "@/lib/app-connection";
 
-// Enlaces privados por evento (KIN-783). Todo pasa por funciones SQL que solo ejecuta el servidor (migración 0057); en la base queda SOLO
+// Enlaces privados por evento (KIN-783). Todo pasa por funciones SQL que solo ejecuta el servidor (migración 0059); en la base queda SOLO
 // el hash de la invitación y del token. La invitación en claro se entrega una vez al crearla y el token una vez al canjearla.
 
 function db() {

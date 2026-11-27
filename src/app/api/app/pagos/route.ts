@@ -1,4 +1,5 @@
 import { organizerFromRequest } from "@/lib/app-auth";
+import { guardBatchEvent, guardScope } from "@/lib/app-connection";
 import { adminClient } from "@/lib/supabase/admin";
 import { checkActiveOrganizer } from "@/lib/app-organizer";
 
@@ -14,13 +15,17 @@ const headers = { "Cache-Control": "no-store" };
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers });
 
 export async function POST(request: Request) {
-  const auth = await organizerFromRequest(request);
+  const auth = await organizerFromRequest(request, { eventToken: true });
   if (auth instanceof Response) return auth;
+  const noScope = guardScope(auth.grant, "payments:write");
+  if (noScope) return noScope;
 
   const declared = Number(request.headers.get("content-length") ?? 0);
   if (declared > MAX_BYTES) return json({ code: "payload_too_large", error: "El cuerpo es demasiado grande: parte el lote en mitades." }, 413);
   const parsed = parsePaymentsBody(await request.text());
   if (!parsed.ok) return json({ code: parsed.code, error: parsed.error }, parsed.status);
+  const otherEvent = guardBatchEvent(auth.grant, parsed.payments); // con un token de evento, todo el lote debe ser de ese evento
+  if (otherEvent) return otherEvent;
 
   const db = adminClient();
   if (!db) return json({ error: "Servicio no disponible" }, 503);

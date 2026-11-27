@@ -1,5 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { verifySyncToken } from "@/lib/sync-tokens";
+import { verifyEventToken } from "@/lib/event-connections";
+import { isEventToken, type EventGrant } from "@/lib/app-connection";
 import { adminClient } from "@/lib/supabase/admin";
 
 // Autentica a la app local por el token de su sesión (Authorization: Bearer ...).
@@ -46,7 +48,12 @@ function fixedTokenMatches(given: string) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export async function organizerFromRequest(request: Request): Promise<{ organizer: string } | Response> {
+export type AppAuth = { organizer: string; grant: EventGrant | null };
+
+// `grant` es null con una sesión de correo y contraseña (todo el organizador) y trae el evento y los permisos con un token de evento (rme_…).
+// Un token de evento NO entra a una ruta que no lo declara: por defecto responde 403 `scope_denied`. Cada ruta que lo acepta (`eventToken: true`)
+// debe además llamar a guardEvent / guardScope / guardBatchEvent de app-connection.ts. Si el evento ya no es público, responde 404.
+export async function organizerFromRequest(request: Request, opts: { eventToken?: boolean } = {}): Promise<AppAuth | Response> {
   const given = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
   if (!given) return Response.json({ code: "invalid_token", error: "Token inválido" }, { status: 401 });
 
@@ -55,9 +62,21 @@ export async function organizerFromRequest(request: Request): Promise<{ organize
     if (await isBlocked(h)) {
       return Response.json({ code: "rate_limited", error: "Demasiados intentos" }, { status: 429, headers: { "Retry-After": String(WINDOW_SECONDS) } });
     }
+    if (isEventToken(given)) {
+      const checked = await verifyEventToken(given);
+      if (!checked) {
+        await recordFailure(h);
+        return Response.json({ code: "invalid_token", error: "Token inválido" }, { status: 401 });
+      }
+      if (!opts.eventToken) return Response.json({ code: "scope_denied", error: "Este enlace solo sirve para su evento." }, { status: 403 });
+      if (checked.eventStatus !== "publicado" && checked.eventStatus !== "finalizado") {
+        return Response.json({ code: "event_not_found", error: "Evento no encontrado" }, { status: 404 });
+      }
+      return { organizer: checked.organizer, grant: checked.grant };
+    }
     const organizer = await verifySyncToken(given);
-    if (organizer) return { organizer };
-    if (fixedTokenMatches(given)) return { organizer: process.env.APP_SYNC_ORGANIZER ?? "Rodeo Norte" };
+    if (organizer) return { organizer, grant: null };
+    if (fixedTokenMatches(given)) return { organizer: process.env.APP_SYNC_ORGANIZER ?? "Rodeo Norte", grant: null };
     await recordFailure(h);
     return Response.json({ code: "invalid_token", error: "Token inválido" }, { status: 401 });
   } catch {

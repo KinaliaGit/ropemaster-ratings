@@ -3,8 +3,10 @@ import { useState } from "react";
 import { createEvent, updateEvent } from "@/lib/event-actions";
 import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/event-time";
 import { ArenaFields, type ArenaChoice, type ArenaLabels } from "@/components/ArenaFields";
+import { PublishDialog, type VisibilityLabels } from "@/components/PublishDialog";
 
 type Labels = {
+  visibility: VisibilityLabels;
   name: string; date: string; capacity: string; venue: string; city: string; disciplines: string; categories: string; categoryName: string; categoryNamePlaceholder: string; cost: string; costHint: string; maxRoperRating: string; maxRoperRatingHint: string; addCategory: string;
   error: string; description: string; saveDraft: string; publish: string; photosLater: string; save: string; errors: Record<string, string>; paymentInfo: string; paymentInfoHint: string; paymentInfoPlaceholder: string;
   opens: string; opensHint: string; closes: string; closesHint: string; timezone: string;
@@ -114,7 +116,8 @@ export function EventForm({ lang, labels: l, disciplines, error, initial, arenas
       ) : (
         <div className="flex gap-3">
           <button name="intent" value="draft" className="flex-1 rounded-full bg-sand py-3 text-sm font-medium transition hover:bg-line">{l.saveDraft}</button>
-          <button name="intent" value="publish" className="flex-1 rounded-full bg-brand py-3 text-sm font-medium text-white hover:bg-brand-hot">{l.publish}</button>
+          {/* KIN-769: al publicar se pregunta quién puede ver el evento (público o privado); guardar borrador no pregunta nada */}
+          <PublishDialog publishLabel={l.publish} labels={l.visibility} className="flex-1 rounded-full bg-brand py-3 text-sm font-medium text-white hover:bg-brand-hot" />
         </div>
       )}
     </form>

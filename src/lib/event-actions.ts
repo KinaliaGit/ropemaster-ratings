@@ -10,6 +10,7 @@ import { slugify } from "@/lib/slug";
 import { resolveArena } from "@/lib/arena-resolve";
 import { emailParticipant } from "@/lib/notify";
 import { closesAfterEvent, DEFAULT_TIMEZONE, isValidTimezone, zonedLocalToIso } from "@/lib/event-time";
+import { visibilityForCreate } from "@/lib/event-visibility";
 
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
 const text = (v: FormDataEntryValue | null, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -108,6 +109,9 @@ export async function createEvent(formData: FormData) {
   if (!close.ok) return back(close.error);
 
   const status = formData.get("intent") === "publish" ? "publicado" : "borrador";
+  // KIN-769: quién puede ver el evento se elige al PUBLICAR (ventana de «Publicar»); un borrador no lo decide. Se manda a la base solo si es privado: lo público es el valor por
+  // defecto, así que crear eventos públicos funciona igual aunque la migración 0058 (permiso de escribir la visibilidad) aún no esté aplicada.
+  const visibility = visibilityForCreate(formData.get("intent"), formData.get("visibility"));
   const supabase = await createServerSupabase();
   const id = crypto.randomUUID();
   const eventSlug = slugify(name);
@@ -115,6 +119,7 @@ export async function createEvent(formData: FormData) {
   if (!arena) return back("arena");
 
   const { error } = await supabase.from("events").insert({
+    ...(visibility === "privado" ? { visibility } : {}),
     id, slug: eventSlug, name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, disciplines, status, max_roper_rating: limit,
     draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds,
     description: text(formData.get("description"), 1000), organizer_id: session.id, organizer_name: session.name,
@@ -130,7 +135,7 @@ export async function createEvent(formData: FormData) {
 
   await savePaymentInfo(supabase, id, formData.get("paymentInfo"));
   updateTag("events");
-  redirect(`/${l}/organizador/eventos/${eventSlug}?nuevo=${status}`);
+  redirect(`/${l}/organizador/eventos/${eventSlug}?nuevo=${status}${visibility === "privado" ? "&privado=1" : ""}`);
 }
 
 // Instrucciones de pago (transferencia/efectivo): solo las ven el organizador y quienes se inscriben. Vacío = se borran.

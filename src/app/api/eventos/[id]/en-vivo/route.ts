@@ -2,7 +2,7 @@ import { adminClient } from "@/lib/supabase/admin";
 import { isUuid } from "@/lib/app-results";
 import { etagMatches, liveEtag, toLiveSnapshot, type LiveRow } from "@/lib/app-live";
 
-// Lectura PÚBLICA de la foto en vivo de un evento (KIN-787, H13.6). La página la sondea cada 10-15 s.
+// Lectura PÚBLICA de la foto en vivo de un evento (KIN-787, H13.6). La página la sondea cada 5 s.
 //   GET /api/eventos/<event_id>/en-vivo  ->  200 LiveSnapshot + ETag  |  304 (sin cambios)  |  404 (sin foto, borrador, privado o inexistente)
 // Solo contesta por eventos publicados o finalizados y públicos (lo decide `get_live_snapshot`); nunca trae correos, celulares ni pagos.
 // El ETag es la revisión: el 304 es barato y la CDN puede servir la misma respuesta unos segundos a todos los espectadores.

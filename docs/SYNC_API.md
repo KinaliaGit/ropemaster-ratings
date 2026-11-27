@@ -537,7 +537,7 @@ celulares, ni pagos. Límites: 256 KB por envío y 1000 equipos por lista.
 Sin autenticación. Devuelve la foto lista para la pantalla (`LiveSnapshot` de `src/lib/live.ts`): lo mismo que se mandó, más `name`, `venue` (arena y ciudad
 del evento) y `updatedAt` (cuándo cambió por última vez). Responde con `ETag` (la revisión); con `If-None-Match` igual contesta `304` sin cuerpo.
 `Cache-Control: public, s-maxage=5, stale-while-revalidate=10`, así que el costo no crece con los espectadores. `404` si el evento no tiene foto, es un
-borrador, es privado o no existe (no se distinguen). `src/components/LiveView.tsx` es el consumo de referencia: sondea cada 12 s mientras la pestaña está
+borrador, es privado o no existe (no se distinguen). `src/components/LiveView.tsx` es el consumo de referencia: sondea cada 5 s mientras la pestaña está
 a la vista, conserva la última foto y avisa si se cae la conexión.
 
 La página `/{lang}/eventos/{evento}/en-vivo` se enciende en producción con `LIVE_ENABLED=true`; en desarrollo siempre está encendida y, sin datos reales, muestra

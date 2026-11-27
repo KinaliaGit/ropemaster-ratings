@@ -5,9 +5,9 @@ import { LiveDemo } from "@/components/LiveDemo";
 import type { LiveSnapshot } from "@/lib/live";
 import type { Dict } from "@/dictionaries/es";
 
-const POLL_MS = 12_000; // decisión 7 de KIN-782: sondeo cada 10-15 s
+const POLL_MS = 5_000; // sondeo cada 5 s (la decisión 7 de KIN-782 decía 10-15 s; se acortó para que se sienta en vivo; con ETag, lo que no cambió es un 304)
 
-// KIN-787: la pantalla en vivo con datos reales. Pregunta cada 12 s a `GET /api/eventos/<id>/en-vivo` mientras la pestaña está a la vista (y al volver a ella).
+// KIN-787: la pantalla en vivo con datos reales. Pregunta cada 5 s a `GET /api/eventos/<id>/en-vivo` mientras la pestaña está a la vista (y al volver a ella).
 // Usa el ETag para que lo que no cambió cueste un 304. Si la conexión cae conserva la última foto, avisa y sigue intentando sola.
 // `demo` (solo en desarrollo): mientras el evento no tenga datos reales se ve la demostración de Anita.
 export function LiveView({ eventId, initial, demo, labels }: { eventId: string; initial: LiveSnapshot | null; demo: { name: string; venue: string } | null; labels: Dict["live"] }) {

@@ -26,6 +26,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/eventos/n
             <EventForm
               lang={lang}
               labels={f} arenas={arenas} arenaLabels={t.org.arenas.picker}
+              photoLabels={{ add: t.uploader.add, hint: t.uploader.hint, cover: t.uploader.cover, makeCover: t.uploader.makeCover, remove: t.uploader.remove, uploading: t.uploader.uploading, tooBig: t.uploader.tooBig, invalid: t.uploader.invalid, limit: t.uploader.limit }}
               disciplines={ACTIVE_DISCIPLINES.map((d) => ({ id: d.id, label: t.disc[d.id].label }))}
             />
           </div>

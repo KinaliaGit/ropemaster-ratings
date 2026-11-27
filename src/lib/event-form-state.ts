@@ -9,12 +9,14 @@ export type EventFormState = {
   attempt: number;
   error?: string;
   values?: FormValues;
+  /** El evento ya se creó y el formulario tiene fotos por subir: en vez de redirigir, devuelve a dónde ir; el navegador sube las fotos y luego navega. */
+  created?: { slug: string; url: string };
 };
 
 export const INITIAL_EVENT_FORM_STATE: EventFormState = { attempt: 0 };
 
 // Campos que el formulario arma por su cuenta (no son lo que escribió la persona) o que no deben volver a pintarse.
-const SKIP = new Set(["lang", "slug", "intent", "visibility"]);
+const SKIP = new Set(["lang", "slug", "intent", "visibility", "photos"]);
 
 /** Copia lo que mandó el formulario para devolverlo tal cual en el error. Solo texto: ignora archivos y los campos internos de Next. */
 export function serializeFormValues(formData: FormData): FormValues {

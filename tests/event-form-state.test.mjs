@@ -19,6 +19,7 @@ test("serializeFormValues deja fuera los campos internos y los archivos", () => 
   fd.append("slug", "mi-evento");
   fd.append("intent", "publish");
   fd.append("visibility", "privado");
+  fd.append("photos", "1");
   fd.append("$ACTION_ID_abc", "x");
   fd.append("cover", new Blob(["x"]), "x.png");
   fd.append("city", "Monterrey");

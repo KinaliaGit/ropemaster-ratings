@@ -1,7 +1,11 @@
 "use client";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
 import { createEvent, updateEvent } from "@/lib/event-actions";
+import { addEventPhoto } from "@/lib/photo-actions";
+import { EventPhotoDrafts, type PhotoDraft, type PhotoDraftLabels } from "@/components/EventPhotoDrafts";
 import type { CloseMode } from "@/lib/event-time";
 import { fieldForError, firstValue, focusSelector, INITIAL_EVENT_FORM_STATE, type FormValues } from "@/lib/event-form-state";
 import { ArenaFields, type ArenaChoice, type ArenaLabels } from "@/components/ArenaFields";
@@ -12,7 +16,7 @@ import { formatRounds, MAX_ROUNDS, MIN_ROUNDS_WITH_SHORT_GO } from "@/lib/event-
 type Labels = {
   visibility: VisibilityLabels;
   name: string; date: string; capacity: string; disciplines: string; costLabel: string; costPackageLabel: string; costFree: string; maxRoperRating: string; maxRoperRatingHint: string;
-  error: string; description: string; saveDraft: string; publish: string; photosLater: string; save: string; errors: Record<string, string>; paymentInfo: string; paymentInfoHint: string; paymentInfoPlaceholder: string;
+  error: string; description: string; saveDraft: string; publish: string; photosTitle: string; photosProgress: string; photosPartial: string; goToEvent: string; save: string; errors: Record<string, string>; paymentInfo: string; paymentInfoHint: string; paymentInfoPlaceholder: string;
   opens: string; opensHint: string; closes: string; closesHint: string; opensPublish: string; opensDay: string; closeNone: string; closeEvent: string; closeDay: string; eventTime: string;
   drawType: string; drawTypeHint: string; drawLocked: string; roundRobin: string; lazadaSorteada: string; shotsPerPackage: string; shotsPerPackageHint: string; maxTeamRating: string; maxTeamRatingHint: string; rounds: string; roundsHint: string; shortGo: string; roundsWord: string; shortGoWord: string;
   advanced: string; required: string; optional: string; capGroup: string; capLimit: string; capLimitHint: string; ratingGroup: string; ratingLimit: string; teamLimit: string; regGroup: string;
@@ -25,6 +29,7 @@ type Cat = { id: string; name: string; fee: number };
 type DrawType = "round_robin" | "lazada_sorteada";
 type CapMode = "total" | "eq" | "per";
 type Invalid = { field: string; message: string } | null;
+type UploadState = { done: number; total: number; failed: number; finished: boolean };
 type Discipline = { id: string; label: string };
 
 // Clase base de los campos; el borde (normal o rojo si el servidor rechazó ese campo) se agrega aparte.
@@ -67,8 +72,16 @@ function Switch({ on, onChange, label }: { on: boolean; onChange: (on: boolean) 
 // y cada regla opcional es un interruptor (apagado = sin regla, y su valor no se envía). El encabezado de esa sección muestra con chips lo que está activado.
 // Si el servidor rechaza el envío NO se redirige: devuelve el error con lo que se escribió, el formulario se vuelve a pintar con eso, marca el campo con
 // error (borde y mensaje), le da el foco y, si está dentro de «Configuración avanzada», abre esa sección.
-export function EventForm({ lang, labels: l, disciplines, initial, arenas, arenaLabels }: { lang: "es" | "en"; labels: Labels; disciplines: Discipline[]; initial?: EventInitial; arenas: ArenaChoice[]; arenaLabels: ArenaLabels }) {
+export function EventForm({ lang, labels: l, disciplines, initial, arenas, arenaLabels, photoLabels }: { lang: "es" | "en"; labels: Labels; disciplines: Discipline[]; initial?: EventInitial; arenas: ArenaChoice[]; arenaLabels: ArenaLabels; photoLabels?: PhotoDraftLabels }) {
+  const router = useRouter();
   const [state, formAction, pending] = useActionState(initial ? updateEvent : createEvent, INITIAL_EVENT_FORM_STATE);
+  // Fotos elegidas al crear el evento: viven aquí (no en los campos, que se vuelven a montar si el servidor rechaza el envío) y se suben justo después de crearlo.
+  const [photos, setPhotos] = useState<PhotoDraft[]>([]);
+  const [upload, setUpload] = useState<UploadState | null>(null);
+  const uploadedFor = useRef<string | null>(null);
+  const latestPhotos = useRef<PhotoDraft[]>([]);
+  useEffect(() => { latestPhotos.current = photos; }, [photos]);
+  useEffect(() => () => latestPhotos.current.forEach((p) => URL.revokeObjectURL(p.url)), []);
   const [advOpen, setAdvOpen] = useState(false);
   const [seenAttempt, setSeenAttempt] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
@@ -81,6 +94,30 @@ export function EventForm({ lang, labels: l, disciplines, initial, arenas, arena
   }
   const invalid: Invalid = state.error && target ? { field: target.field, message: l.errors[state.error] ?? l.error } : null;
   const banner = state.error && !target ? (l.errors[state.error] ?? l.error) : null;
+
+  // El evento ya se creó: se suben sus fotos en orden (la primera queda de portada) y luego se navega a su página. Si alguna falla, se avisa y se ofrece ir al evento.
+  useEffect(() => {
+    const created = state.created;
+    if (!created || uploadedFor.current === created.slug) return;
+    uploadedFor.current = created.slug;
+    const list = latestPhotos.current;
+    void (async () => {
+      let failed = 0;
+      setUpload({ done: 0, total: list.length, failed: 0, finished: false });
+      for (let i = 0; i < list.length; i++) {
+        try {
+          const fd = new FormData();
+          fd.set("event", created.slug);
+          fd.set("file", list[i].blob, "foto.jpg");
+          const res = await addEventPhoto(fd);
+          if (!res.ok) failed++;
+        } catch { failed++; }
+        setUpload({ done: i + 1, total: list.length, failed, finished: false });
+      }
+      if (failed === 0) router.push(created.url);
+      else setUpload({ done: list.length, total: list.length, failed, finished: true });
+    })();
+  }, [state.created, router]);
 
   useEffect(() => {
     if (!state.attempt) return;
@@ -100,14 +137,16 @@ export function EventForm({ lang, labels: l, disciplines, initial, arenas, arena
       <EventFields
         key={state.attempt} l={l} disciplines={disciplines} initial={initial} arenas={arenas} arenaLabels={arenaLabels}
         values={state.values} invalid={invalid} pending={pending} advOpen={advOpen} setAdvOpen={setAdvOpen}
+        photos={photos} setPhotos={setPhotos} photoLabels={photoLabels} created={state.created} upload={upload}
       />
     </form>
   );
 }
 
-function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, invalid, pending, advOpen, setAdvOpen }: {
+function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, invalid, pending, advOpen, setAdvOpen, photos, setPhotos, photoLabels, created, upload }: {
   l: Labels; disciplines: Discipline[]; initial?: EventInitial; arenas: ArenaChoice[]; arenaLabels: ArenaLabels;
   values: FormValues | undefined; invalid: Invalid; pending: boolean; advOpen: boolean; setAdvOpen: (open: boolean) => void;
+  photos: PhotoDraft[]; setPhotos: Dispatch<SetStateAction<PhotoDraft[]>>; photoLabels?: PhotoDraftLabels; created?: { slug: string; url: string }; upload: UploadState | null;
 }) {
   const v = (name: string, fallback: string | number | null | undefined) => firstValue(values, name, fallback);
   // Un campo opcional está «encendido» si ya traía valor (al editar) o si el envío rechazado lo mandó (un interruptor apagado no manda su campo).
@@ -335,8 +374,24 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
         </div>
       </details>
 
-      {!initial && <p className="rounded-xl bg-sand p-3 text-sm text-muted">{l.photosLater}</p>}
-      {initial ? (
+      {/* Fotos y portada (solo al crear): se eligen aquí y se suben justo después de crear el evento. Al editar se manejan en la página del evento. */}
+      {!initial && photoLabels && (
+        <fieldset disabled={!!created}>
+          <legend className="text-sm font-medium">{l.photosTitle}{opt}</legend>
+          <div className="mt-2"><EventPhotoDrafts photos={photos} setPhotos={setPhotos} labels={photoLabels} disabled={!!created || pending} /></div>
+          {photos.length > 0 && <input type="hidden" name="photos" value="1" />}
+        </fieldset>
+      )}
+      {created ? (
+        <div role="status" className="rounded-xl bg-sand p-4 text-sm" data-testid="photo-upload-status">
+          {upload?.finished ? (
+            <>
+              <p className="font-medium text-red-800">{fill(l.photosPartial, { n: upload.failed })}</p>
+              <Link href={created.url} className="mt-3 inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-medium text-white hover:bg-brand-hot">{l.goToEvent}</Link>
+            </>
+          ) : <p>{fill(l.photosProgress, { d: upload?.done ?? 0, t: upload?.total ?? photos.length })}</p>}
+        </div>
+      ) : initial ? (
         <button disabled={pending} className="w-full rounded-full bg-brand py-3 text-sm font-medium text-white hover:bg-brand-hot disabled:opacity-60">{l.save}</button>
       ) : (
         <div className="flex gap-3">

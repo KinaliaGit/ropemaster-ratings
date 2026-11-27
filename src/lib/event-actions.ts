@@ -148,7 +148,10 @@ export async function createEvent(prev: EventFormState, formData: FormData): Pro
 
   await savePaymentInfo(supabase, id, formData.get("paymentInfo"));
   updateTag("events");
-  redirect(`/${l}/organizador/eventos/${eventSlug}?nuevo=${status}${visibility === "privado" ? "&privado=1" : ""}`);
+  const dest = `/${l}/organizador/eventos/${eventSlug}?nuevo=${status}${visibility === "privado" ? "&privado=1" : ""}`;
+  // Con fotos elegidas en el formulario no se redirige todavía: el navegador las sube al evento recién creado (addEventPhoto) y entonces navega.
+  if (formData.get("photos") === "1") return { attempt: prev.attempt, created: { slug: eventSlug, url: dest } };
+  redirect(dest);
 }
 
 // Instrucciones de pago (transferencia/efectivo): solo las ven el organizador y quienes se inscriben. Vacío = se borran.

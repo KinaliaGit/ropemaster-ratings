@@ -2649,5 +2649,32 @@ console.log("- Evento completo tal como lo manda el formulario (KIN-774 a 778)")
     "un evento sin cupo ni hora (todo null) SÍ se crea", "some");
 }
 
+console.log("- Cupo por lado en la plantilla de las series (0064, KIN-798)");
+{
+  const S = "5e5e5e5e-0000-0000-0000-0000000064a1", S2 = "5e5e5e5e-0000-0000-0000-0000000064a2";
+  const n = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const evs = (tag) => JSON.stringify([{ id: `5e5e5e5e-0000-0000-0000-0000000064b${tag}`, slug: `serie-cupo-${tag}`, name: `Fecha ${tag}`, date: "2099-03-01", opens_at: null }]);
+  await as("authenticated", A, `insert into event_series (id, slug, organizer_id, organizer_name, name, start_date, end_date) values ('${S}', 'serie-cupo-lados', '${A}', 'Org', 'Serie cupo', '2099-01-01', '2099-12-31'), ('${S2}', 'serie-sin-cupo', '${A}', 'Org', 'Serie sin cupo', '2099-01-01', '2099-12-31')`, "el organizador crea dos series de prueba", "some");
+  await as("authenticated", A, `insert into event_series_template (series_id, city, venue, capacity, capacity_headers, capacity_heelers, disciplines, categories) values ('${S}', 'Meoqui', 'Las fuentes', 30, 15, 15, array['lazo'], '[{"name":"Libre","fee_cents":120000}]'::jsonb)`, "la plantilla guarda el cupo total y por lado", "some");
+  await as("authenticated", A, `select public.add_series_events('${S}', '${evs("1")}'::jsonb, false)`, "agregar un evento a la serie con cupo por lado", "some");
+  const r = await db.query(`select capacity, capacity_headers, capacity_heelers from events where id = '5e5e5e5e-0000-0000-0000-0000000064b1'`);
+  await check("el evento nuevo copia el cupo total y el de cada lado (30 = 15 + 15)", r.rows[0].capacity === 30 && r.rows[0].capacity_headers === 15 && r.rows[0].capacity_heelers === 15);
+
+  // Sin cupo: ya no es una plantilla incompleta
+  await as("authenticated", A, `insert into event_series_template (series_id, city, venue, capacity, disciplines, categories) values ('${S2}', 'Meoqui', 'Las fuentes', null, array['lazo'], '[{"name":"Libre","fee_cents":0}]'::jsonb)`, "una plantilla sin cupo SÍ se guarda", "some");
+  await as("authenticated", A, `select public.add_series_events('${S2}', '${evs("2")}'::jsonb, false)`, "con la plantilla sin cupo SÍ se agregan eventos (antes era plantilla incompleta)", "some");
+  const r2 = await db.query(`select capacity, capacity_headers, capacity_heelers from events where id = '5e5e5e5e-0000-0000-0000-0000000064b2'`);
+  await check("el evento nace sin límite (todo null)", r2.rows[0].capacity === null && r2.rows[0].capacity_headers === null && r2.rows[0].capacity_heelers === null);
+
+  // Reglas y permisos de las columnas
+  await as("authenticated", A, `update event_series_template set capacity_headers = 99 where series_id = '${S}'`, "un cupo por lado mayor al total se rechaza", "deny");
+  await as("authenticated", A, `update event_series_template set capacity_heelers = -1 where series_id = '${S}'`, "un cupo por lado negativo se rechaza", "deny");
+  await as("authenticated", A, `update event_series_template set capacity_headers = 10, capacity_heelers = 20 where series_id = '${S}'`, "el dueño SÍ cambia el cupo por lado", "some");
+  await as("authenticated", B, `update event_series_template set capacity_headers = 1 where series_id = '${S}'`, "otro organizador NO cambia el cupo por lado de una plantilla ajena", "deny");
+  await as("authenticated", C, `update event_series_template set capacity_headers = 1 where series_id = '${S}'`, "un participante NO cambia el cupo por lado", "deny");
+  await as("anon", null, `select capacity_headers from event_series_template where series_id = '${S}'`, "anónimo NO ve la plantilla", "deny");
+  check("las plantillas que ya existían quedan sin cupo por lado (null)", await n(`select count(*) n from event_series_template where (capacity_headers is not null or capacity_heelers is not null) and series_id not in ('${S}')`) === 0);
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

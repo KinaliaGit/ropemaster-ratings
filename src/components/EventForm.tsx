@@ -9,6 +9,8 @@ import type { CloseMode } from "@/lib/event-time";
 import { fieldForError, firstValue, focusSelector, INITIAL_EVENT_FORM_STATE, type FormValues } from "@/lib/event-form-state";
 import { ArenaFields, type ArenaChoice, type ArenaLabels } from "@/components/ArenaFields";
 import { PublishDialog, type VisibilityLabels } from "@/components/PublishDialog";
+import { BASE, Segmented, Switch } from "@/components/form-controls";
+import { CapacityFields, useCapacity } from "@/components/capacity-fields";
 import { teamLimitApplies } from "@/lib/rating-limits";
 import { formatRounds, MAX_ROUNDS, MIN_ROUNDS_WITH_SHORT_GO } from "@/lib/event-rounds";
 
@@ -26,44 +28,16 @@ export type EventInitial = { arenaId?: string | null; slug: string; name: string
 
 type Cat = { id: string; name: string; fee: number };
 type DrawType = "round_robin" | "lazada_sorteada";
-type CapMode = "total" | "eq" | "per";
 type Invalid = { field: string; message: string };
 type Discipline = { id: string; label: string };
 
-// Clase base de los campos; el borde (normal o rojo si el servidor rechazó ese campo) se agrega aparte.
-const BASE = "w-full rounded-xl border bg-white px-4 py-2.5 outline-none focus:border-ink";
 const DEFAULT_CATEGORY = "Libre";
-
-// Rellena los marcadores {n}, {h}, {p} y {t} de un texto del diccionario.
-const fill = (text: string, vars: Record<string, number>) => text.replace(/\{(\w)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m));
 
 // Las categorías que devolvió el servidor tras un error (tres listas paralelas), o null si es la primera vez que se pinta el formulario.
 function catsFrom(values: FormValues | undefined): Cat[] | null {
   const names = values?.catName;
   if (!names) return null;
   return names.map((name, i) => ({ id: values.catId?.[i] ?? "", name, fee: Number(values.catFee?.[i]) || 0 }));
-}
-
-// Opciones cerradas en una fila de botones (una sola elegida). Viaja en un campo oculto con el nombre dado.
-function Segmented<T extends string>({ name, label, value, onChange, options }: { name: string; label: string; value: T; onChange: (v: T) => void; options: { value: T; label: string }[] }) {
-  return (
-    <div role="radiogroup" aria-label={label} className="mt-2 flex overflow-hidden rounded-xl border border-line">
-      {options.map((o) => (
-        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} onClick={() => onChange(o.value)}
-          className={`min-h-10 flex-1 px-2 text-sm transition-colors ${value === o.value ? "bg-sand font-medium text-ink" : "text-muted hover:bg-sand/60"}`}>{o.label}</button>
-      ))}
-      <input type="hidden" name={name} value={value} />
-    </div>
-  );
-}
-
-function Switch({ on, onChange, label }: { on: boolean; onChange: (on: boolean) => void; label: string }) {
-  return (
-    <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)}
-      className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${on ? "bg-brand" : "bg-line"}`}>
-      <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${on ? "translate-x-4" : ""}`} />
-    </button>
-  );
 }
 
 // Crear y editar evento (KIN-774). Lo obligatorio y lo que casi siempre se llena se ve siempre; lo que limita o programa algo vive en «Configuración avanzada»,
@@ -144,21 +118,8 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
   const [eventTime, setEventTime] = useState(() => v("eventTime", initial?.eventTime));
   const [roundsVal, setRoundsVal] = useState(() => v("rounds", initial?.rounds));
   const [shortGo, setShortGo] = useState(() => v("shortGo", String(initial?.shortGo ?? true)) !== "false");
-  // Cupo (KIN-775): apagado = sin límite. Encendido, se elige igual por lado o por lado (el total se calcula solo). Un evento que ya tenía solo un total lo conserva como «Total».
-  const hasSides = !!initial && (initial.capacityHeaders !== null || initial.capacityHeelers !== null);
-  const sidesEqual = !!initial && initial.capacityHeaders === initial.capacityHeelers;
-  const legacyTotal = !!initial && initial.capacity > 0 && !hasSides;
-  const [capOn, setCapOn] = useState(() => (values ? v("capacityMode", "none") !== "none" : (initial?.capacity ?? 0) > 0 || hasSides));
-  const [capMode, setCapMode] = useState<CapMode>(() => {
-    const m = v("capacityMode", "");
-    if (m === "total" || m === "eq" || m === "per") return m;
-    if (hasSides) return sidesEqual ? "eq" : "per";
-    return legacyTotal ? "total" : "eq";
-  });
-  const [capTotal, setCapTotal] = useState(() => v("capacity", initial?.capacity || ""));
-  const [capEach, setCapEach] = useState(() => v("capacityEach", hasSides && sidesEqual ? initial?.capacityHeaders : ""));
-  const [capHeaders, setCapHeaders] = useState(() => v("capacityHeaders", initial?.capacityHeaders));
-  const [capHeelers, setCapHeelers] = useState(() => v("capacityHeelers", initial?.capacityHeelers));
+  // Cupo (KIN-775, KIN-798): interruptor + igual por lado o por lado; el estado vive en un hook compartido con el formulario de series.
+  const cap = useCapacity(values, initial ? { capacity: initial.capacity, headers: initial.capacityHeaders, heelers: initial.capacityHeelers } : undefined, l);
   const [ratingOn, setRatingOn] = useState(() => wasOn("maxRoperRating", initial?.maxRoperRating != null));
   const [ratingVal, setRatingVal] = useState(() => v("maxRoperRating", initial?.maxRoperRating));
   const [teamOn, setTeamOn] = useState(() => wasOn("maxTeamRating", initial?.maxTeamRating != null));
@@ -204,12 +165,8 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
   const showTeam = teamLimitApplies(drawType);
 
   const group = "border-t border-line pt-4 first:border-0 first:pt-0";
-  const whole = (s: string) => Math.max(0, parseInt(s, 10) || 0);
-  const sidesReady = capHeaders !== "" && capHeelers !== "";
-  const capSummary = !capOn ? "" : capMode === "eq" ? (whole(capEach) > 0 ? fill(l.capSummary, { h: whole(capEach), p: whole(capEach), t: 2 * whole(capEach) }) : "") : capMode === "per" ? (sidesReady ? fill(l.capSummary, { h: whole(capHeaders), p: whole(capHeelers), t: whole(capHeaders) + whole(capHeelers) }) : "") : "";
-  const capChip = !capOn ? null : capMode === "total" ? (capTotal ? `${l.chipCap} ${capTotal}` : null) : capMode === "eq" ? (whole(capEach) > 0 ? fill(l.chipCapEach, { n: whole(capEach) }) : null) : sidesReady ? fill(l.chipCapSides, { h: whole(capHeaders), p: whole(capHeelers) }) : null;
   const chips: { text: string; on: boolean }[] = [
-    capChip ? { text: capChip, on: true } : { text: l.chipCapNone, on: false },
+    cap.chip ? { text: cap.chip, on: true } : { text: l.chipCapNone, on: false },
     // Cada ajuste muestra SIEMPRE su estado: lo activado en normal y lo que está por defecto (sin límite, sin fecha) en gris, para que se sepa qué pasa si no se toca nada.
     ratingOn && ratingVal ? { text: `${l.chipRating} ${ratingVal}`, on: true } : { text: l.chipRatingNone, on: false },
     ...(showTeam ? [teamOn && teamVal ? { text: `${l.chipTeam} ${teamVal}`, on: true } : { text: l.chipTeamNone, on: false }] : []),
@@ -307,24 +264,7 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
         <div className="space-y-4 border-t border-line p-4">
           <div className={group}>
             <p className="text-xs text-muted">{l.capGroup}</p>
-            <div className="mt-2 flex items-center justify-between gap-3 text-sm"><span>{l.capLimit}</span><Switch on={capOn} onChange={setCapOn} label={l.capLimit} /></div>
-            {capOn && (
-              <div className="mt-2">
-                <Segmented name="capacityMode" label={l.capLimit} value={capMode} onChange={setCapMode}
-                  options={[...(legacyTotal ? [{ value: "total" as const, label: l.capModeTotal }] : []), { value: "eq" as const, label: l.capModeEach }, { value: "per" as const, label: l.capModePer }]} />
-                {capMode === "total" && <label className="mt-2 block text-sm font-medium">{l.capTotal}<input name="capacity" type="number" required min={1} inputMode="numeric" value={capTotal} onChange={(e) => setCapTotal(e.target.value)} {...a("capacity")} /></label>}
-                {capMode === "eq" && <label className="mt-2 block text-sm font-medium">{l.capEach}<input name="capacityEach" type="number" required min={1} inputMode="numeric" value={capEach} onChange={(e) => setCapEach(e.target.value)} {...a("capacity")} /></label>}
-                {capMode === "per" && (
-                  <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                    <label className="block text-sm font-medium">{l.capHeaders}<input name="capacityHeaders" type="number" required min={0} inputMode="numeric" value={capHeaders} onChange={(e) => setCapHeaders(e.target.value)} {...a("capacity")} /></label>
-                    <label className="block text-sm font-medium">{l.capHeelers}<input name="capacityHeelers" type="number" required min={0} inputMode="numeric" value={capHeelers} onChange={(e) => setCapHeelers(e.target.value)} {...a("capacity")} /></label>
-                  </div>
-                )}
-                {capSummary && <p className="mt-2 text-sm text-muted" data-testid="capacity-summary">{capSummary}</p>}
-                <p className="mt-1 text-xs text-muted">{l.capLimitHint}</p>
-                {msg("capacity")}
-              </div>
-            )}
+            <div className="mt-2"><CapacityFields state={cap} labels={l} invalid={bad("capacity")} message={msg("capacity")} /></div>
           </div>
           <div className={group}>
             <p className="text-xs text-muted">{l.ratingGroup}</p>

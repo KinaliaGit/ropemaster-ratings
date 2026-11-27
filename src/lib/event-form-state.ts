@@ -46,6 +46,10 @@ const TARGETS: Record<string, ErrorTarget> = {
   arena: { field: "arena", advanced: false },
   capacity: { field: "capacity", advanced: true },
   capacityInvalid: { field: "capacity", advanced: true },
+  capacitySidesInvalid: { field: "capacity", advanced: true },
+  capacityHeaders: { field: "capacity", advanced: true },
+  capacityHeelers: { field: "capacity", advanced: true },
+  capacityEach: { field: "capacity", advanced: true },
   outsideSeries: { field: "date", advanced: false },
   eventTimeInvalid: { field: "eventTime", advanced: false },
   drawType: { field: "drawType", advanced: false },
@@ -71,5 +75,8 @@ export function fieldForError(error: string | undefined): ErrorTarget | undefine
 
 /** Selector CSS del control que recibe el foco para ese campo. */
 export function focusSelector(field: string): string {
-  return field === "arena" ? '[name="arenaId"], [name="venue"], [name="city"]' : `[name="${field}"]`;
+  if (field === "arena") return '[name="arenaId"], [name="venue"], [name="city"]';
+  // El cupo vive en un solo bloque con campos distintos según la forma elegida: se enfoca el que esté.
+  if (field === "capacity") return '[name="capacity"], [name="capacityEach"], [name="capacityHeaders"]';
+  return `[name="${field}"]`;
 }

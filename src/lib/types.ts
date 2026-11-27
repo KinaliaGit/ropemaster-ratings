@@ -7,7 +7,8 @@ export type Category = { id: string; name: string; fee: number };
 
 export type EventItem = {
   id: string; name: string; date: string; time: string | null; city: string; venue: string; // `time`: hora del evento "HH:MM", opcional (KIN-778)
-  disciplines: string[]; categories: Category[]; capacity: number; enrolled: number;
+  disciplines: string[]; categories: Category[]; capacity: number; enrolled: number; // `capacity` 0 = sin límite
+  capacityHeaders: number | null; capacityHeelers: number | null; // tope de cada lado (KIN-775); null = sin tope propio
   organizer: string; uuid?: string; organizerId?: string; tone: number; cover?: string; photos: { id: string; url: string }[];
   timezone: string; registrationOpensAt: string | null; registrationClosesAt: string | null; registrationClosed: boolean; series: { slug: string; name: string } | null; updatedAt: string; description: string; status: "publicado" | "borrador" | "finalizado";
   maxRoperRating: number | null; // rating máximo para inscribirse (null = sin límite)

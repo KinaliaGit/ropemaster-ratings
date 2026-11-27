@@ -25,6 +25,7 @@ import type { Dict } from "@/dictionaries/es";
 import type { Lang } from "@/lib/format";
 import { fmtDate, mxn } from "@/lib/format";
 import { formatRounds } from "@/lib/event-rounds";
+import { fmtEnrolled } from "@/lib/event-capacity";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
 type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justCreatedPrivate: boolean; justEdited: boolean; pagoError: boolean; manual: string | null; sacado: string | null; espera: string | null; missing: MissingField[]; borrarError: string | null; shareUrl: string; stateLabel: Record<string, string> };
@@ -125,7 +126,7 @@ async function Manage({ s, id, lang, t, justCreated, justCreatedPrivate, justEdi
                 {e.status === "borrador" && <p className="mt-2 text-xs text-muted">{t.org.share.draftLink}</p>}
               </section>
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{e.enrolled}/{e.capacity}</p><p className="label mt-1">{t.org.enrolled}</p></div>
+                <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{fmtEnrolled(e.enrolled, e.capacity)}</p><p className="label mt-1">{t.org.enrolled}</p></div>
                 <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{rows.filter((x) => x.paymentStatus === "pagado").length}</p><p className="label mt-1">{t.org.ev.paid}</p></div>
                 <div className="card p-4"><p className="text-2xl font-semibold">{stateLabel[e.status]}</p><p className="label mt-1">{t.org.ev.state}</p></div>
               </div>

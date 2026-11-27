@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { PageSkeleton } from "@/components/PageSkeleton";
+import { fmtEnrolled } from "@/lib/event-capacity";
 import { Gate } from "@/components/Gate";
 import { CopyLink } from "@/components/CopyLink";
 import { PhaseBadge } from "@/components/PhaseBadge";
@@ -84,7 +85,7 @@ async function Manage({ s, id, lang, t, flags, shareUrl }: { s: Session; id: str
                     <p className="text-sm tabular-nums text-muted">{e.date ? fmtDate(e.date, lang) : "–"}</p>
                     <p className="font-semibold leading-snug">{e.name}</p>
                     <p className="mt-1 text-sm text-muted">
-                      {ev.enrolled} <span className="tabular-nums">{e.enrolled}/{e.capacity}</span>
+                      {ev.enrolled} <span className="tabular-nums">{fmtEnrolled(e.enrolled, e.capacity)}</span>
                       {" · "}{e.registrationOpensAt ? `${ev.opensOn} ${fmtDeadline(e.registrationOpensAt, e.timezone, lang)}` : ev.opensNow}
                       {e.registrationClosesAt && <>{" · "}{ev.closesOn} {fmtDeadline(e.registrationClosesAt, e.timezone, lang)}</>}
                     </p>

@@ -37,6 +37,7 @@ test("firstValue prefiere lo devuelto por el servidor, incluso vacío, y si no h
 test("cada error con campo señala ese campo y dice si está en Configuración avanzada", () => {
   assert.deepEqual(fieldForError("capacity"), { field: "capacity", advanced: true });
   assert.deepEqual(fieldForError("capacityInvalid"), { field: "capacity", advanced: true });
+  for (const code of ["capacitySidesInvalid", "capacityHeaders", "capacityHeelers", "capacityEach"]) assert.deepEqual(fieldForError(code), { field: "capacity", advanced: true }, code);
   assert.deepEqual(fieldForError("invalidShots"), { field: "shotsPerPackage", advanced: false });
   assert.deepEqual(fieldForError("drawLocked"), { field: "drawType", advanced: false });
   assert.deepEqual(fieldForError("ratingLimit"), { field: "maxRoperRating", advanced: true });
@@ -56,9 +57,10 @@ test("un error general («faltan datos») o desconocido no señala ningún campo
 });
 
 test("el selector de foco de la arena cubre el selector de arenas y los campos de sede y ciudad", () => {
-  assert.equal(focusSelector("capacity"), '[name="capacity"]');
+  assert.equal(focusSelector("rounds"), '[name="rounds"]');
   assert.match(focusSelector("arena"), /arenaId/);
   assert.match(focusSelector("arena"), /venue/);
+  assert.match(focusSelector("capacity"), /capacityEach/); // el cupo se enfoca en el campo que esté visible
 });
 
 test("el estado inicial no trae error ni valores", () => {

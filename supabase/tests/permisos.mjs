@@ -2569,5 +2569,68 @@ console.log("- Short-go del evento (0061, KIN-777)");
   await as("authenticated", A, `update events set short_go = false where id = '${SG}'`, "guardar el mismo short-go (sin cambio) no estorba", "some");
 }
 
+console.log("- Cupo por lado (0062, KIN-775)");
+{
+  const E1 = "e0000000-0000-0000-0000-00000075a001", E2 = "e0000000-0000-0000-0000-00000075a002", E3 = "e0000000-0000-0000-0000-00000075a003", E4 = "e0000000-0000-0000-0000-00000075a004";
+  const K1 = "ca000000-0000-0000-0000-00000075a001", K2 = "ca000000-0000-0000-0000-00000075a002", K3 = "ca000000-0000-0000-0000-00000075a003", K4 = "ca000000-0000-0000-0000-00000075a004";
+  const U = ["11111111-dddd-0000-0000-0000000000d1", "11111111-dddd-0000-0000-0000000000d2", "11111111-dddd-0000-0000-0000000000d3", "11111111-dddd-0000-0000-0000000000d4", "11111111-dddd-0000-0000-0000000000d5"];
+  const R = ["33333333-dddd-0000-0000-0000000000d1", "33333333-dddd-0000-0000-0000000000d2", "33333333-dddd-0000-0000-0000000000d3", "33333333-dddd-0000-0000-0000000000d4", "33333333-dddd-0000-0000-0000000000d5"];
+  // H1 y H2 cabeceros, L1 y L2 pialadores, BO "los dos"
+  await db.exec(`
+    insert into auth.users (id, email, email_confirmed_at) values ('${U[0]}','h1@x.com',now()), ('${U[1]}','h2@x.com',now()), ('${U[2]}','l1@x.com',now()), ('${U[3]}','l2@x.com',now()), ('${U[4]}','bo@x.com',now());
+    insert into ropers (id, full_name, user_id, primary_role, favorite_role) values ('${R[0]}','H Uno','${U[0]}','header',null), ('${R[1]}','H Dos','${U[1]}','header',null), ('${R[2]}','L Uno','${U[2]}','heeler',null), ('${R[3]}','L Dos','${U[3]}','heeler',null), ('${R[4]}','Ambos','${U[4]}','both','header');
+    insert into events (id, name, organizer_id, status, slug, capacity, capacity_headers, capacity_heelers) values
+      ('${E1}','Cupo por lado','${A}','publicado','cupo-por-lado',3,1,2),
+      ('${E2}','Sin cabeceros','${A}','publicado','sin-cabeceros',10,0,null),
+      ('${E3}','Solo total','${A}','publicado','solo-total',2,null,null),
+      ('${E4}','Pialadores en cero','${A}','publicado','pialadores-cero',5,null,0);
+    insert into event_categories (id, event_id, name, fee_cents) values ('${K1}','${E1}','Libre',1000), ('${K2}','${E2}','Libre',1000), ('${K3}','${E3}','Libre',1000), ('${K4}','${E4}','Libre',1000);
+  `);
+  const n = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const reg = (e, k) => `select public.register_for_event('${e}','${k}')`;
+  const wait = (e, k) => `select public.join_waitlist('${e}','${k}',null,1)`;
+
+  // Evento 1: 3 en total, 1 cabecero y 2 pialadores
+  await as("authenticated", U[0], reg(E1, K1), "el cabecero toma el único lugar de cabeceros", "some");
+  await as("authenticated", U[1], reg(E1, K1), "otro cabecero: el lado está lleno aunque el total todavía tiene lugar", "deny");
+  await as("authenticated", U[1], wait(E1, K1), "con el lado lleno SÍ entra a la lista de espera (el evento no está lleno)", "some");
+  await as("authenticated", U[2], reg(E1, K1), "un pialador SÍ se inscribe: su lado tiene lugar", "some");
+  await as("authenticated", U[3], wait(E1, K1), "con lugar en su lado NO entra a la lista de espera", "deny");
+  await as("authenticated", U[3], reg(E1, K1), "el segundo pialador SÍ se inscribe", "some");
+  check("el total se respeta: 3 inscritos en un evento de 3", await n(`select count(*) n from registrations where event_id = '${E1}'`) === 3);
+  await as("authenticated", A, `select public.promote_waitlist_entry((select id from event_waitlist where event_id = '${E1}' and roper_id = '${R[1]}'))`, "con el lado de cabeceros y el total llenos NO se pasa a nadie", "deny");
+  await as("authenticated", U[0], `select public.cancel_registration((select id from registrations where event_id = '${E1}' and roper_id = '${R[0]}'))`, "el cabecero cancela y libera su lugar", "some");
+  await as("authenticated", A, `select public.promote_waitlist_entry((select id from event_waitlist where event_id = '${E1}' and roper_id = '${R[1]}'))`, "con lugar en su lado el organizador SÍ pasa al cabecero que esperaba", "some");
+  check("quedó inscrito como cabecero", await n(`select count(*) n from registrations where event_id = '${E1}' and roper_id = '${R[1]}' and role = 'header'`) === 1);
+
+  // Evento 2: cupo 0 de cabeceros (nadie de ese lado), pialadores sin tope
+  await as("authenticated", U[0], reg(E2, K2), "cupo 0 de cabeceros: no se inscribe un cabecero", "deny");
+  await as("authenticated", U[0], wait(E2, K2), "cupo 0 de cabeceros: entra a la lista de espera", "some");
+  await as("authenticated", U[2], reg(E2, K2), "los pialadores no tienen tope propio: SÍ se inscriben", "some");
+
+  // Evento 3: solo total (como todos los eventos que ya existían): nada cambia
+  await as("authenticated", U[0], reg(E3, K3), "solo total: el primero se inscribe", "some");
+  await as("authenticated", U[2], reg(E3, K3), "solo total: el segundo se inscribe", "some");
+  await as("authenticated", U[1], reg(E3, K3), "solo total: lleno, se rechaza como siempre", "deny");
+  await as("authenticated", U[1], wait(E3, K3), "solo total: lleno, entra a la lista de espera como siempre", "some");
+
+  // Evento 4: pialadores en cero. Quien es "los dos" se inscribe de cabecero y no puede pasarse a pialador.
+  await as("authenticated", U[4], `select public.register_for_event('${E4}','${K4}','header')`, "una persona de los dos roles se inscribe como cabecero", "some");
+  await as("authenticated", U[4], `select public.change_registration_role((select id from registrations where event_id = '${E4}' and roper_id = '${R[4]}'), 'heeler')`, "no puede pasarse a pialador: ese lado tiene cupo 0", "deny");
+  check("su inscripción sigue como cabecero", await n(`select count(*) n from registrations where event_id = '${E4}' and roper_id = '${R[4]}' and role = 'header'`) === 1);
+  await as("authenticated", A, `update events set capacity_heelers = 3 where id = '${E4}'`, "el organizador abre cupo de pialadores", "some");
+  await as("authenticated", U[4], `select public.change_registration_role((select id from registrations where event_id = '${E4}' and roper_id = '${R[4]}'), 'heeler')`, "con lugar en ese lado SÍ puede pasarse a pialador", "some");
+
+  // Reglas de las columnas
+  await as("authenticated", A, `update events set capacity_headers = 99 where id = '${E3}'`, "un cupo por lado mayor al total se rechaza", "deny");
+  await as("authenticated", A, `update events set capacity_headers = -1 where id = '${E3}'`, "un cupo por lado negativo se rechaza", "deny");
+  await as("authenticated", B, `update events set capacity_headers = 1 where id = '${E3}'`, "otro organizador NO cambia el cupo por lado", "deny");
+  await as("authenticated", C, `update events set capacity_headers = 1 where id = '${E3}'`, "un participante NO cambia el cupo por lado", "deny");
+  await as("anon", null, `update events set capacity_headers = 1 where id = '${E3}'`, "anónimo NO cambia el cupo por lado", "deny");
+  await as("anon", null, "select capacity_headers, capacity_heelers from events where status = 'publicado'", "anónimo SÍ lee el cupo por lado de los eventos públicos", "some");
+  await as("authenticated", C, `select private.has_room('${E1}', array['header'])`, "has_room no se llama desde el navegador", "deny");
+  check("los eventos que ya existían quedan sin cupo por lado (null)", await n(`select count(*) n from events where (capacity_headers is not null or capacity_heelers is not null) and id not in ('${E1}','${E2}','${E3}','${E4}')`) === 0);
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

@@ -10,6 +10,7 @@ import { Gate } from "@/components/Gate";
 import { EnrollRoleAndPackages } from "@/components/EnrollRoleAndPackages";
 import { enroll, joinWaitlist } from "@/lib/registration-actions";
 import { STRIPE_ENABLED } from "@/lib/flags";
+import { isFull } from "@/lib/event-capacity";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
 async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/inscribirse"> }) {
@@ -22,7 +23,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
   const e = await getPublicEvent(id);
   if (!e) notFound();
   const regOpen = statusByDate(e) === "publicado" && isRegistrationOpen({ opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed }); // fecha pasada = cerrado (KIN-656)
-  const full = e.enrolled >= e.capacity; // KIN-726: con el cupo lleno el mismo formulario entra a la lista de espera (la base lo vuelve a comprobar)
+  const full = isFull(e.enrolled, e.capacity); // KIN-726: con el cupo lleno el mismo formulario entra a la lista de espera (la base lo vuelve a comprobar)
   const notYet = !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt });
   return (
     <Gate lang={lang} role="any" next={`/${lang}/eventos/${id}/inscribirse`}>

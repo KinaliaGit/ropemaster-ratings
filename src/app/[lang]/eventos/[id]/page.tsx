@@ -8,6 +8,7 @@ import { ACTIVE_DISCIPLINES, DEFAULT_DISCIPLINE, type DisciplineId } from "@/lib
 import { toEnrolledItem } from "@/lib/enrolled-view";
 import { fmtDate, mxn, type Lang } from "@/lib/format";
 import { formatRounds } from "@/lib/event-rounds";
+import { fmtEnrolled, isFull } from "@/lib/event-capacity";
 import { fmtDeadline, isNotOpenYet, isRegistrationOpen, statusByDate } from "@/lib/event-time";
 import Image from "next/image";
 import { EnrolledList } from "@/components/EnrolledList";
@@ -40,9 +41,9 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   const e = { ...found, status: statusByDate(found) }; // KIN-656: con la fecha pasada se muestra como finalizado y sin inscripción
   const regOpen = isRegistrationOpen({ opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
   const notYet = e.status === "publicado" && !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt }); // apertura programada: aún no abre
-  const open = e.status === "publicado" && e.enrolled < e.capacity && regOpen;
+  const open = e.status === "publicado" && !isFull(e.enrolled, e.capacity) && regOpen;
   // KIN-726: con el cupo lleno y las inscripciones abiertas, el botón pasa a "Entrar a lista de espera" (la base decide si de verdad está lleno).
-  const canWait = e.status === "publicado" && e.enrolled >= e.capacity && regOpen;
+  const canWait = e.status === "publicado" && isFull(e.enrolled, e.capacity) && regOpen;
   const waiting = canWait && e.uuid ? await getEventWaitlistCount(e.uuid) : 0;
   const closesLine = e.status === "publicado" && regOpen && e.registrationClosesAt ? `${t.event.closesOn} ${fmtDeadline(e.registrationClosesAt, e.timezone, lang)}` : null;
   const resultDisciplines: DisciplineId[] = ACTIVE_DISCIPLINES.filter((d) => e.disciplines.includes(d.id)).map((d) => d.id);
@@ -123,7 +124,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
             </>
           )}
 
-          <h2 className="mt-12 text-xl font-semibold">{t.event.enrolled} <span className="font-normal text-muted">{e.enrolled}/{e.capacity}</span></h2>
+          <h2 className="mt-12 text-xl font-semibold">{t.event.enrolled} <span className="font-normal text-muted">{fmtEnrolled(e.enrolled, e.capacity)}</span></h2>
           <div className="mt-2">
             {e.uuid
               ? <Suspense fallback={<EnrolledSkeleton />}><Enrolled slug={e.id} uuid={e.uuid} discipline={e.disciplines[0] ?? DEFAULT_DISCIPLINE} lang={lang} t={t} /></Suspense>

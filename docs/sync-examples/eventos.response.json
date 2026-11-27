@@ -12,6 +12,8 @@
       "status": "publicado",
       "disciplines": ["lazo"],
       "capacity": 100,
+      "capacity_headers": 60,
+      "capacity_heelers": 40,
       "max_roper_rating": 6.5,
       "draw_type": "lazada_sorteada",
       "lazada_shots_per_package": 3,

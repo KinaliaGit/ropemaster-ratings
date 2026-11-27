@@ -114,6 +114,9 @@ export type EventRow = {
   lazada_shots_per_package?: number | null;
   /** Rondas del evento (KIN-655), 1 a 10; `null` = el organizador aún no las define. La ruta lo agrega. */
   rounds?: number | null;
+  /** Cupo por lado (KIN-775): tope de cabeceros y de pialadores; `null` = ese lado no tiene tope propio. Cada uno es <= `capacity`. La ruta lo agrega. */
+  capacity_headers?: number | null;
+  capacity_heelers?: number | null;
   /** Hora del evento (KIN-778), `HH:MM` o `HH:MM:SS` tal como la entrega la base; `null` = sin hora. La ruta lo agrega. */
   event_time?: string | null;
   /** Si la última de las `rounds` es el short-go (KIN-777). Ausente (web anterior) = `true`. La ruta lo agrega. */
@@ -162,6 +165,9 @@ export function buildEventsPage(rows: EventRow[], organizer: string, snapshot: s
       status: row.status,
       disciplines: row.disciplines ?? [],
       capacity: row.capacity,
+      // KIN-775: `capacity` sigue siendo el total. El tope de cada lado es opcional (`null` = sin tope por lado, también en una web anterior) y cada uno es <= `capacity`. La app los trata como espejo de solo lectura.
+      capacity_headers: row.capacity_headers === undefined || row.capacity_headers === null ? null : Number(row.capacity_headers),
+      capacity_heelers: row.capacity_heelers === undefined || row.capacity_heelers === null ? null : Number(row.capacity_heelers),
       max_roper_rating: row.max_roper_rating === undefined || row.max_roper_rating === null ? null : Number(row.max_roper_rating),
       draw_type: row.draw_type ?? "round_robin",
       lazada_shots_per_package: row.lazada_shots_per_package === undefined || row.lazada_shots_per_package === null ? null : Number(row.lazada_shots_per_package),

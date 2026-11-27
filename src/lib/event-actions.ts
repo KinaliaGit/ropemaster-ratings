@@ -12,7 +12,7 @@ import { emailParticipant } from "@/lib/notify";
 import { closesAfterEvent, DEFAULT_TIMEZONE, endOfDayIso, parseEventTime, startOfDayIso } from "@/lib/event-time";
 import { visibilityForCreate } from "@/lib/event-visibility";
 import { serializeFormValues, type EventFormState } from "@/lib/event-form-state";
-import { parseCapacity } from "@/lib/event-capacity";
+import { parseCapacityFields } from "@/lib/event-capacity";
 import { teamLimitApplies } from "@/lib/rating-limits";
 import { parseRounds } from "@/lib/event-rounds";
 
@@ -98,7 +98,10 @@ export async function createEvent(prev: EventFormState, formData: FormData): Pro
   const date = text(formData.get("date"), 10);
   const city = text(formData.get("city"), 80);
   const venue = text(formData.get("venue"), 120);
-  const capacity = parseCapacity(formData.get("capacity")); // opcional: vacío = sin límite (KIN-774)
+  // Cupo (KIN-774, KIN-775): opcional; sin límite = vacío. Igual por lado o por lado guardan el tope de cada lado y, como total, la suma (así nunca se contradicen).
+  const cap = parseCapacityFields((n) => formData.get(n));
+  if (!cap.ok) return back(cap.error);
+  const { capacity, headers: capacityHeaders, heelers: capacityHeelers } = cap;
   const names = formData.getAll("catName").map((v) => text(v, 60));
   const fees = formData.getAll("catFee").map((v) => Math.max(0, Math.floor(Number(v)) || 0));
   const categories = names.map((n, i) => ({ name: n, fee: fees[i] ?? 0 })).filter((c) => c.name);
@@ -106,7 +109,6 @@ export async function createEvent(prev: EventFormState, formData: FormData): Pro
 
   const limit = ratingLimit(formData.get("maxRoperRating"));
   if (limit === "invalid") return back("ratingLimit");
-  if (capacity === "invalid") return back("capacityInvalid");
   const draw = drawFields(formData);
   if (typeof draw === "string") return back(draw === "invalid" ? "drawType" : draw);
   if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || categories.length === 0 || categories.length > 20 || disciplines.length === 0) return back("1");
@@ -127,7 +129,7 @@ export async function createEvent(prev: EventFormState, formData: FormData): Pro
 
   const { error } = await supabase.from("events").insert({
     ...(visibility === "privado" ? { visibility } : {}),
-    id, slug: eventSlug, name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, disciplines, status, max_roper_rating: limit,
+    id, slug: eventSlug, name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, capacity_headers: capacityHeaders, capacity_heelers: capacityHeelers, disciplines, status, max_roper_rating: limit,
     draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds, short_go: draw.shortGo,
     description: text(formData.get("description"), 1000), organizer_id: session.id, organizer_name: session.name,
     event_time: eventTime, timezone: DEFAULT_TIMEZONE, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt,
@@ -178,7 +180,9 @@ export async function updateEvent(prev: EventFormState, formData: FormData): Pro
   const date = text(formData.get("date"), 10);
   const city = text(formData.get("city"), 80);
   const venue = text(formData.get("venue"), 120);
-  const capacity = parseCapacity(formData.get("capacity"));
+  const cap = parseCapacityFields((n) => formData.get(n));
+  if (!cap.ok) return back(cap.error);
+  const { capacity, headers: capacityHeaders, heelers: capacityHeelers } = cap;
   const ids = formData.getAll("catId").map(String);
   const names = formData.getAll("catName").map((v) => text(v, 60));
   const fees = formData.getAll("catFee").map((v) => Math.max(0, Math.floor(Number(v)) || 0));
@@ -186,7 +190,6 @@ export async function updateEvent(prev: EventFormState, formData: FormData): Pro
   const disciplines = formData.getAll("discipline").map(String).filter((d) => ACTIVE_DISCIPLINES.some((a) => a.id === d));
   const limit = ratingLimit(formData.get("maxRoperRating"));
   if (limit === "invalid") return back("ratingLimit");
-  if (capacity === "invalid") return back("capacityInvalid");
   const draw = drawFields(formData);
   if (typeof draw === "string") return back(draw === "invalid" ? "drawType" : draw);
   if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || rows.length === 0 || disciplines.length === 0) return back("1");
@@ -195,12 +198,17 @@ export async function updateEvent(prev: EventFormState, formData: FormData): Pro
   const eventTime = parseEventTime(formData.get("eventTime"));
   if (eventTime === "invalid") return back("eventTimeInvalid");
 
-  const [{ count: enrolled }, { data: current }, { data: used }] = await Promise.all([
+  const [{ count: enrolled }, { count: enrolledHeaders }, { count: enrolledHeelers }, { data: current }, { data: used }] = await Promise.all([
     supabase.from("registrations").select("id", { count: "exact", head: true }).eq("event_id", ev.id),
+    supabase.from("registrations").select("id", { count: "exact", head: true }).eq("event_id", ev.id).eq("role", "header"),
+    supabase.from("registrations").select("id", { count: "exact", head: true }).eq("event_id", ev.id).eq("role", "heeler"),
     supabase.from("event_categories").select("id").eq("event_id", ev.id),
     supabase.from("registrations").select("category_id").eq("event_id", ev.id),
   ]);
+  // El cupo no puede quedar por debajo de lo ya inscrito: ni el total ni el de un lado (las personas en lista de espera no cuentan).
   if (capacity !== null && capacity < (enrolled ?? 0)) return back("capacity");
+  if (capacityHeaders !== null && capacityHeaders < (enrolledHeaders ?? 0)) return back(cap.mode === "eq" ? "capacityEach" : "capacityHeaders");
+  if (capacityHeelers !== null && capacityHeelers < (enrolledHeelers ?? 0)) return back(cap.mode === "eq" ? "capacityEach" : "capacityHeelers");
   const keep = new Set(rows.map((r) => r.id).filter(Boolean));
   const usedIds = new Set((used ?? []).map((r) => r.category_id));
   const toDelete = (current ?? []).map((c) => c.id).filter((id) => !keep.has(id));
@@ -209,7 +217,7 @@ export async function updateEvent(prev: EventFormState, formData: FormData): Pro
 
   const arena = await resolveArena(supabase, session.id, formData);
   if (!arena) return back("arena");
-  const { error } = await supabase.from("events").update({ name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, disciplines, max_roper_rating: limit, draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds, short_go: draw.shortGo, description: text(formData.get("description"), 1000), event_time: eventTime, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt }).eq("id", ev.id);
+  const { error } = await supabase.from("events").update({ name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, capacity_headers: capacityHeaders, capacity_heelers: capacityHeelers, disciplines, max_roper_rating: limit, draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds, short_go: draw.shortGo, description: text(formData.get("description"), 1000), event_time: eventTime, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt }).eq("id", ev.id);
   // Un evento de una serie debe seguir dentro de las fechas de su serie (la base lo exige).
   if (error) return back(error.message.includes("draw_type_locked") ? "drawLocked" : error.message.includes("rounds_locked") ? "roundsLocked" : error.message.includes("outside_series") ? "outsideSeries" : error.message.includes("open_after") ? "opensAfterClose" : "1");
   for (const r of rows) {

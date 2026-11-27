@@ -24,6 +24,8 @@ import type { Session } from "@/lib/session";
 import type { Dict } from "@/dictionaries/es";
 import type { Lang } from "@/lib/format";
 import { fmtDate, mxn } from "@/lib/format";
+import { formatRounds } from "@/lib/event-rounds";
+import { fmtEnrolled } from "@/lib/event-capacity";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
 type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justCreatedPrivate: boolean; justEdited: boolean; pagoError: boolean; manual: string | null; sacado: string | null; espera: string | null; missing: MissingField[]; borrarError: string | null; shareUrl: string; stateLabel: Record<string, string> };
@@ -82,14 +84,14 @@ async function Manage({ s, id, lang, t, justCreated, justCreatedPrivate, justEdi
   return (
           <>
             <div className="page">
-              <BackLink href={`/${lang}/organizador`}>{t.org.ev.back}</BackLink>
+              {e.series ? <BackLink href={`/${lang}/organizador/series/${e.series.slug}`}>{e.series.name}</BackLink> : <BackLink href={`/${lang}/organizador`}>{t.org.ev.back}</BackLink>}
               <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h1 className="text-3xl font-semibold">{e.name}</h1>
-                  <p className="text-muted">{e.date ? fmtDate(e.date, lang) : "–"} · {e.venue}, {e.city}</p>
+                  <p className="text-muted">{e.date ? [fmtDate(e.date, lang), e.time].filter(Boolean).join(" · ") : "–"} · {e.venue}, {e.city}</p>
                   <p className="mt-1 text-sm text-muted" data-testid="org-draw-type">
                     {t.event.drawType}: {e.drawType === "lazada_sorteada" ? t.event.lazadaSorteada : t.event.roundRobin}
-                    {e.rounds !== null && ` · ${e.rounds} ${t.event.roundsWord}`}
+                    {e.rounds !== null && ` · ${formatRounds(e.rounds, e.shortGo, t.event.roundsWord, t.org.form.shortGoWord)}`}
                     {e.drawType === "lazada_sorteada" && e.lazadaShotsPerPackage !== null && ` · ${e.lazadaShotsPerPackage} ${t.event.shotsPerPackage.toLowerCase()}`}
                   </p>
                   {e.series && <p className="mt-1 text-sm"><Link href={`/${lang}/organizador/series/${e.series.slug}`} className="font-medium text-brand-hot hover:underline">{t.org.ev.partOfSeries}: {e.series.name} →</Link></p>}
@@ -124,7 +126,7 @@ async function Manage({ s, id, lang, t, justCreated, justCreatedPrivate, justEdi
                 {e.status === "borrador" && <p className="mt-2 text-xs text-muted">{t.org.share.draftLink}</p>}
               </section>
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{e.enrolled}/{e.capacity}</p><p className="label mt-1">{t.org.enrolled}</p></div>
+                <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{fmtEnrolled(e.enrolled, e.capacity)}</p><p className="label mt-1">{t.org.enrolled}</p></div>
                 <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{rows.filter((x) => x.paymentStatus === "pagado").length}</p><p className="label mt-1">{t.org.ev.paid}</p></div>
                 <div className="card p-4"><p className="text-2xl font-semibold">{stateLabel[e.status]}</p><p className="label mt-1">{t.org.ev.state}</p></div>
               </div>

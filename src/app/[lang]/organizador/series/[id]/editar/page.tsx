@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
 import { SeriesForm } from "@/components/SeriesForm";
-import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
+import { pickCapacityLabels } from "@/lib/capacity-labels";
 import { getOrganizerSeries } from "@/lib/data/series";
 import { listArenas } from "@/lib/data/arenas";
 import { getDictionary, resolveLang } from "@/lib/i18n";
@@ -12,7 +12,6 @@ import { getDictionary, resolveLang } from "@/lib/i18n";
 async function Page({ props }: { props: PageProps<"/[lang]/organizador/series/[id]/editar"> }) {
   const lang = await resolveLang(props.params);
   const { id } = await props.params;
-  const sp = await props.searchParams;
   const t = getDictionary(lang);
   const f = t.org.series.form;
   return (
@@ -29,9 +28,8 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/series/[i
               <h1 className="mt-2 text-3xl font-semibold">{f.editTitle}</h1>
               <p className="mt-1 text-sm text-muted">{f.editBlurb}</p>
               <SeriesForm
-                lang={lang} error={typeof sp.error === "string" ? sp.error : undefined} labels={f} arenas={arenas} arenaLabels={t.org.arenas.picker}
-                disciplines={ACTIVE_DISCIPLINES.map((d) => ({ id: d.id, label: t.disc[d.id].label }))}
-                initial={{ slug: x.id, name: x.name, description: x.description, startDate: x.startDate, endDate: x.endDate, timezone: x.timezone, ...tpl }}
+                lang={lang} labels={{ ...f, errors: { ...t.org.form.errors, ...f.errors } }} capLabels={pickCapacityLabels(t.org.form)} arenas={arenas} arenaLabels={t.org.arenas.picker}
+                initial={{ slug: x.id, name: x.name, description: x.description, startDate: x.startDate, endDate: x.endDate, arenaId: tpl.arenaId, city: tpl.city, venue: tpl.venue, capacity: tpl.capacity, capacityHeaders: tpl.capacityHeaders, capacityHeelers: tpl.capacityHeelers, categories: tpl.categories, paymentInfo: tpl.paymentInfo }}
               />
             </div>
           </>

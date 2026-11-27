@@ -1,7 +1,7 @@
 import { DEFAULT_DISCIPLINE } from "@/lib/disciplines";
 import { getDictionary, hasLocale } from "@/lib/i18n";
-import { getPublicEvent } from "@/lib/data/events";
-import { getEventRegistrants } from "@/lib/data/registrations";
+import { getEventForViewer, getPublicEvent } from "@/lib/data/events";
+import { getEventRegistrants, getEventRegistrantsForViewer } from "@/lib/data/registrations";
 import { decodeEnrolledCursor } from "@/lib/enrolled";
 import { toEnrolledItem } from "@/lib/enrolled-view";
 
@@ -17,11 +17,15 @@ export async function GET(request: Request, ctx: RouteContext<"/api/eventos/[id]
   if (!decodeEnrolledCursor(cursor).ok) return Response.json({ error: "El cursor no es válido." }, { status: 400 });
 
   try {
-    const event = await getPublicEvent(id);
+    // Un evento privado solo lo ve quien tiene permiso (KIN-769): se lee con su sesión y la respuesta no se comparte en caché.
+    const publicEvent = await getPublicEvent(id);
+    const event = publicEvent ?? (await getEventForViewer(id));
     if (!event?.uuid) return Response.json({ error: "Evento no encontrado" }, { status: 404 });
-    const page = await getEventRegistrants(event.uuid, event.disciplines[0] ?? DEFAULT_DISCIPLINE, cursor);
+    const viewer = publicEvent === null;
+    const discipline = event.disciplines[0] ?? DEFAULT_DISCIPLINE;
+    const page = viewer ? await getEventRegistrantsForViewer(event.uuid, discipline, cursor) : await getEventRegistrants(event.uuid, discipline, cursor);
     const t = getDictionary(lang);
-    return Response.json({ rows: page.rows.map((r) => toEnrolledItem(r, lang, t)), next: page.next }, { headers: { "Cache-Control": "public, max-age=30" } });
+    return Response.json({ rows: page.rows.map((r) => toEnrolledItem(r, lang, t)), next: page.next }, { headers: { "Cache-Control": viewer ? "private, no-store" : "public, max-age=30" } });
   } catch {
     return Response.json({ error: "No se pudo leer la lista de inscritos" }, { status: 503 });
   }

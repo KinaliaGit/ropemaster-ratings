@@ -3,8 +3,12 @@ import { redirect } from "next/navigation";
 import { updateTag } from "next/cache";
 import { getSession } from "@/lib/session";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
-import { DEFAULT_TIMEZONE, isValidTimezone, zonedLocalToIso } from "@/lib/event-time";
+import { DEFAULT_DISCIPLINE } from "@/lib/disciplines";
+import { DEFAULT_TIMEZONE, startOfDayIso } from "@/lib/event-time";
+import { serializeFormValues, type EventFormState } from "@/lib/event-form-state";
+import { parseCapacityFields } from "@/lib/event-capacity";
+import { dbErrorCode } from "@/lib/event-required";
+import { missingSeriesBasics } from "@/lib/series-required";
 import { slugify } from "@/lib/slug";
 import { missingForPublish } from "@/lib/event-publish";
 import { resolveArena } from "@/lib/arena-resolve";
@@ -19,26 +23,26 @@ type Supabase = Awaited<ReturnType<typeof createServerSupabase>>;
 const KNOWN = ["outside_series", "open_after_event", "open_after_close", "series_full", "template_incomplete", "events_outside_range", "has_registrations", "has_results", "closed", "not_in_series", "not_found"];
 const codeOf = (message: string) => KNOWN.find((k) => message.includes(k)) ?? "failed";
 
-// Datos de la serie y de su plantilla (lo que se copia a cada evento nuevo).
+// Datos de la serie y de su plantilla (lo que se copia a cada evento nuevo). KIN-798: sin zona horaria (dato interno), siempre Lazo, el costo en lugar de las categorías y el cupo opcional
+// (igual por lado o por lado). Devuelve TODOS los problemas juntos, cada uno con su código.
 function parseSeries(formData: FormData) {
   const name = text(formData.get("name"), 120);
   const startDate = text(formData.get("startDate"), 10);
   const endDate = text(formData.get("endDate"), 10);
-  const tzRaw = text(formData.get("timezone"), 60) || DEFAULT_TIMEZONE;
   const city = text(formData.get("city"), 80);
   const venue = text(formData.get("venue"), 120);
-  const capacity = Math.floor(Number(formData.get("capacity")));
+  const cap = parseCapacityFields((n) => formData.get(n));
   const names = formData.getAll("catName").map((v) => text(v, 60));
   const fees = formData.getAll("catFee").map((v) => Math.max(0, Math.floor(Number(v)) || 0));
   const categories = names.map((n, i) => ({ name: n, fee_cents: (fees[i] ?? 0) * 100 })).filter((c) => c.name);
-  const disciplines = formData.getAll("discipline").map(String).filter((d) => ACTIVE_DISCIPLINES.some((a) => a.id === d));
-  let error: string | null = null;
-  if (name.length < 2 || !DATE.test(startDate) || !DATE.test(endDate) || !city || !venue || !(capacity > 0) || categories.length === 0 || categories.length > 20 || disciplines.length === 0) error = "1";
-  else if (endDate < startDate) error = "range";
-  else if (!isValidTimezone(tzRaw)) error = "1";
+  const errors: string[] = [...missingSeriesBasics({ name, startDate, endDate, city, venue, categories: categories.length })];
+  if (!cap.ok) errors.push(cap.error);
   return {
-    error, name, startDate, endDate, timezone: tzRaw, description: text(formData.get("description"), 1000),
-    template: { city, venue, capacity, disciplines, categories, payment_info: text(formData.get("paymentInfo"), 1000) },
+    errors, cap, name, startDate, endDate, description: text(formData.get("description"), 1000),
+    template: {
+      city, venue, capacity: cap.ok ? cap.capacity : null, capacity_headers: cap.ok ? cap.headers : null, capacity_heelers: cap.ok ? cap.heelers : null,
+      disciplines: [DEFAULT_DISCIPLINE], categories, payment_info: text(formData.get("paymentInfo"), 1000),
+    },
   };
 }
 
@@ -49,50 +53,64 @@ async function organizer(l: string) {
   return session;
 }
 
-// Crea la serie (con su plantilla) y lleva al organizador a su pantalla, donde agrega los eventos.
-export async function createSeries(formData: FormData) {
+// Crea la serie (con su plantilla) y lleva al organizador a su pantalla, donde agrega los eventos. Si algo no cumple NO se redirige: se devuelve cada problema con lo que se escribió (KIN-798).
+export async function createSeries(prev: EventFormState, formData: FormData): Promise<EventFormState> {
   const l = lang(formData.get("lang"));
   const session = await organizer(l);
+  const back = (error: string | string[]): EventFormState => {
+    const errors = Array.isArray(error) ? error : [error];
+    return { attempt: prev.attempt + 1, error: errors[0], errors, values: serializeFormValues(formData) };
+  };
   const p = parseSeries(formData);
-  if (p.error) redirect(`/${l}/organizador/series/nueva?error=${p.error}`);
+  if (p.errors.length) return back(p.errors);
 
   const supabase = await createServerSupabase();
   const id = crypto.randomUUID();
   const seriesSlug = slugify(p.name, "serie");
   const arena = await resolveArena(supabase, session.id, formData);
-  if (!arena) redirect(`/${l}/organizador/series/nueva?error=arena`);
+  if (!arena) return back("arena");
   const { error } = await supabase.from("event_series").insert({
-    id, slug: seriesSlug, organizer_id: session.id, organizer_name: session.name, name: p.name, description: p.description, start_date: p.startDate, end_date: p.endDate, timezone: p.timezone,
+    id, slug: seriesSlug, organizer_id: session.id, organizer_name: session.name, name: p.name, description: p.description, start_date: p.startDate, end_date: p.endDate, timezone: DEFAULT_TIMEZONE,
   });
-  if (error) redirect(`/${l}/organizador/series/nueva?error=1`);
+  if (error) {
+    console.error("createSeries: no se pudo crear la serie", error.code, error.message);
+    return back(dbErrorCode(error));
+  }
   const { error: tplError } = await supabase.from("event_series_template").insert({ series_id: id, ...p.template, city: arena.city || p.template.city, venue: arena.name, arena_id: arena.id });
   if (tplError) {
+    console.error("createSeries: no se pudo crear la plantilla", tplError.code, tplError.message);
     await supabase.from("event_series").delete().eq("id", id); // no dejar una serie sin plantilla
-    redirect(`/${l}/organizador/series/nueva?error=1`);
+    return back(dbErrorCode(tplError));
   }
   updateTag("events");
   redirect(`/${l}/organizador/series/${seriesSlug}?nueva=1`);
 }
 
 // Edita la serie y su plantilla. La plantilla solo aplica a los eventos que se creen después: los ya creados no cambian.
-// No se puede acortar el rango dejando fuera a un evento (la base lo rechaza).
-export async function updateSeries(formData: FormData) {
+// No se puede acortar el rango dejando fuera a un evento (la base lo rechaza). La zona horaria de la serie ya no se edita: se conserva la que tiene.
+export async function updateSeries(prev: EventFormState, formData: FormData): Promise<EventFormState> {
   const l = lang(formData.get("lang"));
   const seriesSlug = text(formData.get("slug"), 80);
   const session = await organizer(l);
-  const back = (error: string) => redirect(`/${l}/organizador/series/${seriesSlug}/editar?error=${error}`);
+  const back = (error: string | string[]): EventFormState => {
+    const errors = Array.isArray(error) ? error : [error];
+    return { attempt: prev.attempt + 1, error: errors[0], errors, values: serializeFormValues(formData) };
+  };
   const p = parseSeries(formData);
-  if (p.error) return back(p.error);
+  if (p.errors.length) return back(p.errors);
 
   const supabase = await createServerSupabase();
   const { data: s } = await supabase.from("event_series").select("id").eq("slug", seriesSlug).eq("organizer_id", session.id).maybeSingle();
   if (!s) redirect(`/${l}/organizador?ver=series`);
-  const { error } = await supabase.from("event_series").update({ name: p.name, description: p.description, start_date: p.startDate, end_date: p.endDate, timezone: p.timezone }).eq("id", s.id);
-  if (error) return back(error.message.includes("events_outside_range") ? "outsideRange" : "1");
+  const { error } = await supabase.from("event_series").update({ name: p.name, description: p.description, start_date: p.startDate, end_date: p.endDate }).eq("id", s.id);
+  if (error) return back(error.message.includes("events_outside_range") ? "outsideRange" : dbErrorCode(error));
   const arena = await resolveArena(supabase, session.id, formData);
   if (!arena) return back("arena");
   const { error: tplError } = await supabase.from("event_series_template").upsert({ series_id: s.id, ...p.template, city: arena.city || p.template.city, venue: arena.name, arena_id: arena.id });
-  if (tplError) return back("1");
+  if (tplError) {
+    console.error("updateSeries: no se pudo guardar la plantilla", tplError.code, tplError.message);
+    return back(dbErrorCode(tplError));
+  }
   updateTag("events");
   redirect(`/${l}/organizador/series/${seriesSlug}?editada=1`);
 }
@@ -132,7 +150,7 @@ export async function addSeriesEvents(formData: FormData) {
 
   const names = formData.getAll("evName").map((v) => text(v, 120));
   const dates = formData.getAll("evDate").map((v) => text(v, 10));
-  const opens = formData.getAll("evOpens").map((v) => text(v, 16));
+  const opens = formData.getAll("evOpens").map((v) => text(v, 10));
   const rows = names.map((name, i) => ({ name, date: dates[i] ?? "", opens: opens[i] ?? "" })).filter((r) => r.name || r.date);
   if (rows.length === 0 || rows.length > MAX_EVENTS) return back("noEvents");
   const items = [];
@@ -141,7 +159,7 @@ export async function addSeriesEvents(formData: FormData) {
     if (r.date < s.start_date || r.date > s.end_date) return back("outsideRange");
     let opensAt: string | null = null;
     if (r.opens) {
-      opensAt = zonedLocalToIso(r.opens, s.timezone);
+      opensAt = startOfDayIso(r.opens, s.timezone); // por día, sin hora: abren al empezar ese día (KIN-798)
       if (!opensAt) return back("invalidRow");
     }
     items.push({ id: crypto.randomUUID(), slug: slugify(r.name), name: r.name, date: r.date, opens_at: opensAt });
@@ -174,7 +192,7 @@ export async function publishSeriesDrafts(formData: FormData) {
   if (!s) redirect(`/${l}/organizador?ver=series`);
   // Solo se publican los borradores completos (KIN-659): los subidos desde la app llegan sin ciudad ni cupo y se completan a mano.
   const { data: drafts } = await supabase.from("events").select("id, city, venue, capacity, event_categories(id)").eq("series_id", s.id).eq("status", "borrador").eq("organizer_id", session.id);
-  const ready = (drafts ?? []).filter((d) => missingForPublish({ city: d.city, venue: d.venue, capacity: d.capacity, categories: d.event_categories?.length ?? 0 }).length === 0);
+  const ready = (drafts ?? []).filter((d) => missingForPublish({ city: d.city, venue: d.venue, categories: d.event_categories?.length ?? 0 }).length === 0);
   const incomplete = (drafts ?? []).length - ready.length;
   if (ready.length) await supabase.from("events").update({ status: "publicado" }).in("id", ready.map((d) => d.id)).eq("organizer_id", session.id);
   updateTag("events");

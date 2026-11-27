@@ -7,6 +7,7 @@ import { eventPhase, statusByDate, fmtDeadline } from "@/lib/event-time";
 import { fmtDate, type Lang } from "@/lib/format";
 import { PhaseBadge } from "@/components/PhaseBadge";
 import { PageSkeleton } from "@/components/PageSkeleton";
+import { fmtEnrolled } from "@/lib/event-capacity";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
 async function SerieInner({ params }: { params: PageProps<"/[lang]/series/[id]">["params"] }) {
@@ -42,7 +43,7 @@ async function SerieInner({ params }: { params: PageProps<"/[lang]/series/[id]">
                         <p className="font-semibold leading-snug">{e.name}</p>
                         <p className="mt-0.5 text-sm text-muted">{[e.venue, e.city].filter(Boolean).join(", ")}</p>
                         <p className="mt-1 text-sm text-muted">
-                          <span className="tabular-nums">{e.enrolled}/{e.capacity}</span> {t.series.enrolled}
+                          <span className="tabular-nums">{fmtEnrolled(e.enrolled, e.capacity)}</span> {t.series.enrolled}
                           {phase === "upcoming" && e.registrationOpensAt && <>{" · "}{t.series.opensOn} {fmtDeadline(e.registrationOpensAt, e.timezone, lang)}</>}
                           {phase === "open" && e.registrationClosesAt && <>{" · "}{t.series.closesOn} {fmtDeadline(e.registrationClosesAt, e.timezone, lang)}</>}
                         </p>

@@ -1789,8 +1789,17 @@ console.log("- Resultados de un evento (0030)");
   let rejected = false;
   try { await db.exec(`update events set visibility = 'secreto' where id = '${E(1)}'`); } catch { rejected = true; }
   verify("una visibilidad que no existe se rechaza", rejected);
-  await as("authenticated", A, `update events set visibility = 'privado' where id = '${E(1)}'`, "el organizador NO cambia la visibilidad desde la web (aún)", "deny");
-  await as("authenticated", A, `insert into events (id, name, organizer_id, visibility) values (gen_random_uuid(), 'Privado de golpe', '${A}', 'privado')`, "ni crearlo ya privado", "deny");
+  // La visibilidad se elige SOLO al crear el evento (ventana de «Publicar», migración 0058): después no se cambia desde la web
+  await as("authenticated", A, `update events set visibility = 'privado' where id = '${E(1)}'`, "el organizador NO cambia la visibilidad de un evento ya creado", "deny");
+  await as("authenticated", A, `update events set visibility = 'publico' where organizer_id = '${A}' and visibility = 'privado'`, "ni lo vuelve a público (sin permiso de UPDATE)", "deny");
+  await as("authenticated", A, `insert into events (id, name, organizer_id, status, slug, visibility) values ('e7690000-0000-0000-0000-0000000000f1', 'W769 creado privado', '${A}', 'publicado', 'w769-privado', 'privado')`, "el organizador SÍ crea su evento ya privado", "some");
+  verify("queda privado y publicado", await num(`select count(*) n from events where slug = 'w769-privado' and visibility = 'privado' and status = 'publicado'`) === 1);
+  verify("y sin sesión no existe (ni en el listado ni por su dirección)", (await asRows("anon", null, `select slug from events where slug = 'w769-privado'`)).length === 0);
+  verify("otro organizador tampoco lo ve", (await asRows("authenticated", B, `select slug from events where slug = 'w769-privado'`)).length === 0);
+  verify("su organizador sí lo ve", (await asRows("authenticated", A, `select slug from events where slug = 'w769-privado'`)).length === 1);
+  await as("authenticated", A, `insert into events (id, name, organizer_id, status, slug, visibility) values (gen_random_uuid(), 'W769 raro', '${A}', 'publicado', 'w769-raro', 'secreto')`, "una visibilidad que no existe se rechaza al crear", "deny");
+  await as("authenticated", B, `insert into events (id, name, organizer_id, status, slug, visibility) values (gen_random_uuid(), 'W769 a nombre de otro', '${A}', 'publicado', 'w769-ajeno', 'privado')`, "NO crea un evento privado a nombre de otro organizador", "deny");
+  await db.exec(`delete from events where slug like 'w769-%'`);
 
   // Quién ve cada evento (lectura por política): sin sesión, otro participante, otro organizador, el inscrito, el que espera y el dueño
   const seesEvents = async (role, uid) => (await asRows(role, uid, `select slug from events where slug like 'v769-%' order by slug`)).map((r) => r.slug.replace("v769-", ""));

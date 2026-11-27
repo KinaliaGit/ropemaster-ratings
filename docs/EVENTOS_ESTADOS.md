@@ -1,7 +1,7 @@
 # Ciclo de vida y visibilidad de los eventos (KIN-769)
 
 Contrato para el panel del organizador (H03), la vista pública (H04, H08), la integración con la App (H13) y las invitaciones (KIN-753).
-Decidido con Edgar el 2026-11-26. Migración `0057_visibilidad_de_los_eventos.sql`. **Entrega A**: el modelo y la regla. La interfaz para cambiar la visibilidad y las
+Decidido con Edgar el 2026-11-26. Migración `0057_visibilidad_de_los_eventos.sql`. **Entrega A**: el modelo y la regla, más elegir la visibilidad al publicar (migración `0058`). Cambiarla después y las
 invitaciones son de KIN-753.
 
 ## Modelo: dos propiedades distintas
@@ -56,8 +56,14 @@ Efecto hoy: **nadie puede inscribirse a un evento privado** salvo su organizador
 
 ## Quién puede cambiar la visibilidad
 
-**Nadie desde la web, todavía.** `visibility` no tiene permiso de escritura para `authenticated` (ni al crear ni al editar); solo el servidor y el administrador de la base.
-Se habilita junto con la interfaz y la lista de invitados (KIN-753), para que esta migración no cambie nada para nadie mientras tanto.
+**Se elige una sola vez, al publicar el evento recién creado.** En el formulario de crear evento, «Publicar» abre una ventana que pregunta «Público» o «Privado»; el servidor
+(`createEvent`, `visibilityForCreate`) guarda estado y visibilidad en el mismo insert. Migración `0058_visibilidad_al_crear.sql`: `authenticated` tiene permiso de **INSERT**
+sobre `visibility`, pero **no de UPDATE**. Por eso:
+
+- Un borrador siempre nace `publico` (la visibilidad solo se lee al publicar).
+- Después de creado, la web no la cambia (ni a privado ni de vuelta a público); solo el servidor y el administrador de la base. Cambiarla después es de KIN-753.
+- Los otros caminos de publicar (serie «crear y publicar», interruptor de publicar del administrador) no preguntan: el evento queda `publico`.
+- Un privado recién creado muestra un aviso distinto en su panel: no sale en el listado, el enlace solo lo abre quien ya está inscrito, y por ahora las personas las inscribe el organizador.
 
 ## Contrato para quien consume
 
@@ -80,4 +86,4 @@ Se habilita junto con la interfaz y la lista de invitados (KIN-753), para que es
 
 `npm run test:db`, bloque «Estado y visibilidad de los eventos»: cada estado y visibilidad contra cada tipo de persona (sin sesión, otro organizador, otro participante, inscrito, en lista
 de espera y dueño) en eventos, categorías, fotos y resultados; las cinco funciones públicas; la guarda de escritura (con sesión, sin sesión, por función y directa); que la
-visibilidad no se escriba desde la web y que solo acepte `publico` o `privado`; y `event_phase` contra `statusByDate`. Unitarias: `tests/event-visibility.test.mjs`.
+visibilidad solo se escriba al crear (no se actualiza desde la web, no se crea a nombre de otro organizador) y que solo acepte `publico` o `privado`; y `event_phase` contra `statusByDate`. Unitarias: `tests/event-visibility.test.mjs`.

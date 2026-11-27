@@ -17,6 +17,12 @@ export const parseVisibility = (value: unknown): EventVisibility => (value === "
 export const isPrivate = (e: { visibility?: string | null }) => parseVisibility(e.visibility) === "privado";
 
 /**
+ * La visibilidad con la que se crea un evento (formulario de crear evento): solo se elige al PUBLICAR. Un borrador solo lo ve su organizador, así que no se decide
+ * (queda público, el valor por defecto) y la ventana de «Publicar» que se haya abierto y cancelado no cuenta. Lo que no se reconoce también es público.
+ */
+export const visibilityForCreate = (intent: unknown, raw: unknown): EventVisibility => (intent === "publish" ? parseVisibility(raw) : DEFAULT_VISIBILITY);
+
+/**
  * Transiciones válidas del estado (lo que hoy permiten la web y la app):
  *  - borrador <-> publicado: el organizador, desde la web (para publicar se exige ciudad, lugar, cupo y categorías: event-publish.ts).
  *  - publicado -> finalizado: al cerrar los resultados desde la app, o por fecha (se calcula al leer con statusByDate / public.event_phase).

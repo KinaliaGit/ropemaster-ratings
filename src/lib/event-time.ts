@@ -135,3 +135,20 @@ export function formatEventTime(value: unknown): string | null {
   const t = parseEventTime(value);
   return t === "invalid" ? null : t;
 }
+
+/** Instante en que EMPIEZA el evento: su día y su hora locales en la zona del evento. null si no hay hora o algo no es válido. */
+export function eventStartIso(eventDate: string, eventTime: string | null | undefined, tz: string): string | null {
+  if (!eventTime || !isDay(eventDate)) return null;
+  const time = formatEventTime(eventTime);
+  return time ? zonedLocalToIso(`${eventDate}T${time}`, tz) : null;
+}
+
+/**
+ * Cierre de inscripciones cuando el evento tiene hora: nunca después de que empiece el evento. Sin hora, el cierre queda como se pidió.
+ * Con hora y sin cierre pedido, cierran cuando empieza el evento; con un cierre pedido más tarde que el inicio, se adelanta al inicio; uno más temprano se respeta.
+ */
+export function closeNoLaterThanStart(closesIso: string | null, eventDate: string, eventTime: string | null | undefined, tz: string): string | null {
+  const start = eventStartIso(eventDate, eventTime, tz);
+  if (!start) return closesIso;
+  return closesIso === null || Date.parse(closesIso) > Date.parse(start) ? start : closesIso;
+}

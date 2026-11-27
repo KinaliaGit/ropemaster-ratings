@@ -9,7 +9,7 @@ import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { slugify } from "@/lib/slug";
 import { resolveArena } from "@/lib/arena-resolve";
 import { emailParticipant } from "@/lib/notify";
-import { closesAfterEvent, DEFAULT_TIMEZONE, endOfDayIso, parseEventTime, startOfDayIso } from "@/lib/event-time";
+import { closeNoLaterThanStart, closesAfterEvent, DEFAULT_TIMEZONE, endOfDayIso, parseEventTime, startOfDayIso } from "@/lib/event-time";
 import { visibilityForCreate } from "@/lib/event-visibility";
 import { serializeFormValues, type EventFormState } from "@/lib/event-form-state";
 import { parseCapacityFields } from "@/lib/event-capacity";
@@ -63,7 +63,9 @@ type Close = { ok: true; closesAt: string | null; opensAt: string | null } | { o
 //   closeMode: none (sin fecha: abiertas hasta que el organizador cierre) | event (al terminar el día del evento) | day (al terminar el día `closesOn`).
 //   opensMode: publish (desde que se publica el evento) | day (desde el inicio del día `opensOn`).
 // El cierre y la apertura no pueden caer después del día del evento, y la apertura va antes del cierre. La base lo vuelve a comprobar.
-function parseClose(formData: FormData, eventDate: string, tz: string): Close {
+// Si el evento tiene HORA, las inscripciones nunca siguen abiertas después de que empiece (un evento a las 12:00 no puede cerrar inscripciones a las 23:59): con hora, el cierre es a esa hora,
+// salvo que se haya pedido uno más temprano.
+function parseClose(formData: FormData, eventDate: string, tz: string, eventTime: string | null): Close {
   const closeMode = text(formData.get("closeMode"), 10);
   let closesAt: string | null = null;
   if (closeMode === "event") closesAt = endOfDayIso(eventDate, tz);
@@ -72,6 +74,7 @@ function parseClose(formData: FormData, eventDate: string, tz: string): Close {
     if (!closesAt) return { ok: false, error: "closeInvalid" };
     if (closesAfterEvent(closesAt, eventDate, tz)) return { ok: false, error: "closeAfterEvent" };
   } else if (closeMode && closeMode !== "none") return { ok: false, error: "closeInvalid" };
+  closesAt = closeNoLaterThanStart(closesAt, eventDate, eventTime, tz);
 
   const opensMode = text(formData.get("opensMode"), 10);
   let opensAt: string | null = null;
@@ -118,10 +121,10 @@ export async function createEvent(prev: EventFormState, formData: FormData): Pro
   // Lo obligatorio se revisa junto y se devuelve TODO lo que falta o está mal, cada cosa con su mensaje.
   const missing = missingBasics({ name, date, city, venue, categories: categories.length, disciplines: disciplines.length });
   if (missing.length) return back(missing);
-  const close = parseClose(formData, date, DEFAULT_TIMEZONE);
-  if (!close.ok) return back(close.error);
   const eventTime = parseEventTime(formData.get("eventTime"));
   if (eventTime === "invalid") return back("eventTimeInvalid");
+  const close = parseClose(formData, date, DEFAULT_TIMEZONE, eventTime);
+  if (!close.ok) return back(close.error);
 
   const status = formData.get("intent") === "publish" ? "publicado" : "borrador";
   // KIN-769: quién puede ver el evento se elige al PUBLICAR (ventana de «Publicar»); un borrador no lo decide. Se manda a la base solo si es privado: lo público es el valor por
@@ -206,10 +209,10 @@ export async function updateEvent(prev: EventFormState, formData: FormData): Pro
   if (typeof draw === "string") return back(draw === "invalid" ? "drawType" : draw);
   const missing = missingBasics({ name, date, city, venue, categories: rows.length, disciplines: disciplines.length });
   if (missing.length) return back(missing);
-  const close = parseClose(formData, date, ev.timezone); // la zona del evento ya no se edita: se conserva la que tiene
-  if (!close.ok) return back(close.error);
   const eventTime = parseEventTime(formData.get("eventTime"));
   if (eventTime === "invalid") return back("eventTimeInvalid");
+  const close = parseClose(formData, date, ev.timezone, eventTime); // la zona del evento ya no se edita: se conserva la que tiene
+  if (!close.ok) return back(close.error);
 
   const [{ count: enrolled }, { count: enrolledHeaders }, { count: enrolledHeelers }, { data: current }, { data: used }] = await Promise.all([
     supabase.from("registrations").select("id", { count: "exact", head: true }).eq("event_id", ev.id),

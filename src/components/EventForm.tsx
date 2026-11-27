@@ -1,10 +1,9 @@
 "use client";
 import { useActionState, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
 import { createEvent, updateEvent } from "@/lib/event-actions";
-import { addEventPhoto } from "@/lib/photo-actions";
+import { photoUploads } from "@/lib/photo-upload";
 import { EventPhotoDrafts, type PhotoDraft, type PhotoDraftLabels } from "@/components/EventPhotoDrafts";
 import type { CloseMode } from "@/lib/event-time";
 import { fieldForError, firstValue, focusSelector, INITIAL_EVENT_FORM_STATE, type FormValues } from "@/lib/event-form-state";
@@ -16,11 +15,11 @@ import { formatRounds, MAX_ROUNDS, MIN_ROUNDS_WITH_SHORT_GO } from "@/lib/event-
 type Labels = {
   visibility: VisibilityLabels;
   name: string; date: string; capacity: string; disciplines: string; costLabel: string; costPackageLabel: string; costFree: string; maxRoperRating: string; maxRoperRatingHint: string;
-  error: string; description: string; saveDraft: string; publish: string; errorsHeading: string; photosTitle: string; photosProgress: string; photosPartial: string; goToEvent: string; save: string; errors: Record<string, string>; paymentInfo: string; paymentInfoHint: string; paymentInfoPlaceholder: string;
+  error: string; description: string; saveDraft: string; publish: string; errorsHeading: string; photosTitle: string; photosCreated: string; save: string; errors: Record<string, string>; paymentInfo: string; paymentInfoHint: string; paymentInfoPlaceholder: string;
   opens: string; opensHint: string; closes: string; closesHint: string; opensPublish: string; opensDay: string; closeNone: string; closeEvent: string; closeDay: string; eventTime: string;
   drawType: string; drawTypeHint: string; drawLocked: string; roundRobin: string; lazadaSorteada: string; shotsPerPackage: string; shotsPerPackageHint: string; maxTeamRating: string; maxTeamRatingHint: string; rounds: string; roundsHint: string; shortGo: string; roundsWord: string; shortGoWord: string;
   advanced: string; required: string; optional: string; capGroup: string; capLimit: string; capLimitHint: string; ratingGroup: string; ratingLimit: string; teamLimit: string; regGroup: string;
-  chipCapNone: string; chipRatingNone: string; chipTeamNone: string; chipOpensNone: string; chipClosesNone: string; chipCap: string; chipCapEach: string; chipCapSides: string;
+  chipCapNone: string; chipRatingNone: string; chipTeamNone: string; chipOpensNone: string; chipClosesNone: string; chipCloseAt: string; closesAtStart: string; chipCap: string; chipCapEach: string; chipCapSides: string;
   capTotal: string; capEach: string; capHeaders: string; capHeelers: string; capModeTotal: string; capModeEach: string; capModePer: string; capSummary: string; /* textos con marcadores {n} {h} {p} {t}: un componente de servidor no puede pasar funciones a uno de cliente */ chipRating: string; chipTeam: string; chipOpens: string; chipCloses: string; chipCloseEvent: string;
 };
 export type EventInitial = { arenaId?: string | null; slug: string; name: string; date: string; capacity: number; capacityHeaders: number | null; capacityHeelers: number | null; venue: string; city: string; description: string; paymentInfo: string; eventTime: string; opensMode: "publish" | "day"; opensOn: string; closeMode: CloseMode; closesOn: string; disciplines: string[]; maxRoperRating: number | null; drawType: "round_robin" | "lazada_sorteada"; shotsPerPackage: number | null; maxTeamRating: number | null; rounds: number | null; shortGo: boolean; drawLocked: boolean; cats: { id: string; name: string; fee: number }[] };
@@ -29,7 +28,6 @@ type Cat = { id: string; name: string; fee: number };
 type DrawType = "round_robin" | "lazada_sorteada";
 type CapMode = "total" | "eq" | "per";
 type Invalid = { field: string; message: string };
-type UploadState = { done: number; total: number; failed: number; finished: boolean };
 type Discipline = { id: string; label: string };
 
 // Clase base de los campos; el borde (normal o rojo si el servidor rechazó ese campo) se agrega aparte.
@@ -77,7 +75,6 @@ export function EventForm({ lang, labels: l, disciplines, initial, arenas, arena
   const [state, formAction, pending] = useActionState(initial ? updateEvent : createEvent, INITIAL_EVENT_FORM_STATE);
   // Fotos elegidas al crear el evento: viven aquí (no en los campos, que se vuelven a montar si el servidor rechaza el envío) y se suben justo después de crearlo.
   const [photos, setPhotos] = useState<PhotoDraft[]>([]);
-  const [upload, setUpload] = useState<UploadState | null>(null);
   const uploadedFor = useRef<string | null>(null);
   const latestPhotos = useRef<PhotoDraft[]>([]);
   useEffect(() => { latestPhotos.current = photos; }, [photos]);
@@ -96,28 +93,13 @@ export function EventForm({ lang, labels: l, disciplines, initial, arenas, arena
   const invalid: Invalid[] = found.flatMap((x) => (x.target ? [{ field: x.target.field, message: x.message }] : []));
   const summary = found.map((x) => x.message);
 
-  // El evento ya se creó: se suben sus fotos en orden (la primera queda de portada) y luego se navega a su página. Si alguna falla, se avisa y se ofrece ir al evento.
+  // El evento ya se creó: las fotos se suben en SEGUNDO PLANO (aviso abajo, en cualquier pantalla) y se abre el evento de inmediato, sin esperar aquí.
   useEffect(() => {
     const created = state.created;
     if (!created || uploadedFor.current === created.slug) return;
     uploadedFor.current = created.slug;
-    const list = latestPhotos.current;
-    void (async () => {
-      let failed = 0;
-      setUpload({ done: 0, total: list.length, failed: 0, finished: false });
-      for (let i = 0; i < list.length; i++) {
-        try {
-          const fd = new FormData();
-          fd.set("event", created.slug);
-          fd.set("file", list[i].blob, "foto.jpg");
-          const res = await addEventPhoto(fd);
-          if (!res.ok) failed++;
-        } catch { failed++; }
-        setUpload({ done: i + 1, total: list.length, failed, finished: false });
-      }
-      if (failed === 0) router.push(created.url);
-      else setUpload({ done: list.length, total: list.length, failed, finished: true });
-    })();
+    photoUploads.enqueue(created.slug, latestPhotos.current.map((p) => p.blob));
+    router.push(created.url);
   }, [state.created, router]);
 
   useEffect(() => {
@@ -143,22 +125,23 @@ export function EventForm({ lang, labels: l, disciplines, initial, arenas, arena
       <EventFields
         key={state.attempt} l={l} disciplines={disciplines} initial={initial} arenas={arenas} arenaLabels={arenaLabels}
         values={state.values} invalid={invalid} pending={pending} advOpen={advOpen} setAdvOpen={setAdvOpen}
-        photos={photos} setPhotos={setPhotos} photoLabels={photoLabels} created={state.created} upload={upload}
+        photos={photos} setPhotos={setPhotos} photoLabels={photoLabels} created={state.created}
       />
     </form>
   );
 }
 
-function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, invalid, pending, advOpen, setAdvOpen, photos, setPhotos, photoLabels, created, upload }: {
+function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, invalid, pending, advOpen, setAdvOpen, photos, setPhotos, photoLabels, created }: {
   l: Labels; disciplines: Discipline[]; initial?: EventInitial; arenas: ArenaChoice[]; arenaLabels: ArenaLabels;
   values: FormValues | undefined; invalid: Invalid[]; pending: boolean; advOpen: boolean; setAdvOpen: (open: boolean) => void;
-  photos: PhotoDraft[]; setPhotos: Dispatch<SetStateAction<PhotoDraft[]>>; photoLabels?: PhotoDraftLabels; created?: { slug: string; url: string }; upload: UploadState | null;
+  photos: PhotoDraft[]; setPhotos: Dispatch<SetStateAction<PhotoDraft[]>>; photoLabels?: PhotoDraftLabels; created?: { slug: string; url: string };
 }) {
   const v = (name: string, fallback: string | number | null | undefined) => firstValue(values, name, fallback);
   // Un campo opcional está «encendido» si ya traía valor (al editar) o si el envío rechazado lo mandó (un interruptor apagado no manda su campo).
   const wasOn = (name: string, hasValue: boolean) => (values ? values[name] !== undefined : hasValue);
 
   const [drawType, setDrawType] = useState<DrawType>(() => (v("drawType", initial?.drawType ?? "round_robin") === "lazada_sorteada" ? "lazada_sorteada" : "round_robin"));
+  const [eventTime, setEventTime] = useState(() => v("eventTime", initial?.eventTime));
   const [roundsVal, setRoundsVal] = useState(() => v("rounds", initial?.rounds));
   const [shortGo, setShortGo] = useState(() => v("shortGo", String(initial?.shortGo ?? true)) !== "false");
   // Cupo (KIN-775): apagado = sin límite. Encendido, se elige igual por lado o por lado (el total se calcula solo). Un evento que ya tenía solo un total lo conserva como «Total».
@@ -231,7 +214,8 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
     ratingOn && ratingVal ? { text: `${l.chipRating} ${ratingVal}`, on: true } : { text: l.chipRatingNone, on: false },
     ...(showTeam ? [teamOn && teamVal ? { text: `${l.chipTeam} ${teamVal}`, on: true } : { text: l.chipTeamNone, on: false }] : []),
     opensMode === "day" ? { text: l.chipOpens, on: true } : { text: l.chipOpensNone, on: false },
-    closeMode === "event" ? { text: l.chipCloseEvent, on: true } : closeMode === "day" ? { text: l.chipCloses, on: true } : { text: l.chipClosesNone, on: false },
+    // Con hora, las inscripciones cierran a esa hora (sin cierre pedido o el día del evento); un cierre elegido en otro día se respeta.
+    closeMode === "day" ? { text: l.chipCloses, on: true } : eventTime ? { text: l.chipCloseAt.replace("{t}", eventTime), on: true } : closeMode === "event" ? { text: l.chipCloseEvent, on: true } : { text: l.chipClosesNone, on: false },
   ];
   // KIN-777: las rondas son el TOTAL e incluyen el short-go (3 con short-go = 2 normales + 1 short-go); aquí se ve el resultado en palabras.
   const roundsNum = /^[0-9]+$/.test(roundsVal) ? Number(roundsVal) : 0;
@@ -243,7 +227,7 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
       <label className="block text-sm font-medium">{l.name}{req}<input required name="name" maxLength={120} defaultValue={v("name", initial?.name)} {...a("name")} />{msg("name")}</label>
       <div className="grid items-start gap-4 sm:grid-cols-2">
         <label className="block text-sm font-medium">{l.date}{req}<input required name="date" type="date" defaultValue={v("date", initial?.date)} {...a("date")} />{msg("date")}</label>
-        <label className="block text-sm font-medium">{l.eventTime}{opt}<input name="eventTime" type="time" defaultValue={v("eventTime", initial?.eventTime)} {...a("eventTime")} />{msg("eventTime")}</label>
+        <label className="block text-sm font-medium">{l.eventTime}{opt}<input name="eventTime" type="time" value={eventTime} onChange={(e) => setEventTime(e.target.value)} {...a("eventTime")} />{msg("eventTime")}</label>
       </div>
       <div>
         <ArenaFields arenas={arenas} labels={arenaLabels} initial={arenaInitial} invalid={bad("arena")} describedBy="err-arena" />
@@ -374,6 +358,7 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
               <legend className="text-sm font-medium">{l.closes}</legend>
               <p className="mt-0.5 text-xs text-muted">{l.closesHint}</p>
               <Segmented name="closeMode" label={l.closes} value={closeMode} onChange={setCloseMode} options={[{ value: "none", label: l.closeNone }, { value: "event", label: l.closeEvent }, { value: "day", label: l.closeDay }]} />
+              {eventTime && closeMode !== "day" && <p className="mt-2 text-xs font-medium text-ink" data-testid="close-at-start">{l.closesAtStart.replace("{t}", eventTime)}</p>}
               {closeMode === "day" && <input name="closesOn" type="date" required value={closesOn} onChange={(e) => setClosesOn(e.target.value)} aria-label={l.closes} {...a("closesOn", "mt-2 sm:w-1/2")} />}
               {msg("closesOn")}
             </fieldset>
@@ -390,14 +375,7 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
         </fieldset>
       )}
       {created ? (
-        <div role="status" className="rounded-xl bg-sand p-4 text-sm" data-testid="photo-upload-status">
-          {upload?.finished ? (
-            <>
-              <p className="font-medium text-red-800">{fill(l.photosPartial, { n: upload.failed })}</p>
-              <Link href={created.url} className="mt-3 inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-medium text-white hover:bg-brand-hot">{l.goToEvent}</Link>
-            </>
-          ) : <p>{fill(l.photosProgress, { d: upload?.done ?? 0, t: upload?.total ?? photos.length })}</p>}
-        </div>
+        <p role="status" className="rounded-xl bg-sand p-4 text-sm" data-testid="event-created">{l.photosCreated}</p>
       ) : initial ? (
         <button disabled={pending} className="w-full rounded-full bg-brand py-3 text-sm font-medium text-white hover:bg-brand-hot disabled:opacity-60">{l.save}</button>
       ) : (

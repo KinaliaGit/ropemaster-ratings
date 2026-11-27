@@ -147,3 +147,40 @@ test("formatEventTime muestra HH:MM y trata lo inválido o vacío como sin hora"
   assert.equal(formatEventTime(null), null);
   assert.equal(formatEventTime("25:00"), null);
 });
+
+// ---- el cierre no pasa de la hora del evento ----
+import { closeNoLaterThanStart, eventStartIso } from "../src/lib/event-time.ts";
+
+test("el inicio del evento es su día y su hora en la zona del evento", () => {
+  assert.equal(eventStartIso("2026-12-28", "12:00", MX), "2026-12-28T18:00:00.000Z"); // 12:00 en México = 18:00 UTC
+  assert.equal(eventStartIso("2026-12-28", "12:00:00", MX), "2026-12-28T18:00:00.000Z");
+  assert.equal(eventStartIso("2026-12-28", null, MX), null);
+  assert.equal(eventStartIso("2026-12-28", "", MX), null);
+  assert.equal(eventStartIso("2026-12-28", "25:00", MX), null);
+  assert.equal(eventStartIso("no-es-fecha", "12:00", MX), null);
+});
+
+test("con hora, las inscripciones cierran cuando empieza el evento y no al final del día (el caso de las 12:00 contra las 23:59)", () => {
+  const endOfDay = endOfDayIso("2026-12-28", MX);
+  assert.equal(closeNoLaterThanStart(endOfDay, "2026-12-28", "12:00", MX), "2026-12-28T18:00:00.000Z");
+  assert.equal(isRegistrationOpen({ closesAt: closeNoLaterThanStart(endOfDay, "2026-12-28", "12:00", MX), closed: false }, Date.parse("2026-12-28T17:59:00.000Z")), true); // 11:59
+  assert.equal(isRegistrationOpen({ closesAt: closeNoLaterThanStart(endOfDay, "2026-12-28", "12:00", MX), closed: false }, Date.parse("2026-12-28T18:00:00.000Z")), false); // 12:00
+});
+
+test("con hora y sin cierre pedido, también cierran al empezar el evento", () => {
+  assert.equal(closeNoLaterThanStart(null, "2026-12-28", "12:00", MX), "2026-12-28T18:00:00.000Z");
+});
+
+test("un cierre pedido más temprano que el inicio se respeta; sin hora el cierre queda como se pidió", () => {
+  const dayBefore = endOfDayIso("2026-12-27", MX);
+  assert.equal(closeNoLaterThanStart(dayBefore, "2026-12-28", "12:00", MX), dayBefore);
+  const endOfDay = endOfDayIso("2026-12-28", MX);
+  assert.equal(closeNoLaterThanStart(endOfDay, "2026-12-28", null, MX), endOfDay);
+  assert.equal(closeNoLaterThanStart(null, "2026-12-28", null, MX), null);
+});
+
+test("el cierre al inicio del evento sigue contando como el día del evento", () => {
+  const start = closeNoLaterThanStart(endOfDayIso("2026-12-28", MX), "2026-12-28", "12:00", MX);
+  assert.equal(closesAfterEvent(start, "2026-12-28", MX), false);
+  assert.equal(closeModeOf(start, "2026-12-28", MX), "event");
+});

@@ -174,7 +174,7 @@ export async function publishSeriesDrafts(formData: FormData) {
   if (!s) redirect(`/${l}/organizador?ver=series`);
   // Solo se publican los borradores completos (KIN-659): los subidos desde la app llegan sin ciudad ni cupo y se completan a mano.
   const { data: drafts } = await supabase.from("events").select("id, city, venue, capacity, event_categories(id)").eq("series_id", s.id).eq("status", "borrador").eq("organizer_id", session.id);
-  const ready = (drafts ?? []).filter((d) => missingForPublish({ city: d.city, venue: d.venue, capacity: d.capacity, categories: d.event_categories?.length ?? 0 }).length === 0);
+  const ready = (drafts ?? []).filter((d) => missingForPublish({ city: d.city, venue: d.venue, categories: d.event_categories?.length ?? 0 }).length === 0);
   const incomplete = (drafts ?? []).length - ready.length;
   if (ready.length) await supabase.from("events").update({ status: "publicado" }).in("id", ready.map((d) => d.id)).eq("organizer_id", session.id);
   updateTag("events");

@@ -11,6 +11,8 @@ import { resolveArena } from "@/lib/arena-resolve";
 import { emailParticipant } from "@/lib/notify";
 import { closesAfterEvent, DEFAULT_TIMEZONE, isValidTimezone, zonedLocalToIso } from "@/lib/event-time";
 import { visibilityForCreate } from "@/lib/event-visibility";
+import { serializeFormValues, type EventFormState } from "@/lib/event-form-state";
+import { parseCapacity } from "@/lib/event-capacity";
 
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
 const text = (v: FormDataEntryValue | null, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -83,18 +85,19 @@ function parseClose(formData: FormData, eventDate: string): Close {
 // Crea un evento individual (KIN-750): uno que no pertenece a ninguna serie (`series_id` null). Pide lo mismo que cada evento de una serie
 // (sorteo, rondas, cupo, categorías, apertura y cierre). Nace como borrador o publicado y lleva al organizador a su pantalla, donde está el enlace
 // para compartir. Las reglas de la base garantizan que solo un organizador activo cree eventos a su nombre.
-export async function createEvent(formData: FormData) {
+// KIN-774: si algo no cumple NO se redirige (se perdía lo escrito): se devuelve el error con los valores que mandó la persona y el formulario los vuelve a mostrar.
+export async function createEvent(prev: EventFormState, formData: FormData): Promise<EventFormState> {
   const l = lang(formData.get("lang"));
   const session = await getSession();
   if (session?.role !== "organizador") redirect(`/${l}/entrar?role=organizador`);
   if (!session.verified) redirect(`/${l}/organizador`); // sin licencia vigente ni aprobación no se crean eventos (la base también lo impone)
-  const back = (error: string) => redirect(`/${l}/organizador/eventos/nuevo?error=${error}`);
+  const back = (error: string): EventFormState => ({ attempt: prev.attempt + 1, error, values: serializeFormValues(formData) });
 
   const name = text(formData.get("name"), 120);
   const date = text(formData.get("date"), 10);
   const city = text(formData.get("city"), 80);
   const venue = text(formData.get("venue"), 120);
-  const capacity = Math.floor(Number(formData.get("capacity")));
+  const capacity = parseCapacity(formData.get("capacity")); // opcional: vacío = sin límite (KIN-774)
   const names = formData.getAll("catName").map((v) => text(v, 60));
   const fees = formData.getAll("catFee").map((v) => Math.max(0, Math.floor(Number(v)) || 0));
   const categories = names.map((n, i) => ({ name: n, fee: fees[i] ?? 0 })).filter((c) => c.name);
@@ -102,9 +105,10 @@ export async function createEvent(formData: FormData) {
 
   const limit = ratingLimit(formData.get("maxRoperRating"));
   if (limit === "invalid") return back("ratingLimit");
+  if (capacity === "invalid") return back("capacityInvalid");
   const draw = drawFields(formData);
   if (typeof draw === "string") return back(draw === "invalid" ? "drawType" : draw);
-  if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || !(capacity > 0) || categories.length === 0 || categories.length > 20 || disciplines.length === 0) return back("1");
+  if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || categories.length === 0 || categories.length > 20 || disciplines.length === 0) return back("1");
   const close = parseClose(formData, date);
   if (!close.ok) return back(close.error);
 
@@ -125,10 +129,14 @@ export async function createEvent(formData: FormData) {
     description: text(formData.get("description"), 1000), organizer_id: session.id, organizer_name: session.name,
     timezone: close.timezone, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt,
   });
-  if (error) return back("1");
+  if (error) {
+    console.error("createEvent: no se pudo crear el evento", error.code, error.message);
+    return back("1");
+  }
 
   const { error: catError } = await supabase.from("event_categories").insert(categories.map((c) => ({ event_id: id, name: c.name, fee_cents: c.fee * 100 })));
   if (catError) {
+    console.error("createEvent: no se pudieron crear las categorías", catError.code, catError.message);
     await supabase.from("events").delete().eq("id", id); // no dejar un evento sin categorías
     return back("1");
   }
@@ -151,13 +159,13 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 //  - el cupo no puede quedar por debajo de los inscritos;
 //  - una categoría con inscritos no se puede quitar (sí se puede renombrar o cambiar su costo; lo ya inscrito conserva el precio con el que se apartó);
 //  - un evento finalizado ya no se edita.
-export async function updateEvent(formData: FormData) {
+export async function updateEvent(prev: EventFormState, formData: FormData): Promise<EventFormState> {
   const l = lang(formData.get("lang"));
   const eventSlug = text(formData.get("slug"), 80);
   const session = await getSession();
   if (session?.role !== "organizador") redirect(`/${l}/entrar?role=organizador`);
   if (!session.verified) redirect(`/${l}/organizador`);
-  const back = (error: string) => redirect(`/${l}/organizador/eventos/${eventSlug}/editar?error=${error}`);
+  const back = (error: string): EventFormState => ({ attempt: prev.attempt + 1, error, values: serializeFormValues(formData) });
 
   const supabase = await createServerSupabase();
   const { data: ev } = await supabase.from("events").select("id, status").eq("slug", eventSlug).eq("organizer_id", session.id).maybeSingle();
@@ -167,7 +175,7 @@ export async function updateEvent(formData: FormData) {
   const date = text(formData.get("date"), 10);
   const city = text(formData.get("city"), 80);
   const venue = text(formData.get("venue"), 120);
-  const capacity = Math.floor(Number(formData.get("capacity")));
+  const capacity = parseCapacity(formData.get("capacity"));
   const ids = formData.getAll("catId").map(String);
   const names = formData.getAll("catName").map((v) => text(v, 60));
   const fees = formData.getAll("catFee").map((v) => Math.max(0, Math.floor(Number(v)) || 0));
@@ -175,9 +183,10 @@ export async function updateEvent(formData: FormData) {
   const disciplines = formData.getAll("discipline").map(String).filter((d) => ACTIVE_DISCIPLINES.some((a) => a.id === d));
   const limit = ratingLimit(formData.get("maxRoperRating"));
   if (limit === "invalid") return back("ratingLimit");
+  if (capacity === "invalid") return back("capacityInvalid");
   const draw = drawFields(formData);
   if (typeof draw === "string") return back(draw === "invalid" ? "drawType" : draw);
-  if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || !(capacity > 0) || rows.length === 0 || disciplines.length === 0) return back("1");
+  if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || rows.length === 0 || disciplines.length === 0) return back("1");
   const close = parseClose(formData, date);
   if (!close.ok) return back(close.error);
 
@@ -186,7 +195,7 @@ export async function updateEvent(formData: FormData) {
     supabase.from("event_categories").select("id").eq("event_id", ev.id),
     supabase.from("registrations").select("category_id").eq("event_id", ev.id),
   ]);
-  if (capacity < (enrolled ?? 0)) return back("capacity");
+  if (capacity !== null && capacity < (enrolled ?? 0)) return back("capacity");
   const keep = new Set(rows.map((r) => r.id).filter(Boolean));
   const usedIds = new Set((used ?? []).map((r) => r.category_id));
   const toDelete = (current ?? []).map((c) => c.id).filter((id) => !keep.has(id));
@@ -225,7 +234,7 @@ export async function setEventStatus(formData: FormData) {
   if (next === "publicado") {
     // Un borrador subido desde la app llega sin ciudad ni cupo: no se publica hasta completarlo (KIN-659).
     const { count } = await supabase.from("event_categories").select("id", { count: "exact", head: true }).eq("event_id", current.id);
-    const missing = missingForPublish({ city: current.city, venue: current.venue, capacity: current.capacity, categories: count ?? 0 });
+    const missing = missingForPublish({ city: current.city, venue: current.venue, categories: count ?? 0 });
     if (missing.length) redirect(`/${l}/organizador/eventos/${eventSlug}?faltan=${missing.join(",")}`);
   }
   await supabase.from("events").update({ status: next }).eq("id", current.id);

@@ -26,7 +26,7 @@ import type { Lang } from "@/lib/format";
 import { fmtDate, mxn } from "@/lib/format";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
-type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justEdited: boolean; pagoError: boolean; manual: string | null; sacado: string | null; espera: string | null; missing: MissingField[]; borrarError: string | null; shareUrl: string; stateLabel: Record<string, string> };
+type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justCreatedPrivate: boolean; justEdited: boolean; pagoError: boolean; manual: string | null; sacado: string | null; espera: string | null; missing: MissingField[]; borrarError: string | null; shareUrl: string; stateLabel: Record<string, string> };
 
 type Reg = Awaited<ReturnType<typeof listEventRegistrations>>[number];
 
@@ -57,7 +57,7 @@ function PayForm({ lang, slug, id, method, label, tone }: { lang: Lang; slug: st
   );
 }
 
-async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manual, sacado, espera, missing, borrarError, shareUrl, stateLabel }: ManageProps) {
+async function Manage({ s, id, lang, t, justCreated, justCreatedPrivate, justEdited, pagoError, manual, sacado, espera, missing, borrarError, shareUrl, stateLabel }: ManageProps) {
   // Un organizador solo gestiona sus propios eventos (la base además lo impone).
   const e = await getOrganizerEvent(s.id, id);
   if (!e) notFound();
@@ -116,7 +116,7 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
               {sacadoMsg && <p role="status" className={`mt-6 rounded-2xl p-4 text-sm ${["ok", "reenroll", "refund"].includes(sacado!) ? "bg-brand-soft font-medium" : "bg-red-50 text-red-800"}`}>{sacadoMsg}</p>}
               {justEdited && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.org.form.saved}</p>}
               <section aria-labelledby="share" className={`mt-6 rounded-2xl p-5 ${justCreated === "publicado" ? "bg-brand-soft" : "card"}`}>
-                {justCreated === "publicado" && <><h2 className="text-lg font-semibold">{t.org.share.publishedTitle}</h2><p className="mt-1 text-sm">{t.org.share.publishedText}</p></>}
+                {justCreated === "publicado" && <><h2 className="text-lg font-semibold">{t.org.share.publishedTitle}</h2><p className="mt-1 text-sm" data-testid={justCreatedPrivate ? "published-private" : undefined}>{justCreatedPrivate ? t.org.share.publishedPrivateText : t.org.share.publishedText}</p></>}
                 {justCreated === "borrador" && <><h2 className="text-lg font-semibold">{t.org.share.draftTitle}</h2><p className="mt-1 text-sm">{t.org.share.draftText}</p></>}
                 <h3 id="share" className={`font-semibold ${justCreated ? "mt-4 text-sm" : "text-base"}`}>{t.org.share.title}</h3>
                 {!justCreated && <p className="mt-0.5 text-sm text-muted">{t.org.share.hint}</p>}
@@ -310,6 +310,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
   const missing = parseMissing(sp.faltan);
   const borrarError = typeof sp.borrarError === "string" ? sp.borrarError : null;
   const justCreated = sp.nuevo === "publicado" ? "publicado" : sp.nuevo === "borrador" ? "borrador" : null;
+  const justCreatedPrivate = justCreated === "publicado" && sp.privado === "1"; // KIN-769: se acaba de publicar como privado
   // Enlace sin idioma: cada persona que lo abra llega a su idioma (el proxy elige es/en por su navegador).
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
@@ -319,7 +320,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
   const stateLabel: Record<string, string> = { publicado: t.status.published, borrador: t.status.draft, finalizado: t.status.finished };
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador/eventos/${id}`}>
-      {(s) => <Manage s={s} id={id} lang={lang} t={t} justCreated={justCreated} justEdited={justEdited} pagoError={pagoError} manual={manual} sacado={sacado} espera={espera} missing={missing} borrarError={borrarError} shareUrl={shareUrl} stateLabel={stateLabel} />}
+      {(s) => <Manage s={s} id={id} lang={lang} t={t} justCreated={justCreated} justCreatedPrivate={justCreatedPrivate} justEdited={justEdited} pagoError={pagoError} manual={manual} sacado={sacado} espera={espera} missing={missing} borrarError={borrarError} shareUrl={shareUrl} stateLabel={stateLabel} />}
     </Gate>
   );
 }

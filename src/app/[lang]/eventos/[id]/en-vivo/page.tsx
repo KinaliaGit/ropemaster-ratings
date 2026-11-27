@@ -12,11 +12,13 @@ import { getDictionary, resolveLang } from "@/lib/i18n";
 import { adminClient } from "@/lib/supabase/admin";
 
 // Vista pública de un evento en vivo (KIN-558 diseño de Anita; KIN-787 datos reales). La primera foto sale del servidor y después la página la sondea sola.
+// Sin foto real el evento todavía no empieza: se dice así. La demostración de Anita (datos inventados) solo se ve en desarrollo y a propósito, con `?demo=1`.
 // Solo existe para eventos que se pueden ver en público (`getPublicEvent`); `get_live_snapshot` además exige que sean públicos.
-async function Page({ params }: { params: PageProps<"/[lang]/eventos/[id]/en-vivo">["params"] }) {
+async function Page({ params, searchParams }: { params: PageProps<"/[lang]/eventos/[id]/en-vivo">["params"]; searchParams: PageProps<"/[lang]/eventos/[id]/en-vivo">["searchParams"] }) {
   await connection();
   const lang = await resolveLang(params);
   const { id } = await params;
+  const { demo } = await searchParams;
   const e = LIVE_VIEW ? await getPublicEvent(id) : null;
   if (!e?.uuid) notFound();
   const t = getDictionary(lang);
@@ -29,7 +31,7 @@ async function Page({ params }: { params: PageProps<"/[lang]/eventos/[id]/en-viv
         <LiveView
           eventId={e.uuid}
           initial={row ? toLiveSnapshot(row) : null}
-          demo={LIVE_DEMO ? { name: e.name, venue: [e.venue, e.city].filter(Boolean).join(", ") } : null}
+          demo={LIVE_DEMO && demo === "1" ? { name: e.name, venue: [e.venue, e.city].filter(Boolean).join(", ") } : null}
           labels={t.live}
         />
       </div>
@@ -41,5 +43,5 @@ async function Page({ params }: { params: PageProps<"/[lang]/eventos/[id]/en-viv
 }
 
 export default function EventoEnVivo(props: PageProps<"/[lang]/eventos/[id]/en-vivo">) {
-  return <Suspense fallback={<PageSkeleton />}><Page params={props.params} /></Suspense>;
+  return <Suspense fallback={<PageSkeleton />}><Page params={props.params} searchParams={props.searchParams} /></Suspense>;
 }

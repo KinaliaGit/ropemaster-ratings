@@ -188,7 +188,7 @@ export async function updateEvent(prev: EventFormState, formData: FormData): Pro
   };
 
   const supabase = await createServerSupabase();
-  const { data: ev } = await supabase.from("events").select("id, status, timezone").eq("slug", eventSlug).eq("organizer_id", session.id).maybeSingle();
+  const { data: ev } = await supabase.from("events").select("id, status, timezone, event_series(slug)").eq("slug", eventSlug).eq("organizer_id", session.id).maybeSingle();
   if (!ev || ev.status === "finalizado") redirect(`/${l}/organizador`);
 
   const name = text(formData.get("name"), 120);
@@ -245,6 +245,10 @@ export async function updateEvent(prev: EventFormState, formData: FormData): Pro
 
   updateTag("events");
   updateTag("registrations");
+  // Un evento de una serie se edita desde la serie: al guardar se vuelve a ella (KIN-798); uno suelto vuelve a su propia pantalla.
+  const rel = ev.event_series as { slug: string } | { slug: string }[] | null;
+  const series = Array.isArray(rel) ? rel[0] : rel;
+  if (series) redirect(`/${l}/organizador/series/${series.slug}?evento=1`);
   redirect(`/${l}/organizador/eventos/${eventSlug}?editado=1`);
 }
 

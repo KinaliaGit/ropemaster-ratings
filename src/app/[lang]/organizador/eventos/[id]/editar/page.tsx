@@ -27,7 +27,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/eventos/[
         return (
           <>
             <div className="page">
-              <BackLink href={`/${lang}/organizador/eventos/${id}`}>{e.name}</BackLink>
+              {e.series ? <BackLink href={`/${lang}/organizador/series/${e.series.slug}`}>{e.series.name}</BackLink> : <BackLink href={`/${lang}/organizador/eventos/${id}`}>{e.name}</BackLink>}
               <h1 className="mt-2 text-3xl font-semibold">{f.editTitle}</h1>
               <p className="mt-1 text-sm text-muted">{f.editBlurb}</p>
               <EventForm

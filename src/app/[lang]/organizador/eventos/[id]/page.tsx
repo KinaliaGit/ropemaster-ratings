@@ -84,7 +84,7 @@ async function Manage({ s, id, lang, t, justCreated, justCreatedPrivate, justEdi
   return (
           <>
             <div className="page">
-              <BackLink href={`/${lang}/organizador`}>{t.org.ev.back}</BackLink>
+              {e.series ? <BackLink href={`/${lang}/organizador/series/${e.series.slug}`}>{e.series.name}</BackLink> : <BackLink href={`/${lang}/organizador`}>{t.org.ev.back}</BackLink>}
               <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h1 className="text-3xl font-semibold">{e.name}</h1>

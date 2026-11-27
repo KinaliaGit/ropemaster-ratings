@@ -161,7 +161,8 @@ export function buildEventsPage(rows: EventRow[], organizer: string, snapshot: s
       max_roper_rating: row.max_roper_rating === undefined || row.max_roper_rating === null ? null : Number(row.max_roper_rating),
       draw_type: row.draw_type ?? "round_robin",
       lazada_shots_per_package: row.lazada_shots_per_package === undefined || row.lazada_shots_per_package === null ? null : Number(row.lazada_shots_per_package),
-      max_team_rating: row.max_team_rating === undefined || row.max_team_rating === null ? null : Number(row.max_team_rating),
+      // KIN-776: el tope por equipo solo aplica a Lazada Sorteada; en Round Robin viaja `null` aunque la base tenga un valor de antes.
+      max_team_rating: row.draw_type === "lazada_sorteada" && row.max_team_rating !== undefined && row.max_team_rating !== null ? Number(row.max_team_rating) : null,
       rounds: row.rounds === undefined || row.rounds === null ? null : Number(row.rounds),
       series: row.series ? { id: row.series.id, slug: row.series.slug ?? "", name: row.series.name, start_date: row.series.start_date, end_date: row.series.end_date } : null,
       arena: row.arena ? { id: row.arena.id, name: row.arena.name, city: row.arena.city ?? "" } : null,

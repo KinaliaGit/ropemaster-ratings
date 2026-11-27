@@ -6,6 +6,7 @@ import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/event-time";
 import { fieldForError, firstValue, focusSelector, INITIAL_EVENT_FORM_STATE, type FormValues } from "@/lib/event-form-state";
 import { ArenaFields, type ArenaChoice, type ArenaLabels } from "@/components/ArenaFields";
 import { PublishDialog, type VisibilityLabels } from "@/components/PublishDialog";
+import { teamLimitApplies } from "@/lib/rating-limits";
 
 type Labels = {
   visibility: VisibilityLabels;
@@ -136,11 +137,13 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
     ? { arenaId: v("arenaId", "") || null, venue: v("venue", ""), city: v("city", "") }
     : initial ? { arenaId: initial.arenaId ?? null, venue: initial.venue, city: initial.city } : undefined;
   const tz = v("timezone", initial?.timezone ?? DEFAULT_TIMEZONE);
+  // KIN-776: el rating por equipo solo se pide en Lazada Sorteada; en Round Robin no se muestra ni se envía (el servidor también lo ignora).
+  const showTeam = teamLimitApplies(drawType);
 
   const chips: { text: string; on: boolean }[] = [
     capOn && capVal ? { text: `${l.chipCap} ${capVal}`, on: true } : { text: l.chipCapNone, on: false },
     ...(ratingOn && ratingVal ? [{ text: `${l.chipRating} ${ratingVal}`, on: true }] : []),
-    ...(teamOn && teamVal ? [{ text: `${l.chipTeam} ${teamVal}`, on: true }] : []),
+    ...(showTeam && teamOn && teamVal ? [{ text: `${l.chipTeam} ${teamVal}`, on: true }] : []),
     ...(opensAt ? [{ text: l.chipOpens, on: true }] : []),
     ...(closesAt ? [{ text: l.chipCloses, on: true }] : []),
   ];
@@ -243,8 +246,8 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
                 {msg("maxRoperRating")}
               </label>
             )}
-            <div className="mt-3 flex items-center justify-between gap-3 text-sm"><span>{l.teamLimit}</span><Switch on={teamOn} onChange={setTeamOn} label={l.teamLimit} /></div>
-            {teamOn && (
+            {showTeam && <div className="mt-3 flex items-center justify-between gap-3 text-sm"><span>{l.teamLimit}</span><Switch on={teamOn} onChange={setTeamOn} label={l.teamLimit} /></div>}
+            {showTeam && teamOn && (
               <label className="mt-2 block text-sm font-medium">{l.maxTeamRating}
                 <input name="maxTeamRating" type="number" required min={0} max={20} step={0.1} inputMode="decimal" value={teamVal} onChange={(e) => setTeamVal(e.target.value)} {...a("maxTeamRating")} />
                 <span className="mt-1 block text-xs font-normal text-muted">{l.maxTeamRatingHint}</span>

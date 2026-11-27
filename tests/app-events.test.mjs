@@ -167,3 +167,10 @@ test("la arena del evento (KIN-751) sale con id, nombre y ciudad, o null si el e
   const [noCity] = buildEventsPage([{ ...dbRow(), arena: { ...example.events[0].arena, city: null } }], "org", "2026-11-06T09:00:00.000Z").events;
   assert.equal(noCity.arena.city, "");
 });
+
+test("el tope de rating por equipo solo viaja en Lazada Sorteada; en Round Robin va null aunque la base lo tenga (KIN-776)", () => {
+  const [rr] = buildEventsPage([{ ...dbRow(), draw_type: "round_robin", max_team_rating: 12.5 }], example.organizer, example.generated_at).events;
+  assert.equal(rr.max_team_rating, null);
+  const [lazada] = buildEventsPage([{ ...dbRow(), draw_type: "lazada_sorteada", max_team_rating: 12.5 }], example.organizer, example.generated_at).events;
+  assert.equal(lazada.max_team_rating, 12.5);
+});

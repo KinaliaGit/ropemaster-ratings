@@ -13,6 +13,7 @@ import { closesAfterEvent, DEFAULT_TIMEZONE, isValidTimezone, zonedLocalToIso } 
 import { visibilityForCreate } from "@/lib/event-visibility";
 import { serializeFormValues, type EventFormState } from "@/lib/event-form-state";
 import { parseCapacity } from "@/lib/event-capacity";
+import { teamLimitApplies } from "@/lib/rating-limits";
 
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
 const text = (v: FormDataEntryValue | null, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -34,7 +35,8 @@ type DrawFields = { drawType: "round_robin" | "lazada_sorteada"; shots: number |
 function drawFields(formData: FormData): DrawFields | "invalid" | "invalidShots" | "invalidTeamLimit" | "invalidRounds" {
   const drawType = formData.get("drawType") === "lazada_sorteada" ? "lazada_sorteada" : formData.get("drawType") === "round_robin" ? "round_robin" : null;
   if (!drawType) return "invalid";
-  const rawTeam = typeof formData.get("maxTeamRating") === "string" ? String(formData.get("maxTeamRating")).trim().replace(",", ".") : "";
+  // KIN-776: el tope por equipo solo existe en Lazada Sorteada. En otro tipo se ignora aunque llegue un valor (nunca limita ni se guarda).
+  const rawTeam = teamLimitApplies(drawType) && typeof formData.get("maxTeamRating") === "string" ? String(formData.get("maxTeamRating")).trim().replace(",", ".") : "";
   let teamLimit: number | null = null;
   if (rawTeam !== "") {
     const n = Number(rawTeam);

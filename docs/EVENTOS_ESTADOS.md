@@ -52,6 +52,10 @@ sesión no puede entrar al esquema `private`. Solo contesta sí o no para quien 
 | Funciones públicas `event_enrolled`, `event_registrants`, `event_registrants_page`, `event_registration_counts`, `event_waitlist_counts` | Saltan RLS, así que ahora filtran por la misma regla |
 | Inscripciones y lista de espera (`registrations`, `event_waitlist`) | Guarda en la tabla: quien tiene sesión solo puede insertar en un evento que puede ver. Sirve para `register_for_event`, `join_waitlist` y todas sus variantes. Sin sesión (el servidor y la App) no aplica |
 
+**La página del evento y «cargar más inscritos»** (`/eventos/<slug>`, `/api/eventos/<slug>/inscritos`) leen primero con la llave anónima y con caché, que no ve los privados. Si no encuentran el evento, lo
+vuelven a leer **con la sesión de quien visita**, sin caché (`getEventForViewer`, `getEventRegistrantsForViewer`, `getEventWaitlistCountForViewer`): así su organizador y quienes están inscritos o en espera lo abren, y los demás siguen
+viendo «no encontrado». Un borrador sigue sin abrirse por esa dirección. Los resultados de un privado finalizado todavía se leen solo con la llave anónima.
+
 Efecto hoy: **nadie puede inscribirse a un evento privado** salvo su organizador (que inscribe a mano). Primero hace falta la invitación (KIN-753).
 
 ## Quién puede cambiar la visibilidad

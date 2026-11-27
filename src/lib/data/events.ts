@@ -60,6 +60,17 @@ export async function getPublicEvent(slug: string): Promise<EventItem | null> {
   return data ? toItem(data as unknown as Row, enrolled) : null;
 }
 
+// Un evento PRIVADO no existe para la llave anónima con la que se lee lo público (y se guarda en caché). Su organizador y quienes están inscritos o en lista de espera SÍ lo ven (KIN-769),
+// pero con SU sesión: esta lectura corre con quien visita y sin caché. Solo eventos publicados o finalizados (un borrador sigue sin abrirse por esta dirección).
+export async function getEventForViewer(slug: string): Promise<EventItem | null> {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase.from("events").select(COLUMNS).eq("slug", slug).in("status", ["publicado", "finalizado"]).maybeSingle();
+  if (error) throw new Error(`No se pudo leer el evento: ${error.message}`);
+  if (!data) return null;
+  const { data: enrolled } = await supabase.rpc("event_enrolled", { p_slug: slug });
+  return toItem(data as unknown as Row, typeof enrolled === "number" ? enrolled : 0);
+}
+
 // ---- Del organizador (con su sesión; sin caché: ve también sus borradores) ----
 
 export async function listOrganizerEvents(organizerId: string): Promise<EventItem[]> {

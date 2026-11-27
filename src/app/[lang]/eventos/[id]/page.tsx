@@ -2,8 +2,8 @@ import { connection } from "next/server";
 import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getPublicEvent } from "@/lib/data/events";
-import { getEventRegistrants, getEventWaitlistCount } from "@/lib/data/registrations";
+import { getEventForViewer, getPublicEvent } from "@/lib/data/events";
+import { getEventRegistrants, getEventRegistrantsForViewer, getEventWaitlistCount, getEventWaitlistCountForViewer } from "@/lib/data/registrations";
 import { ACTIVE_DISCIPLINES, DEFAULT_DISCIPLINE, type DisciplineId } from "@/lib/disciplines";
 import { toEnrolledItem } from "@/lib/enrolled-view";
 import { fmtDate, mxn, type Lang } from "@/lib/format";
@@ -19,8 +19,8 @@ import { getDictionary, resolveLang } from "@/lib/i18n";
 import type { Dict } from "@/dictionaries/es";
 
 // Lista de inscritos: va aparte para que el cartel, las categorías y el botón de inscribirse salgan sin esperarla (KIN-612 y KIN-611).
-async function Enrolled({ slug, uuid, discipline, lang, t }: { slug: string; uuid: string; discipline: string; lang: Lang; t: Dict }) {
-  const page = await getEventRegistrants(uuid, discipline);
+async function Enrolled({ slug, uuid, discipline, lang, t, viewer }: { slug: string; uuid: string; discipline: string; lang: Lang; t: Dict; viewer: boolean }) {
+  const page = viewer ? await getEventRegistrantsForViewer(uuid, discipline) : await getEventRegistrants(uuid, discipline);
   if (page.rows.length === 0) return <p className="mt-3 text-muted">{t.event.noEnrolled}</p>;
   return (
     <EnrolledList
@@ -36,7 +36,10 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   const lang = await resolveLang(params);
   const { id } = await params;
   const t = getDictionary(lang);
-  const found = await getPublicEvent(id);
+  // Un evento privado no sale en la lectura pública: se prueba con la sesión de quien visita (su organizador, o quien está inscrito o en espera, sí lo ve; KIN-769).
+  let found = await getPublicEvent(id);
+  let viewer = false;
+  if (!found) { found = await getEventForViewer(id); viewer = found !== null; }
   if (!found) notFound();
   const e = { ...found, status: statusByDate(found) }; // KIN-656: con la fecha pasada se muestra como finalizado y sin inscripción
   const regOpen = isRegistrationOpen({ opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
@@ -44,7 +47,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   const open = e.status === "publicado" && !isFull(e.enrolled, e.capacity) && regOpen;
   // KIN-726: con el cupo lleno y las inscripciones abiertas, el botón pasa a "Entrar a lista de espera" (la base decide si de verdad está lleno).
   const canWait = e.status === "publicado" && isFull(e.enrolled, e.capacity) && regOpen;
-  const waiting = canWait && e.uuid ? await getEventWaitlistCount(e.uuid) : 0;
+  const waiting = canWait && e.uuid ? await (viewer ? getEventWaitlistCountForViewer(e.uuid) : getEventWaitlistCount(e.uuid)) : 0;
   const closesLine = e.status === "publicado" && regOpen && e.registrationClosesAt ? `${t.event.closesOn} ${fmtDeadline(e.registrationClosesAt, e.timezone, lang)}` : null;
   const resultDisciplines: DisciplineId[] = ACTIVE_DISCIPLINES.filter((d) => e.disciplines.includes(d.id)).map((d) => d.id);
   if (resultDisciplines.length === 0) resultDisciplines.push(DEFAULT_DISCIPLINE);
@@ -127,7 +130,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
           <h2 className="mt-12 text-xl font-semibold">{t.event.enrolled} <span className="font-normal text-muted">{fmtEnrolled(e.enrolled, e.capacity)}</span></h2>
           <div className="mt-2">
             {e.uuid
-              ? <Suspense fallback={<EnrolledSkeleton />}><Enrolled slug={e.id} uuid={e.uuid} discipline={e.disciplines[0] ?? DEFAULT_DISCIPLINE} lang={lang} t={t} /></Suspense>
+              ? <Suspense fallback={<EnrolledSkeleton />}><Enrolled slug={e.id} uuid={e.uuid} discipline={e.disciplines[0] ?? DEFAULT_DISCIPLINE} lang={lang} t={t} viewer={viewer} /></Suspense>
               : <p className="mt-3 text-muted">{t.event.noEnrolled}</p>}
           </div>
 

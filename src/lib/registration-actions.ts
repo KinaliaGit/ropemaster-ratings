@@ -62,14 +62,36 @@ const sideCodeOf = (message: string) => { const code = codeOf(message); return c
 export async function enroll(formData: FormData) {
   const { l, s, event, category, role, bySide, header, heeler, back } = await enrollmentInput(formData);
   if (bySide) { // Lazada Sorteada: rol y paquetes por lado (KIN-793)
-    const { error } = await (await createServerSupabase()).rpc("register_for_event_by_side", { p_event: event.uuid, p_category: category, p_header_packages: header, p_heeler_packages: heeler });
-    if (error) return back(sideCodeOf(error.message));
+    const db = await createServerSupabase();
+    const { error } = await db.rpc("register_for_event_by_side", { p_event: event.uuid, p_category: category, p_header_packages: header, p_heeler_packages: heeler });
+    if (error) {
+      // KIN-775: si un lado está lleno aunque el evento aún tenga lugar, la persona queda en la lista de espera sin pasos extra (la base vuelve a comprobar todo).
+      if (codeOf(error.message) === "full") {
+        const waiting = await db.rpc("join_waitlist_by_side", { p_event: event.uuid, p_category: category, p_header_packages: header, p_heeler_packages: heeler });
+        if (!waiting.error) {
+          updateTag("registrations");
+          redirect(`/${l}/mi-cuenta?espera=1`);
+        }
+      }
+      return back(sideCodeOf(error.message));
+    }
     updateTag("registrations");
     redirect(`/${l}/mi-cuenta?inscrito=1`);
   }
   const args = s.roleChoice?.role === "both" ? { p_event: event.uuid, p_category: category, p_role: role } : { p_event: event.uuid, p_category: category };
-  const { error } = await (await createServerSupabase()).rpc("register_for_event", args);
-  if (error) return back(codeOf(error.message));
+  const db = await createServerSupabase();
+  const { error } = await db.rpc("register_for_event", args);
+  if (error) {
+    // KIN-775: un lado lleno (cabeceros o pialadores) manda a la lista de espera sin pasos extra; la base solo la acepta si inscribirse hoy fallaría por cupo.
+    if (codeOf(error.message) === "full") {
+      const waiting = await db.rpc("join_waitlist", { p_event: event.uuid, p_category: category, p_role: role, p_packages: 1 });
+      if (!waiting.error) {
+        updateTag("registrations");
+        redirect(`/${l}/mi-cuenta?espera=1`);
+      }
+    }
+    return back(codeOf(error.message));
+  }
   updateTag("registrations");
   redirect(`/${l}/mi-cuenta?inscrito=1`);
 }

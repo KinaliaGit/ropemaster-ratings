@@ -40,7 +40,7 @@ export function SeriesEventsForm({ lang, slug, seriesName, startDate, endDate, e
           <div key={i} className="grid gap-2 rounded-2xl border border-line p-3 sm:grid-cols-[1fr_9.5rem_12rem_auto] sm:items-end">
             <label className="block text-xs font-medium text-muted">{l.name}<input required name="evName" maxLength={120} value={r.name} onChange={(e) => set(i, { name: e.target.value })} className={`${field} mt-1 text-ink`} /></label>
             <label className="block text-xs font-medium text-muted">{l.date}<input required name="evDate" type="date" min={startDate} max={endDate} value={r.date} onChange={(e) => set(i, { date: e.target.value })} className={`${field} mt-1 text-ink`} /></label>
-            <label className="block text-xs font-medium text-muted">{l.opens}<input name="evOpens" type="datetime-local" value={r.opens} onChange={(e) => set(i, { opens: e.target.value })} className={`${field} mt-1 text-ink`} /></label>
+            <label className="block text-xs font-medium text-muted">{l.opens}<input name="evOpens" type="date" value={r.opens} onChange={(e) => set(i, { opens: e.target.value })} className={`${field} mt-1 text-ink`} /></label>
             <button type="button" disabled={rows.length === 1} onClick={() => setRows(rows.filter((_, j) => j !== i))} className="rounded-full px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-30">{l.removeRow}</button>
           </div>
         ))}

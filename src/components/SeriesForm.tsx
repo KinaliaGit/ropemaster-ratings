@@ -1,72 +1,109 @@
 "use client";
-import { useState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { createSeries, updateSeries } from "@/lib/series-actions";
-import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/event-time";
+import { fieldForError, firstValue, focusSelector, INITIAL_EVENT_FORM_STATE, type FormValues } from "@/lib/event-form-state";
 import { ArenaFields, type ArenaChoice, type ArenaLabels } from "@/components/ArenaFields";
+import { BASE } from "@/components/form-controls";
+import { CapacityFields, useCapacity, type CapacityLabels } from "@/components/capacity-fields";
 
 export type SeriesLabels = {
-  name: string; description: string; start: string; end: string; timezone: string; templateTitle: string; templateHint: string; city: string; venue: string; capacity: string; disciplines: string;
-  categories: string; categoryName: string; cost: string; costHint: string; addCategory: string; paymentInfo: string; paymentInfoHint: string; create: string; save: string; errors: Record<string, string>;
+  name: string; description: string; start: string; end: string; templateTitle: string; templateHint: string; paymentInfo: string; paymentInfoHint: string; create: string; save: string;
+  required: string; optional: string; costLabel: string; costFree: string; errorsHeading: string; capGroup: string; error: string; errors: Record<string, string>;
 };
 export type SeriesInitial = {
-  arenaId?: string | null; slug: string; name: string; description: string; startDate: string; endDate: string; timezone: string;
-  city: string; venue: string; capacity: number | null; disciplines: string[]; categories: { name: string; fee: number }[]; paymentInfo: string;
+  arenaId?: string | null; slug: string; name: string; description: string; startDate: string; endDate: string;
+  city: string; venue: string; capacity: number | null; capacityHeaders: number | null; capacityHeelers: number | null; categories: { name: string; fee: number }[]; paymentInfo: string;
 };
+type Invalid = { field: string; message: string };
+const DEFAULT_CATEGORY = "Libre";
 
-const input = "mt-1 w-full rounded-xl border border-line bg-white px-4 py-2.5 outline-none focus:border-ink";
+// Formulario de la serie (KIN-798): sus datos (nombre y fechas) y la configuración que se copia a cada evento nuevo (arena, costo, cupo y pago). Pide lo mismo que el de eventos y se porta igual:
+// lo obligatorio con asterisco, el cupo con interruptor (igual por lado o por lado), y si el servidor rechaza el envío NO se pierde lo escrito: cada problema sale junto a su campo y en un listado arriba.
+// La zona horaria (dato interno) y la modalidad (siempre Lazo) ya no se piden.
+export function SeriesForm({ lang, labels: l, capLabels, initial, arenas, arenaLabels }: { lang: "es" | "en"; labels: SeriesLabels; capLabels: CapacityLabels; initial?: SeriesInitial; arenas: ArenaChoice[]; arenaLabels: ArenaLabels }) {
+  const [state, formAction, pending] = useActionState(initial ? updateSeries : createSeries, INITIAL_EVENT_FORM_STATE);
+  const formRef = useRef<HTMLFormElement>(null);
+  const found = (state.errors ?? (state.error ? [state.error] : [])).map((code) => ({ code, target: fieldForError(code), message: l.errors[code] ?? l.error }));
+  const invalid: Invalid[] = found.flatMap((x) => (x.target ? [{ field: x.target.field, message: x.message }] : []));
 
-// Formulario de la serie: sus datos (nombre, fechas) y la configuración que se copia a cada evento nuevo (sede, cupo, categorías, pago).
-export function SeriesForm({ lang, labels: l, disciplines, error, initial, arenas, arenaLabels }: { lang: "es" | "en"; labels: SeriesLabels; disciplines: { id: string; label: string }[]; error?: string; initial?: SeriesInitial; arenas: ArenaChoice[]; arenaLabels: ArenaLabels }) {
-  const [cats, setCats] = useState<{ name: string; fee: number }[]>(initial?.categories.length ? initial.categories : [{ name: "Libre", fee: 800 }]);
-  const tz = initial?.timezone ?? DEFAULT_TIMEZONE;
+  useEffect(() => {
+    if (!state.attempt) return;
+    const t = fieldForError(state.error);
+    const el = formRef.current?.querySelector<HTMLElement>(t ? focusSelector(t.field) : "#series-form-error");
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    el.scrollIntoView({ block: t ? "center" : "start" });
+  }, [state.attempt, state.error]);
+
   return (
-    <form action={initial ? updateSeries : createSeries} className="mt-6 space-y-5 card p-6">
+    <form ref={formRef} action={formAction} className="mt-6 space-y-5 card p-6">
       <input type="hidden" name="lang" value={lang} />
       {initial && <input type="hidden" name="slug" value={initial.slug} />}
-      {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{l.errors[error] ?? l.errors["1"]}</p>}
-      <label className="block text-sm font-medium">{l.name}<input required name="name" minLength={2} maxLength={120} defaultValue={initial?.name} className={input} /></label>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <label className="block text-sm font-medium">{l.start}<input required name="startDate" type="date" defaultValue={initial?.startDate} className={input} /></label>
-        <label className="block text-sm font-medium">{l.end}<input required name="endDate" type="date" defaultValue={initial?.endDate} className={input} /></label>
-        <label className="block text-sm font-medium">{l.timezone}
-          <select name="timezone" defaultValue={tz} className={input}>
-            {(TIMEZONES.includes(tz as never) ? TIMEZONES : [tz, ...TIMEZONES]).map((z) => <option key={z} value={z}>{z.replace(/_/g, " ")}</option>)}
-          </select>
-        </label>
+      {found.length > 0 && (
+        <div id="series-form-error" tabIndex={-1} role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800" data-testid="form-errors">
+          <p className="font-medium">{l.errorsHeading}</p>
+          <ul className="mt-1 list-disc pl-5">{found.map((x, i) => <li key={i}>{x.message}</li>)}</ul>
+        </div>
+      )}
+      {/* `key` vuelve a montar los campos con lo que devolvió el servidor: así lo escrito no se pierde al fallar el envío. */}
+      <SeriesFields key={state.attempt} l={l} capLabels={capLabels} initial={initial} arenas={arenas} arenaLabels={arenaLabels} values={state.values} invalid={invalid} pending={pending} />
+    </form>
+  );
+}
+
+function SeriesFields({ l, capLabels, initial, arenas, arenaLabels, values, invalid, pending }: {
+  l: SeriesLabels; capLabels: CapacityLabels; initial?: SeriesInitial; arenas: ArenaChoice[]; arenaLabels: ArenaLabels; values: FormValues | undefined; invalid: Invalid[]; pending: boolean;
+}) {
+  const v = (name: string, fallback: string | number | null | undefined) => firstValue(values, name, fallback);
+  const cap = useCapacity(values, initial ? { capacity: initial.capacity, headers: initial.capacityHeaders, heelers: initial.capacityHeelers } : undefined, capLabels);
+  const bad = (field: string) => invalid.some((i) => i.field === field);
+  const a = (field: string) => ({ className: `mt-1 ${BASE} ${bad(field) ? "border-red-600" : "border-line"}`, "aria-invalid": bad(field) || undefined, "aria-describedby": bad(field) ? `err-${field}` : undefined });
+  const msg = (field: string) => bad(field) ? <p id={`err-${field}`} role="alert" className="mt-1 text-xs font-medium text-red-700">{invalid.find((i) => i.field === field)?.message}</p> : null;
+  const req = <span aria-hidden className="ml-0.5 text-red-700">*</span>;
+  const opt = <span className="ml-1.5 text-xs font-normal text-muted">{l.optional}</span>;
+
+  // Costo de inscripción: la categoría única de los eventos de la serie. Se sigue guardando como categoría; su nombre y las extras de una serie vieja viajan ocultas, sin tocarlas.
+  const rows = values?.catName ? values.catName.map((name, i) => ({ name, fee: values.catFee?.[i] ?? "" })) : (initial?.categories ?? []).map((c) => ({ name: c.name, fee: String(c.fee) }));
+  const first = rows[0] ?? { name: DEFAULT_CATEGORY, fee: "" };
+
+  return (
+    <>
+      <p className="text-xs text-muted">{req} {l.required}</p>
+      <label className="block text-sm font-medium">{l.name}{req}<input required name="name" minLength={2} maxLength={120} defaultValue={v("name", initial?.name)} {...a("name")} />{msg("name")}</label>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="block text-sm font-medium">{l.start}{req}<input required name="startDate" type="date" defaultValue={v("startDate", initial?.startDate)} {...a("startDate")} />{msg("startDate")}</label>
+        <label className="block text-sm font-medium">{l.end}{req}<input required name="endDate" type="date" defaultValue={v("endDate", initial?.endDate)} {...a("endDate")} />{msg("endDate")}</label>
       </div>
-      <label className="block text-sm font-medium">{l.description}<textarea name="description" rows={3} maxLength={1000} defaultValue={initial?.description} className={input} /></label>
+      <label className="block text-sm font-medium">{l.description}{opt}<textarea name="description" rows={3} maxLength={1000} defaultValue={v("description", initial?.description)} {...a("description")} /></label>
 
       <div className="rounded-2xl bg-sand p-4">
         <h2 className="text-base font-semibold">{l.templateTitle}</h2>
         <p className="mt-0.5 text-xs text-muted">{l.templateHint}</p>
-        <div className="mt-4"><ArenaFields arenas={arenas} labels={arenaLabels} initial={initial ? { arenaId: initial.arenaId ?? null, venue: initial.venue, city: initial.city } : undefined} /></div>
-        <label className="mt-4 block text-sm font-medium sm:w-1/3">{l.capacity}<input required name="capacity" type="number" min={1} defaultValue={initial?.capacity ?? 100} className={input} /></label>
-        <fieldset className="mt-4">
-          <legend className="text-sm font-medium">{l.disciplines}</legend>
-          {disciplines.map((d) => <label key={d.id} className="mr-4 text-sm"><input type="checkbox" name="discipline" value={d.id} defaultChecked={initial ? initial.disciplines.includes(d.id) : true} className="mr-1 accent-brand" />{d.label}</label>)}
-        </fieldset>
-        <fieldset className="mt-4 min-w-0">
-          <legend className="text-sm font-medium">{l.categories}</legend>
-          <p className="mt-0.5 text-xs text-muted">{l.costHint}</p>
-          <div className="mt-3 grid grid-cols-[minmax(0,1fr)_8rem] sm:grid-cols-[minmax(0,1fr)_9.5rem] gap-2 text-xs font-medium text-muted"><span>{l.categoryName}</span><span>{l.cost}</span></div>
-          {cats.map((c, i) => (
-            <div key={i} className="mt-1.5 grid grid-cols-[minmax(0,1fr)_8rem] sm:grid-cols-[minmax(0,1fr)_9.5rem] gap-2">
-              <input name="catName" required value={c.name} aria-label={l.categoryName} onChange={(e) => setCats(cats.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} className="min-w-0 rounded-xl border border-line bg-white px-4 py-2 outline-none focus:border-ink" />
-              <div className="flex items-center rounded-xl border border-line bg-white px-3 focus-within:border-ink">
-                <span aria-hidden className="text-muted">$</span>
-                <input name="catFee" required type="number" min={0} inputMode="numeric" value={c.fee} aria-label={`${l.cost} (MXN)`} onChange={(e) => setCats(cats.map((x, j) => j === i ? { ...x, fee: Number(e.target.value) } : x))} className="w-full min-w-0 bg-transparent px-1.5 py-2 text-right tabular-nums outline-none" />
-                <span aria-hidden className="text-xs font-medium text-muted">MXN</span>
-              </div>
-            </div>
-          ))}
-          <button type="button" onClick={() => setCats([...cats, { name: "", fee: 0 }])} className="mt-3 min-h-10 text-sm font-medium text-brand-hot">{l.addCategory}</button>
-        </fieldset>
-        <label className="mt-4 block text-sm font-medium">{l.paymentInfo}
-          <textarea name="paymentInfo" rows={3} maxLength={1000} defaultValue={initial?.paymentInfo} className={input} />
+        <div className="mt-4">
+          <ArenaFields arenas={arenas} labels={arenaLabels}
+            initial={values ? { arenaId: v("arenaId", "") || null, venue: v("venue", ""), city: v("city", "") } : initial ? { arenaId: initial.arenaId ?? null, venue: initial.venue, city: initial.city } : undefined}
+            invalid={bad("arena")} describedBy="err-arena" />
+          {msg("arena")}
+        </div>
+        <label className="mt-4 block text-sm font-medium">{l.costLabel}{req}
+          <input type="hidden" name="catName" value={first.name} />
+          <input required name="catFee" type="number" min={0} inputMode="numeric" defaultValue={first.fee} {...a("catFee")} />
+          <span className="mt-1 block text-xs font-normal text-muted">{l.costFree}</span>
+          {msg("catFee")}
+        </label>
+        {rows.slice(1).map((c, i) => (
+          <span key={i} hidden><input type="hidden" name="catName" value={c.name} /><input type="hidden" name="catFee" value={c.fee} /></span>
+        ))}
+        <div className="mt-4">
+          <p className="text-sm font-medium">{l.capGroup}{opt}</p>
+          <div className="mt-2"><CapacityFields state={cap} labels={capLabels} invalid={bad("capacity")} message={msg("capacity")} /></div>
+        </div>
+        <label className="mt-4 block text-sm font-medium">{l.paymentInfo}{opt}
+          <textarea name="paymentInfo" rows={3} maxLength={1000} defaultValue={v("paymentInfo", initial?.paymentInfo)} {...a("paymentInfo")} />
           <span className="mt-1 block text-xs font-normal text-muted">{l.paymentInfoHint}</span>
         </label>
       </div>
-      <button className="w-full rounded-full bg-brand py-3 text-sm font-medium text-white hover:bg-brand-hot">{initial ? l.save : l.create}</button>
-    </form>
+      <button disabled={pending} className="w-full rounded-full bg-brand py-3 text-sm font-medium text-white hover:bg-brand-hot disabled:opacity-60">{initial ? l.save : l.create}</button>
+    </>
   );
 }

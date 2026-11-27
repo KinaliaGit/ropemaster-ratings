@@ -24,9 +24,11 @@ import type { Session } from "@/lib/session";
 import type { Dict } from "@/dictionaries/es";
 import type { Lang } from "@/lib/format";
 import { fmtDate, mxn } from "@/lib/format";
+import { formatRounds } from "@/lib/event-rounds";
+import { fmtEnrolled } from "@/lib/event-capacity";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
-type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justEdited: boolean; pagoError: boolean; manual: string | null; sacado: string | null; espera: string | null; missing: MissingField[]; borrarError: string | null; shareUrl: string; stateLabel: Record<string, string> };
+type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justCreatedPrivate: boolean; justEdited: boolean; pagoError: boolean; manual: string | null; sacado: string | null; espera: string | null; missing: MissingField[]; borrarError: string | null; shareUrl: string; stateLabel: Record<string, string> };
 
 type Reg = Awaited<ReturnType<typeof listEventRegistrations>>[number];
 
@@ -57,7 +59,7 @@ function PayForm({ lang, slug, id, method, label, tone }: { lang: Lang; slug: st
   );
 }
 
-async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manual, sacado, espera, missing, borrarError, shareUrl, stateLabel }: ManageProps) {
+async function Manage({ s, id, lang, t, justCreated, justCreatedPrivate, justEdited, pagoError, manual, sacado, espera, missing, borrarError, shareUrl, stateLabel }: ManageProps) {
   // Un organizador solo gestiona sus propios eventos (la base además lo impone).
   const e = await getOrganizerEvent(s.id, id);
   if (!e) notFound();
@@ -82,14 +84,14 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
   return (
           <>
             <div className="page">
-              <BackLink href={`/${lang}/organizador`}>{t.org.ev.back}</BackLink>
+              {e.series ? <BackLink href={`/${lang}/organizador/series/${e.series.slug}`}>{e.series.name}</BackLink> : <BackLink href={`/${lang}/organizador`}>{t.org.ev.back}</BackLink>}
               <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h1 className="text-3xl font-semibold">{e.name}</h1>
-                  <p className="text-muted">{e.date ? fmtDate(e.date, lang) : "–"} · {e.venue}, {e.city}</p>
+                  <p className="text-muted">{e.date ? [fmtDate(e.date, lang), e.time].filter(Boolean).join(" · ") : "–"} · {e.venue}, {e.city}</p>
                   <p className="mt-1 text-sm text-muted" data-testid="org-draw-type">
                     {t.event.drawType}: {e.drawType === "lazada_sorteada" ? t.event.lazadaSorteada : t.event.roundRobin}
-                    {e.rounds !== null && ` · ${e.rounds} ${t.event.roundsWord}`}
+                    {e.rounds !== null && ` · ${formatRounds(e.rounds, e.shortGo, t.event.roundsWord, t.org.form.shortGoWord)}`}
                     {e.drawType === "lazada_sorteada" && e.lazadaShotsPerPackage !== null && ` · ${e.lazadaShotsPerPackage} ${t.event.shotsPerPackage.toLowerCase()}`}
                   </p>
                   {e.series && <p className="mt-1 text-sm"><Link href={`/${lang}/organizador/series/${e.series.slug}`} className="font-medium text-brand-hot hover:underline">{t.org.ev.partOfSeries}: {e.series.name} →</Link></p>}
@@ -116,7 +118,7 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
               {sacadoMsg && <p role="status" className={`mt-6 rounded-2xl p-4 text-sm ${["ok", "reenroll", "refund"].includes(sacado!) ? "bg-brand-soft font-medium" : "bg-red-50 text-red-800"}`}>{sacadoMsg}</p>}
               {justEdited && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{t.org.form.saved}</p>}
               <section aria-labelledby="share" className={`mt-6 rounded-2xl p-5 ${justCreated === "publicado" ? "bg-brand-soft" : "card"}`}>
-                {justCreated === "publicado" && <><h2 className="text-lg font-semibold">{t.org.share.publishedTitle}</h2><p className="mt-1 text-sm">{t.org.share.publishedText}</p></>}
+                {justCreated === "publicado" && <><h2 className="text-lg font-semibold">{t.org.share.publishedTitle}</h2><p className="mt-1 text-sm" data-testid={justCreatedPrivate ? "published-private" : undefined}>{justCreatedPrivate ? t.org.share.publishedPrivateText : t.org.share.publishedText}</p></>}
                 {justCreated === "borrador" && <><h2 className="text-lg font-semibold">{t.org.share.draftTitle}</h2><p className="mt-1 text-sm">{t.org.share.draftText}</p></>}
                 <h3 id="share" className={`font-semibold ${justCreated ? "mt-4 text-sm" : "text-base"}`}>{t.org.share.title}</h3>
                 {!justCreated && <p className="mt-0.5 text-sm text-muted">{t.org.share.hint}</p>}
@@ -124,7 +126,7 @@ async function Manage({ s, id, lang, t, justCreated, justEdited, pagoError, manu
                 {e.status === "borrador" && <p className="mt-2 text-xs text-muted">{t.org.share.draftLink}</p>}
               </section>
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{e.enrolled}/{e.capacity}</p><p className="label mt-1">{t.org.enrolled}</p></div>
+                <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{fmtEnrolled(e.enrolled, e.capacity)}</p><p className="label mt-1">{t.org.enrolled}</p></div>
                 <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{rows.filter((x) => x.paymentStatus === "pagado").length}</p><p className="label mt-1">{t.org.ev.paid}</p></div>
                 <div className="card p-4"><p className="text-2xl font-semibold">{stateLabel[e.status]}</p><p className="label mt-1">{t.org.ev.state}</p></div>
               </div>
@@ -310,6 +312,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
   const missing = parseMissing(sp.faltan);
   const borrarError = typeof sp.borrarError === "string" ? sp.borrarError : null;
   const justCreated = sp.nuevo === "publicado" ? "publicado" : sp.nuevo === "borrador" ? "borrador" : null;
+  const justCreatedPrivate = justCreated === "publicado" && sp.privado === "1"; // KIN-769: se acaba de publicar como privado
   // Enlace sin idioma: cada persona que lo abra llega a su idioma (el proxy elige es/en por su navegador).
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
@@ -319,7 +322,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/event
   const stateLabel: Record<string, string> = { publicado: t.status.published, borrador: t.status.draft, finalizado: t.status.finished };
   return (
     <Gate lang={lang} role="organizador" next={`/${lang}/organizador/eventos/${id}`}>
-      {(s) => <Manage s={s} id={id} lang={lang} t={t} justCreated={justCreated} justEdited={justEdited} pagoError={pagoError} manual={manual} sacado={sacado} espera={espera} missing={missing} borrarError={borrarError} shareUrl={shareUrl} stateLabel={stateLabel} />}
+      {(s) => <Manage s={s} id={id} lang={lang} t={t} justCreated={justCreated} justCreatedPrivate={justCreatedPrivate} justEdited={justEdited} pagoError={pagoError} manual={manual} sacado={sacado} espera={espera} missing={missing} borrarError={borrarError} shareUrl={shareUrl} stateLabel={stateLabel} />}
     </Gate>
   );
 }

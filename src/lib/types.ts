@@ -6,14 +6,16 @@ import type { RoleChoice } from "@/lib/roles";
 export type Category = { id: string; name: string; fee: number };
 
 export type EventItem = {
-  id: string; name: string; date: string; city: string; venue: string;
-  disciplines: string[]; categories: Category[]; capacity: number; enrolled: number;
+  id: string; name: string; date: string; time: string | null; city: string; venue: string; // `time`: hora del evento "HH:MM", opcional (KIN-778)
+  disciplines: string[]; categories: Category[]; capacity: number; enrolled: number; // `capacity` 0 = sin límite
+  capacityHeaders: number | null; capacityHeelers: number | null; // tope de cada lado (KIN-775); null = sin tope propio
   organizer: string; uuid?: string; organizerId?: string; tone: number; cover?: string; photos: { id: string; url: string }[];
   timezone: string; registrationOpensAt: string | null; registrationClosesAt: string | null; registrationClosed: boolean; series: { slug: string; name: string } | null; updatedAt: string; description: string; status: "publicado" | "borrador" | "finalizado";
   maxRoperRating: number | null; // rating máximo para inscribirse (null = sin límite)
   drawType: "round_robin" | "lazada_sorteada"; // tipo de sorteo (KIN-649); no cambia con inscritos o resultados
   lazadaShotsPerPackage: number | null; // solo Lazada Sorteada: tiros que trae un paquete
-  rounds: number | null; // rondas del evento, 1 a 10 (null = aún sin definir)
+  rounds: number | null; // rondas del evento, 1 a 10 (null = aún sin definir): el TOTAL, incluye el short-go
+  shortGo: boolean; // si la última ronda es el short-go (KIN-777); los eventos existentes valen true, como en la app
   maxTeamRating: number | null; // rating máximo de la suma de un equipo (null = sin tope)
   arenaId: string | null; // arena del catálogo del organizador (KIN-751); null en eventos sin lugar
   resultsClosed: boolean; // los resultados ya están cerrados (candado de la app); un evento finalizado con los resultados abiertos está en corrección

@@ -1,4 +1,5 @@
 import { cacheLife, cacheTag } from "next/cache";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createPublicClient } from "@/lib/supabase/public";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { INITIAL_RATING } from "@/lib/rating";
@@ -30,17 +31,26 @@ export async function getEventEnrolled(slug: string): Promise<number> {
 
 // Inscritos de un evento, UNA PÁGINA a la vez y ya con nombre, foto y rating de su modalidad (sin repetir a quien está en dos categorías).
 // `cursor` es el que entregó la página anterior (ya validado por quien llama). Se invalida con los inscritos y con los perfiles.
-export async function getEventRegistrants(eventUuid: string, discipline: string, cursor: string | null = null): Promise<EnrolledPage> {
-  "use cache";
-  cacheTag("registrations", "ropers");
-  cacheLife("minutes");
+async function readRegistrantsPage(db: SupabaseClient, eventUuid: string, discipline: string, cursor: string | null): Promise<EnrolledPage> {
   const decoded = decodeEnrolledCursor(cursor);
   const at = decoded.ok ? decoded.cursor : null;
-  const { data, error } = await createPublicClient().rpc("event_registrants_page", {
+  const { data, error } = await db.rpc("event_registrants_page", {
     p_event: eventUuid, p_discipline: discipline, p_initial: INITIAL_RATING, p_after_at: at?.at ?? null, p_after_id: at?.id ?? null, p_limit: ENROLLED_PAGE_SIZE + 1,
   });
   if (error) throw new Error(`No se pudo leer la lista de inscritos: ${error.message}`);
   return toEnrolledPage((data ?? []) as Parameters<typeof toEnrolledPage>[0], ENROLLED_PAGE_SIZE);
+}
+
+export async function getEventRegistrants(eventUuid: string, discipline: string, cursor: string | null = null): Promise<EnrolledPage> {
+  "use cache";
+  cacheTag("registrations", "ropers");
+  cacheLife("minutes");
+  return readRegistrantsPage(createPublicClient(), eventUuid, discipline, cursor);
+}
+
+// Lo mismo para un evento privado que quien visita sí puede ver (organizador, inscrito o en espera): con SU sesión y sin caché (KIN-769).
+export async function getEventRegistrantsForViewer(eventUuid: string, discipline: string, cursor: string | null = null): Promise<EnrolledPage> {
+  return readRegistrantsPage(await createServerSupabase(), eventUuid, discipline, cursor);
 }
 
 // ---- Con sesión (las reglas de la base deciden qué ve cada quien) ----
@@ -92,6 +102,13 @@ export async function getEventWaitlistCount(eventUuid: string): Promise<number> 
   cacheTag("registrations");
   cacheLife("minutes");
   const { data, error } = await createPublicClient().rpc("event_waitlist_counts");
+  if (error) throw new Error(`No se pudo leer la lista de espera: ${error.message}`);
+  return Number((data ?? []).find((r: { event_id: string; n: number }) => r.event_id === eventUuid)?.n ?? 0);
+}
+
+// Lo mismo para un evento privado que quien visita sí puede ver: con su sesión y sin caché (KIN-769).
+export async function getEventWaitlistCountForViewer(eventUuid: string): Promise<number> {
+  const { data, error } = await (await createServerSupabase()).rpc("event_waitlist_counts");
   if (error) throw new Error(`No se pudo leer la lista de espera: ${error.message}`);
   return Number((data ?? []).find((r: { event_id: string; n: number }) => r.event_id === eventUuid)?.n ?? 0);
 }

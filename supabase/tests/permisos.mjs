@@ -4,6 +4,7 @@ import { readFileSync, readdirSync } from "node:fs";
 // ver o escribir qué (anónimo, organizador sin verificar, organizador verificado y participante).
 // Se corre con `npm run test:db`. Sale con código 1 si alguna comprobación falla (para usarlo en CI).
 import { fileURLToPath } from "node:url";
+import { statusByDate } from "../../src/lib/event-time.ts"; // la regla de finalización de la web: la de SQL (public.event_phase) debe dar lo mismo (KIN-769)
 const dir = fileURLToPath(new URL("../migrations", import.meta.url));
 const db = new PGlite();
 
@@ -1753,6 +1754,126 @@ console.log("- Resultados de un evento (0030)");
   await db.exec("delete from notifications");
 }
 
+// ---- Ciclo de vida y visibilidad de los eventos (KIN-769): estado (borrador, publicado, finalizado) x visibilidad (público, privado) contra cada tipo de persona
+{
+  console.log("\n— Estado y visibilidad de los eventos");
+  const num = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const verify = (label, ok) => { if (!ok) failures++; console.log(`${ok ? "✔" : "✘ FALLO"}  ${label}`); };
+  const asRows = async (role, uid, sql) => {
+    await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${uid ?? ""}', false); set role ${role}`);
+    try { return (await db.query(sql)).rows; } finally { await db.exec("reset role"); }
+  };
+  const E = (n) => `e7690000-0000-0000-0000-00000000000${n}`, K = (n) => `ca769000-0000-0000-0000-00000000000${n}`;
+  // 1 público  2 privado  3 privado con lista de espera  4 borrador privado  5 borrador público  6 finalizado privado  7 finalizado público
+  const spec = [[1, "pub", "publicado", "publico"], [2, "priv", "publicado", "privado"], [3, "wait", "publicado", "privado"], [4, "draftprv", "borrador", "privado"],
+    [5, "draftpub", "borrador", "publico"], [6, "finpriv", "finalizado", "privado"], [7, "finpub", "finalizado", "publico"]];
+  const PA = `(select id from ropers where user_id = '${C}')`, PB = `(select id from ropers where user_id = '${P2}')`;
+  await db.exec(`reset role; select set_config('request.jwt.claim.sub', '', false)`); // sembrar como administrador de la base: sin la sesión que dejó la prueba anterior
+  await db.exec(`update profiles set license_valid_until = 'infinity' where user_id in ('${A}', '${B}')`);
+  for (const [n, slug, status, visibility] of spec) {
+    await db.exec(`
+      insert into events (id, name, organizer_id, status, slug, event_date, capacity, visibility) values ('${E(n)}', 'V769 ${slug}', '${A}', '${status}', 'v769-${slug}', '2099-11-0${n}', 10, '${visibility}');
+      insert into event_categories (id, event_id, name, fee_cents) values ('${K(n)}', '${E(n)}', 'Libre', 10000);
+      insert into event_photos (event_id, storage_path) values ('${E(n)}', 'v769/${n}.jpg');
+      insert into event_results (id, event_id, participant_name, discipline, time_ms, penalty_ms, disqualified) values (gen_random_uuid(), '${E(n)}', 'Resultado ${slug}', 'lazo', 9000, 0, false);
+    `);
+  }
+  // C está inscrito en el público y en el privado (2); P2 espera en el privado con lista de espera (3)
+  await db.exec(`
+    insert into registrations (event_id, roper_id, category_id, amount_cents) values ('${E(1)}', ${PA}, '${K(1)}', 10000), ('${E(2)}', ${PA}, '${K(2)}', 10000);
+    insert into event_waitlist (event_id, roper_id, category_id) values ('${E(3)}', ${PB}, '${K(3)}');
+  `);
+
+  // El modelo: todo lo que ya existía quedó público, y solo se acepta público o privado
+  verify("los eventos que ya existían quedaron 'público' (nada cambia para ellos)", await num(`select count(*) n from events where visibility <> 'publico' and slug not like 'v769-%'`) === 0);
+  let rejected = false;
+  try { await db.exec(`update events set visibility = 'secreto' where id = '${E(1)}'`); } catch { rejected = true; }
+  verify("una visibilidad que no existe se rechaza", rejected);
+  // La visibilidad se elige SOLO al crear el evento (ventana de «Publicar», migración 0058): después no se cambia desde la web
+  await as("authenticated", A, `update events set visibility = 'privado' where id = '${E(1)}'`, "el organizador NO cambia la visibilidad de un evento ya creado", "deny");
+  await as("authenticated", A, `update events set visibility = 'publico' where organizer_id = '${A}' and visibility = 'privado'`, "ni lo vuelve a público (sin permiso de UPDATE)", "deny");
+  await as("authenticated", A, `insert into events (id, name, organizer_id, status, slug, visibility) values ('e7690000-0000-0000-0000-0000000000f1', 'W769 creado privado', '${A}', 'publicado', 'w769-privado', 'privado')`, "el organizador SÍ crea su evento ya privado", "some");
+  verify("queda privado y publicado", await num(`select count(*) n from events where slug = 'w769-privado' and visibility = 'privado' and status = 'publicado'`) === 1);
+  verify("y sin sesión no existe (ni en el listado ni por su dirección)", (await asRows("anon", null, `select slug from events where slug = 'w769-privado'`)).length === 0);
+  verify("otro organizador tampoco lo ve", (await asRows("authenticated", B, `select slug from events where slug = 'w769-privado'`)).length === 0);
+  verify("su organizador sí lo ve", (await asRows("authenticated", A, `select slug from events where slug = 'w769-privado'`)).length === 1);
+  await as("authenticated", A, `insert into events (id, name, organizer_id, status, slug, visibility) values (gen_random_uuid(), 'W769 raro', '${A}', 'publicado', 'w769-raro', 'secreto')`, "una visibilidad que no existe se rechaza al crear", "deny");
+  await as("authenticated", B, `insert into events (id, name, organizer_id, status, slug, visibility) values (gen_random_uuid(), 'W769 a nombre de otro', '${A}', 'publicado', 'w769-ajeno', 'privado')`, "NO crea un evento privado a nombre de otro organizador", "deny");
+  await db.exec(`delete from events where slug like 'w769-%'`);
+
+  // Quién ve cada evento (lectura por política): sin sesión, otro participante, otro organizador, el inscrito, el que espera y el dueño
+  const seesEvents = async (role, uid) => (await asRows(role, uid, `select slug from events where slug like 'v769-%' order by slug`)).map((r) => r.slug.replace("v769-", ""));
+  const same = (got, want) => JSON.stringify(got) === JSON.stringify([...want].sort());
+  const anon = await seesEvents("anon", null);
+  verify("sin sesión: solo lo público publicado o finalizado (ni borradores ni privados)", same(anon, ["pub", "finpub"]));
+  verify("otro organizador ve lo mismo que el público", same(await seesEvents("authenticated", B), ["pub", "finpub"]));
+  verify("un participante sin relación con los privados ve lo mismo que el público", same(await seesEvents("authenticated", D), ["pub", "finpub"]));
+  verify("el inscrito ve su evento privado (y lo público), no los demás privados", same(await seesEvents("authenticated", C), ["pub", "priv", "finpub"]));
+  verify("quien está en la lista de espera de un privado también lo ve", same(await seesEvents("authenticated", P2), ["pub", "wait", "finpub"]));
+  verify("el organizador ve todo lo suyo (borradores y privados incluidos)", same(await seesEvents("authenticated", A), spec.map((s) => s[1])));
+
+  // Lo que cuelga del evento sigue al evento: categorías, fotos y resultados
+  const countFor = (table, role, uid) => asRows(role, uid, `select count(*)::int n from ${table} where event_id::text like 'e7690000%'`).then((r) => r[0].n);
+  for (const table of ["event_categories", "event_photos", "event_results"]) {
+    const [a, b, c, p2, o] = [await countFor(table, "anon", null), await countFor(table, "authenticated", B), await countFor(table, "authenticated", C), await countFor(table, "authenticated", P2), await countFor(table, "authenticated", A)];
+    verify(`${table}: público 2, otro organizador 2, inscrito 3, en espera 3, dueño 7`, a === 2 && b === 2 && c === 3 && p2 === 3 && o === 7);
+  }
+
+  // Funciones públicas de inscritos y conteos (saltan RLS): también respetan la visibilidad
+  const callN = async (role, uid, sql) => (await asRows(role, uid, sql)).length;
+  verify("event_enrolled: del privado, sin sesión 0 y el inscrito 1", (await asRows("anon", null, `select public.event_enrolled('v769-priv') n`))[0].n === 0 && (await asRows("authenticated", C, `select public.event_enrolled('v769-priv') n`))[0].n === 1);
+  verify("event_enrolled: del público lo ve cualquiera", (await asRows("anon", null, `select public.event_enrolled('v769-pub') n`))[0].n === 1);
+  verify("event_registrants: del privado, sin sesión y otro organizador 0; el inscrito 1", await callN("anon", null, `select * from public.event_registrants('${E(2)}')`) === 0 && await callN("authenticated", B, `select * from public.event_registrants('${E(2)}')`) === 0 && await callN("authenticated", C, `select * from public.event_registrants('${E(2)}')`) === 1);
+  verify("event_registrants_page: igual (sin sesión 0, el inscrito 1)", await callN("anon", null, `select * from public.event_registrants_page('${E(2)}', 'lazo', 1)`) === 0 && await callN("authenticated", C, `select * from public.event_registrants_page('${E(2)}', 'lazo', 1)`) === 1);
+  const countsOf = async (role, uid) => (await asRows(role, uid, `select event_id from public.event_registration_counts() where event_id::text like 'e7690000%' order by 1`)).map((r) => r.event_id);
+  verify("event_registration_counts: el público no cuenta el privado; el inscrito sí", same((await countsOf("anon", null)).map((id) => id.slice(-1)), ["1"]) && same((await countsOf("authenticated", C)).map((id) => id.slice(-1)), ["1", "2"]));
+  const waitOf = async (role, uid) => (await asRows(role, uid, `select event_id from public.event_waitlist_counts() where event_id::text like 'e7690000%'`)).length;
+  verify("event_waitlist_counts: la espera de un privado solo la ve quien puede ver el evento", await waitOf("anon", null) === 0 && await waitOf("authenticated", C) === 0 && await waitOf("authenticated", P2) === 1 && await waitOf("authenticated", A) === 1);
+
+  // Escritura: nadie entra a un evento que no puede ver (guarda en inscripciones y lista de espera, sirve para toda función que inserte)
+  const insertAs = async (uid, sql) => {
+    await db.exec(`select set_config('request.jwt.claim.sub', '${uid ?? ""}', false)`);
+    try { await db.exec(sql); return "ok"; } catch (e) { return String(e.message); } finally { await db.exec("select set_config('request.jwt.claim.sub', '', false)"); }
+  };
+  const reg = (n) => `insert into registrations (event_id, roper_id, category_id, amount_cents) values ('${E(n)}', ${PB}, '${K(n)}', 10000)`;
+  verify("con sesión, inscribirse a un privado que no ve se rechaza (not_found)", (await insertAs(P2, reg(2))).includes("not_found"));
+  verify("con sesión, entrar a la espera de un privado que no ve se rechaza", (await insertAs(B, `insert into event_waitlist (event_id, roper_id, category_id) values ('${E(2)}', ${PB}, '${K(2)}')`)).includes("not_found"));
+  verify("no quedó ninguna inscripción nueva", await num(`select count(*) n from registrations where event_id = '${E(2)}'`) === 1);
+  await as("authenticated", P2, `select public.register_for_event('${E(2)}', '${K(2)}')`, "la función de inscribirse tampoco deja entrar a un privado", "deny");
+  verify("sin sesión (el servidor) la guarda no estorba", (await insertAs(null, reg(2))) === "ok");
+  await db.exec(`delete from registrations where event_id = '${E(2)}' and roper_id = ${PB}`);
+  verify("a un evento público se inscribe como siempre", (await insertAs(P2, reg(1))) === "ok");
+  await db.exec(`delete from registrations where event_id = '${E(1)}' and roper_id = ${PB}`);
+  await as("authenticated", A, `select public.organizer_enroll('${E(2)}', 'p2@x.com', '${K(2)}', null, 1)`, "el organizador SÍ inscribe a mano en su evento privado", "some");
+  verify("y esa persona ya ve el privado", same(await seesEvents("authenticated", P2), ["pub", "priv", "wait", "finpub"]));
+
+  // Finalización automática: la regla de SQL (event_phase) da lo mismo que la de la web (statusByDate), también en las orillas de zona horaria
+  const zones = ["America/Mexico_City", "Pacific/Kiritimati", "Pacific/Pago_Pago", "UTC"];
+  let mismatches = 0, cases = 0;
+  for (const tz of zones) {
+    const today = (await db.query(`select (now() at time zone $1)::date::text d`, [tz])).rows[0].d;
+    for (const offset of [-400, -3, -1, 0, 1, 5]) {
+      const date = (await db.query(`select ($1::date + $2::int)::text d`, [today, offset])).rows[0].d;
+      for (const status of ["borrador", "publicado", "finalizado"]) {
+        cases++;
+        const sql = (await db.query(`select public.event_phase($1, $2::date, $3) p`, [status, date, tz])).rows[0].p;
+        if (sql !== statusByDate({ status, date, timezone: tz })) { mismatches++; console.log(`   distinto: ${status} ${date} ${tz}: sql=${sql} web=${statusByDate({ status, date, timezone: tz })}`); }
+      }
+    }
+  }
+  verify(`event_phase (SQL) y statusByDate (web) coinciden en ${cases} casos (estados, fechas y zonas horarias)`, mismatches === 0);
+  verify("un publicado con fecha de ayer es finalizado; de hoy o de mañana, publicado", (await db.query(`select public.event_phase('publicado', (now() at time zone 'UTC')::date - 1, 'UTC') a, public.event_phase('publicado', (now() at time zone 'UTC')::date, 'UTC') b, public.event_phase('publicado', (now() at time zone 'UTC')::date + 1, 'UTC') c`)).rows[0].a === "finalizado");
+  verify("un borrador nunca se finaliza solo, y sin fecha no hay nada que vencer", (await db.query(`select public.event_phase('borrador', date '2000-01-01', 'UTC') a, public.event_phase('publicado', null, 'UTC') b`)).rows[0].a === "borrador" && (await db.query(`select public.event_phase('publicado', null, 'UTC') b`)).rows[0].b === "publicado");
+  // El resumen del organizador (KIN-658) repite la regla en SQL: debe contar como finalizados los mismos eventos
+  await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${A}', false); set role authenticated`);
+  const overview = (await db.query("select public.organizer_overview() as o")).rows[0].o;
+  await db.exec("reset role");
+  verify("el resumen del organizador cuenta como finalizados los mismos eventos que event_phase", overview.states.finished === await num(`select count(*) n from events where organizer_id = '${A}' and public.event_phase(status, event_date, timezone) = 'finalizado'`));
+
+  // Limpieza de lo que sembró este bloque
+  await db.exec(`delete from events where slug like 'v769-%'`);
+}
+
 // ---- Eventos que la app sube a la web (KIN-648, entrega 2)
 {
   console.log("\n— Eventos subidos desde la app");
@@ -2540,6 +2661,147 @@ console.log("— Enlace privado por evento (0059, KIN-783)");
   await as("authenticated", O1, `insert into event_connections (event_id, organizer_id, invite_hash, invite_expires_at) values ('${EVN2}', '${O1}', 'directo', now() + interval '1 day')`, "NO crea enlaces directo (se saltaría el límite)", "deny");
   await as("authenticated", O1, `update event_connections set revoked_at = null, scopes = array['event:read','results:write'] where organizer_id = '${O1}'`, "NO reactiva ni amplía un enlace directo", "deny");
   await as("anon", null, "select id from event_connections", "anónimo NO ve enlaces", "deny");
+}
+
+console.log("- Hora del evento (0060, KIN-778)");
+{
+  const EVT = "e0000000-0000-0000-0000-000000000002";
+  const NEW = "e0000000-0000-0000-0000-0000000000f7";
+  await as("authenticated", A, `update events set event_time = '10:30' where id = '${EVT}'`, "el organizador dueño SÍ pone la hora del evento", "some");
+  await as("authenticated", B, `update events set event_time = '11:00' where id = '${EVT}'`, "otro organizador NO cambia la hora", "deny");
+  await as("authenticated", C, `update events set event_time = '12:00' where id = '${EVT}'`, "un participante NO cambia la hora", "deny");
+  await as("anon", null, `update events set event_time = '13:00' where id = '${EVT}'`, "anónimo NO cambia la hora", "deny");
+  await as("anon", null, "select event_time from events where status = 'publicado'", "anónimo SÍ lee la hora de los eventos públicos", "some");
+  await as("authenticated", A, `insert into events (id, name, organizer_id, status, slug, event_time) values ('${NEW}', 'Con hora', '${A}', 'borrador', 'con-hora', '09:00')`, "el organizador SÍ crea un evento con hora", "some");
+  const t = await db.query(`select to_char(event_time, 'HH24:MI') as t from events where id = '${EVT}'`);
+  await check("la hora se guarda como HH:MM, sin zona horaria", t.rows[0].t === "10:30");
+  const sinHora = await db.query(`select count(*)::int as n from events where event_time is not null and id not in ('${EVT}', '${NEW}')`);
+  await check("los eventos que ya existían quedan sin hora (null)", sinHora.rows[0].n === 0);
+}
+
+console.log("- Short-go del evento (0061, KIN-777)");
+{
+  const SG = "e0000000-0000-0000-0000-0000000000c7";
+  await db.exec(`insert into events (id, name, organizer_id, status, slug) values ('${SG}', 'Con short-go', '${A}', 'borrador', 'con-short-go')`);
+  const def = await db.query(`select short_go from events where id = '${SG}'`);
+  await check("un evento trae short-go activo por defecto (como la app): los que ya existían no cambian", def.rows[0].short_go === true);
+  await as("authenticated", A, `update events set rounds = 3, short_go = false where id = '${SG}'`, "el organizador dueño SÍ cambia las rondas y el short-go", "some");
+  await as("authenticated", B, `update events set short_go = true where id = '${SG}'`, "otro organizador NO cambia el short-go", "deny");
+  await as("authenticated", C, `update events set short_go = true where id = '${SG}'`, "un participante NO cambia el short-go", "deny");
+  await as("anon", null, `update events set short_go = true where id = '${SG}'`, "anónimo NO cambia el short-go", "deny");
+  await as("authenticated", A, `update events set short_go = null where id = '${SG}'`, "el short-go no acepta null", "deny");
+  await as("anon", null, "select short_go from events where status = 'publicado'", "anónimo SÍ lee el short-go de los eventos públicos", "some");
+  await db.exec(`insert into event_results (id, event_id, participant_name, discipline, time_ms, penalty_ms, disqualified) values (gen_random_uuid(), '${SG}', 'Sin lazador', 'lazo', 9000, 0, false)`);
+  await as("authenticated", A, `update events set short_go = true where id = '${SG}'`, "con resultados NO se cambia el short-go", "deny");
+  await as("authenticated", A, `update events set rounds = 4 where id = '${SG}'`, "con resultados siguen sin cambiarse las rondas", "deny");
+  await as("authenticated", A, `update events set short_go = false where id = '${SG}'`, "guardar el mismo short-go (sin cambio) no estorba", "some");
+}
+
+console.log("- Cupo por lado (0062, KIN-775)");
+{
+  const E1 = "e0000000-0000-0000-0000-00000075a001", E2 = "e0000000-0000-0000-0000-00000075a002", E3 = "e0000000-0000-0000-0000-00000075a003", E4 = "e0000000-0000-0000-0000-00000075a004";
+  const K1 = "ca000000-0000-0000-0000-00000075a001", K2 = "ca000000-0000-0000-0000-00000075a002", K3 = "ca000000-0000-0000-0000-00000075a003", K4 = "ca000000-0000-0000-0000-00000075a004";
+  const U = ["11111111-dddd-0000-0000-0000000000d1", "11111111-dddd-0000-0000-0000000000d2", "11111111-dddd-0000-0000-0000000000d3", "11111111-dddd-0000-0000-0000000000d4", "11111111-dddd-0000-0000-0000000000d5"];
+  const R = ["33333333-dddd-0000-0000-0000000000d1", "33333333-dddd-0000-0000-0000000000d2", "33333333-dddd-0000-0000-0000000000d3", "33333333-dddd-0000-0000-0000000000d4", "33333333-dddd-0000-0000-0000000000d5"];
+  // H1 y H2 cabeceros, L1 y L2 pialadores, BO "los dos"
+  await db.exec(`
+    insert into auth.users (id, email, email_confirmed_at) values ('${U[0]}','h1@x.com',now()), ('${U[1]}','h2@x.com',now()), ('${U[2]}','l1@x.com',now()), ('${U[3]}','l2@x.com',now()), ('${U[4]}','bo@x.com',now());
+    insert into ropers (id, full_name, user_id, primary_role, favorite_role) values ('${R[0]}','H Uno','${U[0]}','header',null), ('${R[1]}','H Dos','${U[1]}','header',null), ('${R[2]}','L Uno','${U[2]}','heeler',null), ('${R[3]}','L Dos','${U[3]}','heeler',null), ('${R[4]}','Ambos','${U[4]}','both','header');
+    insert into events (id, name, organizer_id, status, slug, capacity, capacity_headers, capacity_heelers) values
+      ('${E1}','Cupo por lado','${A}','publicado','cupo-por-lado',3,1,2),
+      ('${E2}','Sin cabeceros','${A}','publicado','sin-cabeceros',10,0,null),
+      ('${E3}','Solo total','${A}','publicado','solo-total',2,null,null),
+      ('${E4}','Pialadores en cero','${A}','publicado','pialadores-cero',5,null,0);
+    insert into event_categories (id, event_id, name, fee_cents) values ('${K1}','${E1}','Libre',1000), ('${K2}','${E2}','Libre',1000), ('${K3}','${E3}','Libre',1000), ('${K4}','${E4}','Libre',1000);
+  `);
+  const n = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const reg = (e, k) => `select public.register_for_event('${e}','${k}')`;
+  const wait = (e, k) => `select public.join_waitlist('${e}','${k}',null,1)`;
+
+  // Evento 1: 3 en total, 1 cabecero y 2 pialadores
+  await as("authenticated", U[0], reg(E1, K1), "el cabecero toma el único lugar de cabeceros", "some");
+  await as("authenticated", U[1], reg(E1, K1), "otro cabecero: el lado está lleno aunque el total todavía tiene lugar", "deny");
+  await as("authenticated", U[1], wait(E1, K1), "con el lado lleno SÍ entra a la lista de espera (el evento no está lleno)", "some");
+  await as("authenticated", U[2], reg(E1, K1), "un pialador SÍ se inscribe: su lado tiene lugar", "some");
+  await as("authenticated", U[3], wait(E1, K1), "con lugar en su lado NO entra a la lista de espera", "deny");
+  await as("authenticated", U[3], reg(E1, K1), "el segundo pialador SÍ se inscribe", "some");
+  check("el total se respeta: 3 inscritos en un evento de 3", await n(`select count(*) n from registrations where event_id = '${E1}'`) === 3);
+  await as("authenticated", A, `select public.promote_waitlist_entry((select id from event_waitlist where event_id = '${E1}' and roper_id = '${R[1]}'))`, "con el lado de cabeceros y el total llenos NO se pasa a nadie", "deny");
+  await as("authenticated", U[0], `select public.cancel_registration((select id from registrations where event_id = '${E1}' and roper_id = '${R[0]}'))`, "el cabecero cancela y libera su lugar", "some");
+  await as("authenticated", A, `select public.promote_waitlist_entry((select id from event_waitlist where event_id = '${E1}' and roper_id = '${R[1]}'))`, "con lugar en su lado el organizador SÍ pasa al cabecero que esperaba", "some");
+  check("quedó inscrito como cabecero", await n(`select count(*) n from registrations where event_id = '${E1}' and roper_id = '${R[1]}' and role = 'header'`) === 1);
+
+  // Evento 2: cupo 0 de cabeceros (nadie de ese lado), pialadores sin tope
+  await as("authenticated", U[0], reg(E2, K2), "cupo 0 de cabeceros: no se inscribe un cabecero", "deny");
+  await as("authenticated", U[0], wait(E2, K2), "cupo 0 de cabeceros: entra a la lista de espera", "some");
+  await as("authenticated", U[2], reg(E2, K2), "los pialadores no tienen tope propio: SÍ se inscriben", "some");
+
+  // Evento 3: solo total (como todos los eventos que ya existían): nada cambia
+  await as("authenticated", U[0], reg(E3, K3), "solo total: el primero se inscribe", "some");
+  await as("authenticated", U[2], reg(E3, K3), "solo total: el segundo se inscribe", "some");
+  await as("authenticated", U[1], reg(E3, K3), "solo total: lleno, se rechaza como siempre", "deny");
+  await as("authenticated", U[1], wait(E3, K3), "solo total: lleno, entra a la lista de espera como siempre", "some");
+
+  // Evento 4: pialadores en cero. Quien es "los dos" se inscribe de cabecero y no puede pasarse a pialador.
+  await as("authenticated", U[4], `select public.register_for_event('${E4}','${K4}','header')`, "una persona de los dos roles se inscribe como cabecero", "some");
+  await as("authenticated", U[4], `select public.change_registration_role((select id from registrations where event_id = '${E4}' and roper_id = '${R[4]}'), 'heeler')`, "no puede pasarse a pialador: ese lado tiene cupo 0", "deny");
+  check("su inscripción sigue como cabecero", await n(`select count(*) n from registrations where event_id = '${E4}' and roper_id = '${R[4]}' and role = 'header'`) === 1);
+  await as("authenticated", A, `update events set capacity_heelers = 3 where id = '${E4}'`, "el organizador abre cupo de pialadores", "some");
+  await as("authenticated", U[4], `select public.change_registration_role((select id from registrations where event_id = '${E4}' and roper_id = '${R[4]}'), 'heeler')`, "con lugar en ese lado SÍ puede pasarse a pialador", "some");
+
+  // Reglas de las columnas
+  await as("authenticated", A, `update events set capacity_headers = 99 where id = '${E3}'`, "un cupo por lado mayor al total se rechaza", "deny");
+  await as("authenticated", A, `update events set capacity_headers = -1 where id = '${E3}'`, "un cupo por lado negativo se rechaza", "deny");
+  await as("authenticated", B, `update events set capacity_headers = 1 where id = '${E3}'`, "otro organizador NO cambia el cupo por lado", "deny");
+  await as("authenticated", C, `update events set capacity_headers = 1 where id = '${E3}'`, "un participante NO cambia el cupo por lado", "deny");
+  await as("anon", null, `update events set capacity_headers = 1 where id = '${E3}'`, "anónimo NO cambia el cupo por lado", "deny");
+  await as("anon", null, "select capacity_headers, capacity_heelers from events where status = 'publicado'", "anónimo SÍ lee el cupo por lado de los eventos públicos", "some");
+  await as("authenticated", C, `select private.has_room('${E1}', array['header'])`, "has_room no se llama desde el navegador", "deny");
+  check("los eventos que ya existían quedan sin cupo por lado (null)", await n(`select count(*) n from events where (capacity_headers is not null or capacity_heelers is not null) and id not in ('${E1}','${E2}','${E3}','${E4}')`) === 0);
+}
+
+console.log("- Evento completo tal como lo manda el formulario (KIN-774 a 778)");
+{
+  const FE = "e0000000-0000-0000-0000-00000075f001";
+  // Las mismas columnas que arma createEvent: cupo igual por lado (15 + 15 = 30), 3 rondas con short-go, hora 12:00, cierre al final del día del evento y la zona interna.
+  await as("authenticated", A, `insert into events (id, slug, name, event_date, city, venue, arena_id, capacity, capacity_headers, capacity_heelers, disciplines, status, max_roper_rating,
+      draw_type, lazada_shots_per_package, max_team_rating, rounds, short_go, description, organizer_id, organizer_name, event_time, timezone, registration_opens_at, registration_closes_at)
+    values ('${FE}', 'prueba-nuevo-formulario', 'Prueba nuevo formulario', '2026-12-28', 'Meoqui', 'Las fuentes', null, 30, 15, 15, '{lazo}', 'borrador', null,
+      'round_robin', null, null, 3, true, '', '${A}', 'Org Verificado', '12:00', 'America/Mexico_City', null, '2026-12-29T05:59:59.999Z')`,
+    "el organizador verificado SÍ crea el evento completo del formulario (cupo por lado, short-go, hora y cierre)", "some");
+  const r = await db.query(`select capacity, capacity_headers, capacity_heelers, short_go, rounds, to_char(event_time, 'HH24:MI') as t from events where id = '${FE}'`);
+  await check("quedó guardado como se mandó (30 = 15 + 15, short-go, 3 rondas y las 12:00)", r.rows[0].capacity === 30 && r.rows[0].capacity_headers === 15 && r.rows[0].capacity_heelers === 15 && r.rows[0].short_go === true && r.rows[0].rounds === 3 && r.rows[0].t === "12:00");
+  // Sin cupo ni hora: también se manda capacity_headers/capacity_heelers/event_time en null y debe aceptarse.
+  await as("authenticated", A, `insert into events (id, slug, name, event_date, city, venue, capacity, capacity_headers, capacity_heelers, disciplines, status, draw_type, rounds, short_go, organizer_id, organizer_name, event_time, timezone)
+    values ('e0000000-0000-0000-0000-00000075f002', 'sin-cupo-ni-hora', 'Sin cupo ni hora', '2026-12-28', 'Meoqui', 'Las fuentes', null, null, null, '{lazo}', 'borrador', 'round_robin', null, true, '${A}', 'Org Verificado', null, 'America/Mexico_City')`,
+    "un evento sin cupo ni hora (todo null) SÍ se crea", "some");
+}
+
+console.log("- Cupo por lado en la plantilla de las series (0064, KIN-798)");
+{
+  const S = "5e5e5e5e-0000-0000-0000-0000000064a1", S2 = "5e5e5e5e-0000-0000-0000-0000000064a2";
+  const n = async (sql) => Number((await db.query(sql)).rows[0].n);
+  const evs = (tag) => JSON.stringify([{ id: `5e5e5e5e-0000-0000-0000-0000000064b${tag}`, slug: `serie-cupo-${tag}`, name: `Fecha ${tag}`, date: "2099-03-01", opens_at: null }]);
+  await as("authenticated", A, `insert into event_series (id, slug, organizer_id, organizer_name, name, start_date, end_date) values ('${S}', 'serie-cupo-lados', '${A}', 'Org', 'Serie cupo', '2099-01-01', '2099-12-31'), ('${S2}', 'serie-sin-cupo', '${A}', 'Org', 'Serie sin cupo', '2099-01-01', '2099-12-31')`, "el organizador crea dos series de prueba", "some");
+  await as("authenticated", A, `insert into event_series_template (series_id, city, venue, capacity, capacity_headers, capacity_heelers, disciplines, categories) values ('${S}', 'Meoqui', 'Las fuentes', 30, 15, 15, array['lazo'], '[{"name":"Libre","fee_cents":120000}]'::jsonb)`, "la plantilla guarda el cupo total y por lado", "some");
+  await as("authenticated", A, `select public.add_series_events('${S}', '${evs("1")}'::jsonb, false)`, "agregar un evento a la serie con cupo por lado", "some");
+  const r = await db.query(`select capacity, capacity_headers, capacity_heelers from events where id = '5e5e5e5e-0000-0000-0000-0000000064b1'`);
+  await check("el evento nuevo copia el cupo total y el de cada lado (30 = 15 + 15)", r.rows[0].capacity === 30 && r.rows[0].capacity_headers === 15 && r.rows[0].capacity_heelers === 15);
+
+  // Sin cupo: ya no es una plantilla incompleta
+  await as("authenticated", A, `insert into event_series_template (series_id, city, venue, capacity, disciplines, categories) values ('${S2}', 'Meoqui', 'Las fuentes', null, array['lazo'], '[{"name":"Libre","fee_cents":0}]'::jsonb)`, "una plantilla sin cupo SÍ se guarda", "some");
+  await as("authenticated", A, `select public.add_series_events('${S2}', '${evs("2")}'::jsonb, false)`, "con la plantilla sin cupo SÍ se agregan eventos (antes era plantilla incompleta)", "some");
+  const r2 = await db.query(`select capacity, capacity_headers, capacity_heelers from events where id = '5e5e5e5e-0000-0000-0000-0000000064b2'`);
+  await check("el evento nace sin límite (todo null)", r2.rows[0].capacity === null && r2.rows[0].capacity_headers === null && r2.rows[0].capacity_heelers === null);
+
+  // Reglas y permisos de las columnas
+  await as("authenticated", A, `update event_series_template set capacity_headers = 99 where series_id = '${S}'`, "un cupo por lado mayor al total se rechaza", "deny");
+  await as("authenticated", A, `update event_series_template set capacity_heelers = -1 where series_id = '${S}'`, "un cupo por lado negativo se rechaza", "deny");
+  await as("authenticated", A, `update event_series_template set capacity_headers = 10, capacity_heelers = 20 where series_id = '${S}'`, "el dueño SÍ cambia el cupo por lado", "some");
+  await as("authenticated", B, `update event_series_template set capacity_headers = 1 where series_id = '${S}'`, "otro organizador NO cambia el cupo por lado de una plantilla ajena", "deny");
+  await as("authenticated", C, `update event_series_template set capacity_headers = 1 where series_id = '${S}'`, "un participante NO cambia el cupo por lado", "deny");
+  await as("anon", null, `select capacity_headers from event_series_template where series_id = '${S}'`, "anónimo NO ve la plantilla", "deny");
+  check("las plantillas que ya existían quedan sin cupo por lado (null)", await n(`select count(*) n from event_series_template where (capacity_headers is not null or capacity_heelers is not null) and series_id not in ('${S}')`) === 0);
 }
 
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");

@@ -9,7 +9,13 @@ import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { slugify } from "@/lib/slug";
 import { resolveArena } from "@/lib/arena-resolve";
 import { emailParticipant } from "@/lib/notify";
-import { closesAfterEvent, DEFAULT_TIMEZONE, isValidTimezone, zonedLocalToIso } from "@/lib/event-time";
+import { closeNoLaterThanStart, closesAfterEvent, DEFAULT_TIMEZONE, endOfDayIso, parseEventTime, startOfDayIso } from "@/lib/event-time";
+import { visibilityForCreate } from "@/lib/event-visibility";
+import { serializeFormValues, type EventFormState } from "@/lib/event-form-state";
+import { parseCapacityFields } from "@/lib/event-capacity";
+import { dbErrorCode, missingBasics } from "@/lib/event-required";
+import { teamLimitApplies } from "@/lib/rating-limits";
+import { parseRounds } from "@/lib/event-rounds";
 
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
 const text = (v: FormDataEntryValue | null, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -27,73 +33,82 @@ function ratingLimit(v: FormDataEntryValue | null): number | null | "invalid" {
 // Tipo de sorteo (KIN-648): hoy solo round_robin y lazada_sorteada. En Lazada Sorteada, los tiros por paquete (entero de 1 a 999) son obligatorios
 // y el tope por equipo (0 a 20, un decimal) es opcional. Devuelve "invalid" si algo no cumple. La base lo vuelve a comprobar y no deja cambiar
 // el tipo ni los tiros con inscritos o resultados.
-type DrawFields = { drawType: "round_robin" | "lazada_sorteada"; shots: number | null; teamLimit: number | null; rounds: number | null };
-function drawFields(formData: FormData): DrawFields | "invalid" | "invalidShots" | "invalidTeamLimit" | "invalidRounds" {
+type DrawFields = { drawType: "round_robin" | "lazada_sorteada"; shots: number | null; teamLimit: number | null; rounds: number | null; shortGo: boolean };
+function drawFields(formData: FormData): DrawFields | "invalid" | "invalidShots" | "invalidTeamLimit" | "invalidRounds" | "shortGoMin" {
   const drawType = formData.get("drawType") === "lazada_sorteada" ? "lazada_sorteada" : formData.get("drawType") === "round_robin" ? "round_robin" : null;
   if (!drawType) return "invalid";
-  const rawTeam = typeof formData.get("maxTeamRating") === "string" ? String(formData.get("maxTeamRating")).trim().replace(",", ".") : "";
+  // KIN-776: el tope por equipo solo existe en Lazada Sorteada. En otro tipo se ignora aunque llegue un valor (nunca limita ni se guarda).
+  const rawTeam = teamLimitApplies(drawType) && typeof formData.get("maxTeamRating") === "string" ? String(formData.get("maxTeamRating")).trim().replace(",", ".") : "";
   let teamLimit: number | null = null;
   if (rawTeam !== "") {
     const n = Number(rawTeam);
     if (!Number.isFinite(n) || n < 0 || n > 20) return "invalidTeamLimit";
     teamLimit = Math.round(n * 10) / 10;
   }
-  // Rondas (KIN-655): opcional; entero de 1 a 10. Vacío = sin definir (la app usa su valor por defecto).
-  const rawRounds = typeof formData.get("rounds") === "string" ? String(formData.get("rounds")).trim() : "";
-  let rounds: number | null = null;
-  if (rawRounds !== "") {
-    const n = Number(rawRounds);
-    if (!Number.isInteger(n) || n < 1 || n > 10) return "invalidRounds";
-    rounds = n;
-  }
-  if (drawType === "round_robin") return { drawType, shots: null, teamLimit, rounds };
+  // Rondas (KIN-655, KIN-777): opcional; entero de 1 a 10, el TOTAL e incluye el short-go (3 con short-go = 2 normales + 1 short-go). Vacío = sin definir (la app usa su valor por defecto).
+  const parsed = parseRounds(formData.get("rounds"), formData.get("shortGo"));
+  if (!parsed.ok) return parsed.error;
+  const { rounds, shortGo } = parsed;
+  if (drawType === "round_robin") return { drawType, shots: null, teamLimit, rounds, shortGo };
   const shots = Number(typeof formData.get("shotsPerPackage") === "string" ? String(formData.get("shotsPerPackage")).trim() : "");
   if (!Number.isInteger(shots) || shots < 1 || shots > 999) return "invalidShots";
-  return { drawType, shots, teamLimit, rounds };
+  return { drawType, shots, teamLimit, rounds, shortGo };
 }
 
-type Close = { ok: true; timezone: string; closesAt: string | null; opensAt: string | null } | { ok: false; error: "closeInvalid" | "closeAfterEvent" | "opensInvalid" | "opensAfterEvent" | "opensAfterClose" };
+type CloseError = "closeInvalid" | "closeAfterEvent" | "opensInvalid" | "opensAfterEvent" | "opensAfterClose";
+type Close = { ok: true; closesAt: string | null; opensAt: string | null } | { ok: false; error: CloseError };
 
-// Cierre de inscripciones (KIN-626): fecha y hora LOCALES del evento + su zona horaria. Vacío = sin fecha límite (abiertas hasta que el organizador cierre).
-// No puede caer después del día del evento (el evento solo tiene fecha, así que se permite el mismo día). La base lo vuelve a comprobar.
-function parseClose(formData: FormData, eventDate: string): Close {
-  const tzRaw = text(formData.get("timezone"), 60) || DEFAULT_TIMEZONE;
-  if (!isValidTimezone(tzRaw)) return { ok: false, error: "closeInvalid" };
-  const local = text(formData.get("closesAt"), 16);
+// Apertura y cierre de inscripciones (KIN-625, KIN-626, KIN-778). La persona elige DÍAS, sin hora ni zona: la apertura es el inicio de ese día y el cierre el final de ese día,
+// en la zona horaria del evento (un dato interno que el formulario ya no pide: en un evento nuevo la de siempre y en uno guardado la suya).
+//   closeMode: none (sin fecha: abiertas hasta que el organizador cierre) | event (al terminar el día del evento) | day (al terminar el día `closesOn`).
+//   opensMode: publish (desde que se publica el evento) | day (desde el inicio del día `opensOn`).
+// El cierre y la apertura no pueden caer después del día del evento, y la apertura va antes del cierre. La base lo vuelve a comprobar.
+// Si el evento tiene HORA, las inscripciones nunca siguen abiertas después de que empiece (un evento a las 12:00 no puede cerrar inscripciones a las 23:59): con hora, el cierre es a esa hora,
+// salvo que se haya pedido uno más temprano.
+function parseClose(formData: FormData, eventDate: string, tz: string, eventTime: string | null): Close {
+  const closeMode = text(formData.get("closeMode"), 10);
   let closesAt: string | null = null;
-  if (local) {
-    closesAt = zonedLocalToIso(local, tzRaw);
+  if (closeMode === "event") closesAt = endOfDayIso(eventDate, tz);
+  else if (closeMode === "day") {
+    closesAt = endOfDayIso(text(formData.get("closesOn"), 10), tz);
     if (!closesAt) return { ok: false, error: "closeInvalid" };
-    if (closesAfterEvent(closesAt, eventDate, tzRaw)) return { ok: false, error: "closeAfterEvent" };
-  }
-  // Apertura de inscripciones (KIN-625): vacía = desde que el evento se publica; con fecha y hora, antes de ella nadie se inscribe solo.
-  // Debe ser anterior al cierre y no puede caer después del día del evento.
-  const opensLocal = text(formData.get("opensAt"), 16);
+    if (closesAfterEvent(closesAt, eventDate, tz)) return { ok: false, error: "closeAfterEvent" };
+  } else if (closeMode && closeMode !== "none") return { ok: false, error: "closeInvalid" };
+  closesAt = closeNoLaterThanStart(closesAt, eventDate, eventTime, tz);
+
+  const opensMode = text(formData.get("opensMode"), 10);
   let opensAt: string | null = null;
-  if (opensLocal) {
-    opensAt = zonedLocalToIso(opensLocal, tzRaw);
+  if (opensMode === "day") {
+    opensAt = startOfDayIso(text(formData.get("opensOn"), 10), tz);
     if (!opensAt) return { ok: false, error: "opensInvalid" };
-    if (closesAfterEvent(opensAt, eventDate, tzRaw)) return { ok: false, error: "opensAfterEvent" };
+    if (closesAfterEvent(opensAt, eventDate, tz)) return { ok: false, error: "opensAfterEvent" };
     if (closesAt && Date.parse(opensAt) >= Date.parse(closesAt)) return { ok: false, error: "opensAfterClose" };
-  }
-  return { ok: true, timezone: tzRaw, closesAt, opensAt };
+  } else if (opensMode && opensMode !== "publish") return { ok: false, error: "opensInvalid" };
+  return { ok: true, closesAt, opensAt };
 }
 
 // Crea un evento individual (KIN-750): uno que no pertenece a ninguna serie (`series_id` null). Pide lo mismo que cada evento de una serie
 // (sorteo, rondas, cupo, categorías, apertura y cierre). Nace como borrador o publicado y lleva al organizador a su pantalla, donde está el enlace
 // para compartir. Las reglas de la base garantizan que solo un organizador activo cree eventos a su nombre.
-export async function createEvent(formData: FormData) {
+// KIN-774: si algo no cumple NO se redirige (se perdía lo escrito): se devuelve el error con los valores que mandó la persona y el formulario los vuelve a mostrar.
+export async function createEvent(prev: EventFormState, formData: FormData): Promise<EventFormState> {
   const l = lang(formData.get("lang"));
   const session = await getSession();
   if (session?.role !== "organizador") redirect(`/${l}/entrar?role=organizador`);
   if (!session.verified) redirect(`/${l}/organizador`); // sin licencia vigente ni aprobación no se crean eventos (la base también lo impone)
-  const back = (error: string) => redirect(`/${l}/organizador/eventos/nuevo?error=${error}`);
+  const back = (error: string | string[]): EventFormState => {
+    const errors = Array.isArray(error) ? error : [error];
+    return { attempt: prev.attempt + 1, error: errors[0], errors, values: serializeFormValues(formData) };
+  };
 
   const name = text(formData.get("name"), 120);
   const date = text(formData.get("date"), 10);
   const city = text(formData.get("city"), 80);
   const venue = text(formData.get("venue"), 120);
-  const capacity = Math.floor(Number(formData.get("capacity")));
+  // Cupo (KIN-774, KIN-775): opcional; sin límite = vacío. Igual por lado o por lado guardan el tope de cada lado y, como total, la suma (así nunca se contradicen).
+  const cap = parseCapacityFields((n) => formData.get(n));
+  if (!cap.ok) return back(cap.error);
+  const { capacity, headers: capacityHeaders, heelers: capacityHeelers } = cap;
   const names = formData.getAll("catName").map((v) => text(v, 60));
   const fees = formData.getAll("catFee").map((v) => Math.max(0, Math.floor(Number(v)) || 0));
   const categories = names.map((n, i) => ({ name: n, fee: fees[i] ?? 0 })).filter((c) => c.name);
@@ -103,11 +118,18 @@ export async function createEvent(formData: FormData) {
   if (limit === "invalid") return back("ratingLimit");
   const draw = drawFields(formData);
   if (typeof draw === "string") return back(draw === "invalid" ? "drawType" : draw);
-  if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || !(capacity > 0) || categories.length === 0 || categories.length > 20 || disciplines.length === 0) return back("1");
-  const close = parseClose(formData, date);
+  // Lo obligatorio se revisa junto y se devuelve TODO lo que falta o está mal, cada cosa con su mensaje.
+  const missing = missingBasics({ name, date, city, venue, categories: categories.length, disciplines: disciplines.length });
+  if (missing.length) return back(missing);
+  const eventTime = parseEventTime(formData.get("eventTime"));
+  if (eventTime === "invalid") return back("eventTimeInvalid");
+  const close = parseClose(formData, date, DEFAULT_TIMEZONE, eventTime);
   if (!close.ok) return back(close.error);
 
   const status = formData.get("intent") === "publish" ? "publicado" : "borrador";
+  // KIN-769: quién puede ver el evento se elige al PUBLICAR (ventana de «Publicar»); un borrador no lo decide. Se manda a la base solo si es privado: lo público es el valor por
+  // defecto, así que crear eventos públicos funciona igual aunque la migración 0058 (permiso de escribir la visibilidad) aún no esté aplicada.
+  const visibility = visibilityForCreate(formData.get("intent"), formData.get("visibility"));
   const supabase = await createServerSupabase();
   const id = crypto.randomUUID();
   const eventSlug = slugify(name);
@@ -115,22 +137,30 @@ export async function createEvent(formData: FormData) {
   if (!arena) return back("arena");
 
   const { error } = await supabase.from("events").insert({
-    id, slug: eventSlug, name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, disciplines, status, max_roper_rating: limit,
-    draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds,
+    ...(visibility === "privado" ? { visibility } : {}),
+    id, slug: eventSlug, name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, capacity_headers: capacityHeaders, capacity_heelers: capacityHeelers, disciplines, status, max_roper_rating: limit,
+    draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds, short_go: draw.shortGo,
     description: text(formData.get("description"), 1000), organizer_id: session.id, organizer_name: session.name,
-    timezone: close.timezone, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt,
+    event_time: eventTime, timezone: DEFAULT_TIMEZONE, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt,
   });
-  if (error) return back("1");
+  if (error) {
+    console.error("createEvent: no se pudo crear el evento", error.code, error.message);
+    return back(dbErrorCode(error));
+  }
 
   const { error: catError } = await supabase.from("event_categories").insert(categories.map((c) => ({ event_id: id, name: c.name, fee_cents: c.fee * 100 })));
   if (catError) {
+    console.error("createEvent: no se pudieron crear las categorías", catError.code, catError.message);
     await supabase.from("events").delete().eq("id", id); // no dejar un evento sin categorías
-    return back("1");
+    return back(dbErrorCode(catError));
   }
 
   await savePaymentInfo(supabase, id, formData.get("paymentInfo"));
   updateTag("events");
-  redirect(`/${l}/organizador/eventos/${eventSlug}?nuevo=${status}`);
+  const dest = `/${l}/organizador/eventos/${eventSlug}?nuevo=${status}${visibility === "privado" ? "&privado=1" : ""}`;
+  // Con fotos elegidas en el formulario no se redirige todavía: el navegador las sube al evento recién creado (addEventPhoto) y entonces navega.
+  if (formData.get("photos") === "1") return { attempt: prev.attempt, created: { slug: eventSlug, url: dest } };
+  redirect(dest);
 }
 
 // Instrucciones de pago (transferencia/efectivo): solo las ven el organizador y quienes se inscriben. Vacío = se borran.
@@ -146,23 +176,28 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 //  - el cupo no puede quedar por debajo de los inscritos;
 //  - una categoría con inscritos no se puede quitar (sí se puede renombrar o cambiar su costo; lo ya inscrito conserva el precio con el que se apartó);
 //  - un evento finalizado ya no se edita.
-export async function updateEvent(formData: FormData) {
+export async function updateEvent(prev: EventFormState, formData: FormData): Promise<EventFormState> {
   const l = lang(formData.get("lang"));
   const eventSlug = text(formData.get("slug"), 80);
   const session = await getSession();
   if (session?.role !== "organizador") redirect(`/${l}/entrar?role=organizador`);
   if (!session.verified) redirect(`/${l}/organizador`);
-  const back = (error: string) => redirect(`/${l}/organizador/eventos/${eventSlug}/editar?error=${error}`);
+  const back = (error: string | string[]): EventFormState => {
+    const errors = Array.isArray(error) ? error : [error];
+    return { attempt: prev.attempt + 1, error: errors[0], errors, values: serializeFormValues(formData) };
+  };
 
   const supabase = await createServerSupabase();
-  const { data: ev } = await supabase.from("events").select("id, status").eq("slug", eventSlug).eq("organizer_id", session.id).maybeSingle();
+  const { data: ev } = await supabase.from("events").select("id, status, timezone, event_series(slug)").eq("slug", eventSlug).eq("organizer_id", session.id).maybeSingle();
   if (!ev || ev.status === "finalizado") redirect(`/${l}/organizador`);
 
   const name = text(formData.get("name"), 120);
   const date = text(formData.get("date"), 10);
   const city = text(formData.get("city"), 80);
   const venue = text(formData.get("venue"), 120);
-  const capacity = Math.floor(Number(formData.get("capacity")));
+  const cap = parseCapacityFields((n) => formData.get(n));
+  if (!cap.ok) return back(cap.error);
+  const { capacity, headers: capacityHeaders, heelers: capacityHeelers } = cap;
   const ids = formData.getAll("catId").map(String);
   const names = formData.getAll("catName").map((v) => text(v, 60));
   const fees = formData.getAll("catFee").map((v) => Math.max(0, Math.floor(Number(v)) || 0));
@@ -172,16 +207,24 @@ export async function updateEvent(formData: FormData) {
   if (limit === "invalid") return back("ratingLimit");
   const draw = drawFields(formData);
   if (typeof draw === "string") return back(draw === "invalid" ? "drawType" : draw);
-  if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !city || !venue || !(capacity > 0) || rows.length === 0 || disciplines.length === 0) return back("1");
-  const close = parseClose(formData, date);
+  const missing = missingBasics({ name, date, city, venue, categories: rows.length, disciplines: disciplines.length });
+  if (missing.length) return back(missing);
+  const eventTime = parseEventTime(formData.get("eventTime"));
+  if (eventTime === "invalid") return back("eventTimeInvalid");
+  const close = parseClose(formData, date, ev.timezone, eventTime); // la zona del evento ya no se edita: se conserva la que tiene
   if (!close.ok) return back(close.error);
 
-  const [{ count: enrolled }, { data: current }, { data: used }] = await Promise.all([
+  const [{ count: enrolled }, { count: enrolledHeaders }, { count: enrolledHeelers }, { data: current }, { data: used }] = await Promise.all([
     supabase.from("registrations").select("id", { count: "exact", head: true }).eq("event_id", ev.id),
+    supabase.from("registrations").select("id", { count: "exact", head: true }).eq("event_id", ev.id).eq("role", "header"),
+    supabase.from("registrations").select("id", { count: "exact", head: true }).eq("event_id", ev.id).eq("role", "heeler"),
     supabase.from("event_categories").select("id").eq("event_id", ev.id),
     supabase.from("registrations").select("category_id").eq("event_id", ev.id),
   ]);
-  if (capacity < (enrolled ?? 0)) return back("capacity");
+  // El cupo no puede quedar por debajo de lo ya inscrito: ni el total ni el de un lado (las personas en lista de espera no cuentan).
+  if (capacity !== null && capacity < (enrolled ?? 0)) return back("capacity");
+  if (capacityHeaders !== null && capacityHeaders < (enrolledHeaders ?? 0)) return back(cap.mode === "eq" ? "capacityEach" : "capacityHeaders");
+  if (capacityHeelers !== null && capacityHeelers < (enrolledHeelers ?? 0)) return back(cap.mode === "eq" ? "capacityEach" : "capacityHeelers");
   const keep = new Set(rows.map((r) => r.id).filter(Boolean));
   const usedIds = new Set((used ?? []).map((r) => r.category_id));
   const toDelete = (current ?? []).map((c) => c.id).filter((id) => !keep.has(id));
@@ -190,9 +233,9 @@ export async function updateEvent(formData: FormData) {
 
   const arena = await resolveArena(supabase, session.id, formData);
   if (!arena) return back("arena");
-  const { error } = await supabase.from("events").update({ name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, disciplines, max_roper_rating: limit, draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds, description: text(formData.get("description"), 1000), timezone: close.timezone, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt }).eq("id", ev.id);
+  const { error } = await supabase.from("events").update({ name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, capacity_headers: capacityHeaders, capacity_heelers: capacityHeelers, disciplines, max_roper_rating: limit, draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds, short_go: draw.shortGo, description: text(formData.get("description"), 1000), event_time: eventTime, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt }).eq("id", ev.id);
   // Un evento de una serie debe seguir dentro de las fechas de su serie (la base lo exige).
-  if (error) return back(error.message.includes("draw_type_locked") ? "drawLocked" : error.message.includes("rounds_locked") ? "roundsLocked" : error.message.includes("outside_series") ? "outsideSeries" : error.message.includes("open_after") ? "opensAfterClose" : "1");
+  if (error) return back(error.message.includes("draw_type_locked") ? "drawLocked" : error.message.includes("rounds_locked") ? "roundsLocked" : error.message.includes("outside_series") ? "outsideSeries" : error.message.includes("open_after") ? "opensAfterClose" : dbErrorCode(error));
   for (const r of rows) {
     if (r.id && owned.has(r.id)) await supabase.from("event_categories").update({ name: r.name, fee_cents: r.fee * 100 }).eq("id", r.id);
     else await supabase.from("event_categories").insert({ event_id: ev.id, name: r.name, fee_cents: r.fee * 100 });
@@ -202,6 +245,10 @@ export async function updateEvent(formData: FormData) {
 
   updateTag("events");
   updateTag("registrations");
+  // Un evento de una serie se edita desde la serie: al guardar se vuelve a ella (KIN-798); uno suelto vuelve a su propia pantalla.
+  const rel = ev.event_series as { slug: string } | { slug: string }[] | null;
+  const series = Array.isArray(rel) ? rel[0] : rel;
+  if (series) redirect(`/${l}/organizador/series/${series.slug}?evento=1`);
   redirect(`/${l}/organizador/eventos/${eventSlug}?editado=1`);
 }
 
@@ -220,7 +267,7 @@ export async function setEventStatus(formData: FormData) {
   if (next === "publicado") {
     // Un borrador subido desde la app llega sin ciudad ni cupo: no se publica hasta completarlo (KIN-659).
     const { count } = await supabase.from("event_categories").select("id", { count: "exact", head: true }).eq("event_id", current.id);
-    const missing = missingForPublish({ city: current.city, venue: current.venue, capacity: current.capacity, categories: count ?? 0 });
+    const missing = missingForPublish({ city: current.city, venue: current.venue, categories: count ?? 0 });
     if (missing.length) redirect(`/${l}/organizador/eventos/${eventSlug}?faltan=${missing.join(",")}`);
   }
   await supabase.from("events").update({ status: next }).eq("id", current.id);

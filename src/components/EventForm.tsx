@@ -16,7 +16,7 @@ type Labels = {
   opens: string; opensHint: string; closes: string; closesHint: string; opensPublish: string; opensDay: string; closeNone: string; closeEvent: string; closeDay: string; eventTime: string;
   drawType: string; drawTypeHint: string; drawLocked: string; roundRobin: string; lazadaSorteada: string; shotsPerPackage: string; shotsPerPackageHint: string; maxTeamRating: string; maxTeamRatingHint: string; rounds: string; roundsHint: string; shortGo: string; roundsWord: string; shortGoWord: string;
   advanced: string; required: string; optional: string; capGroup: string; capLimit: string; capLimitHint: string; ratingGroup: string; ratingLimit: string; teamLimit: string; regGroup: string;
-  chipCapNone: string; chipCap: string; chipCapEach: string; chipCapSides: string;
+  chipCapNone: string; chipRatingNone: string; chipTeamNone: string; chipOpensNone: string; chipClosesNone: string; chipCap: string; chipCapEach: string; chipCapSides: string;
   capTotal: string; capEach: string; capHeaders: string; capHeelers: string; capModeTotal: string; capModeEach: string; capModePer: string; capSummary: string; /* textos con marcadores {n} {h} {p} {t}: un componente de servidor no puede pasar funciones a uno de cliente */ chipRating: string; chipTeam: string; chipOpens: string; chipCloses: string; chipCloseEvent: string;
 };
 export type EventInitial = { arenaId?: string | null; slug: string; name: string; date: string; capacity: number; capacityHeaders: number | null; capacityHeelers: number | null; venue: string; city: string; description: string; paymentInfo: string; eventTime: string; opensMode: "publish" | "day"; opensOn: string; closeMode: CloseMode; closesOn: string; disciplines: string[]; maxRoperRating: number | null; drawType: "round_robin" | "lazada_sorteada"; shotsPerPackage: number | null; maxTeamRating: number | null; rounds: number | null; shortGo: boolean; drawLocked: boolean; cats: { id: string; name: string; fee: number }[] };
@@ -182,10 +182,11 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
   const capChip = !capOn ? null : capMode === "total" ? (capTotal ? `${l.chipCap} ${capTotal}` : null) : capMode === "eq" ? (whole(capEach) > 0 ? fill(l.chipCapEach, { n: whole(capEach) }) : null) : sidesReady ? fill(l.chipCapSides, { h: whole(capHeaders), p: whole(capHeelers) }) : null;
   const chips: { text: string; on: boolean }[] = [
     capChip ? { text: capChip, on: true } : { text: l.chipCapNone, on: false },
-    ...(ratingOn && ratingVal ? [{ text: `${l.chipRating} ${ratingVal}`, on: true }] : []),
-    ...(showTeam && teamOn && teamVal ? [{ text: `${l.chipTeam} ${teamVal}`, on: true }] : []),
-    ...(opensMode === "day" ? [{ text: l.chipOpens, on: true }] : []),
-    ...(closeMode === "event" ? [{ text: l.chipCloseEvent, on: true }] : closeMode === "day" ? [{ text: l.chipCloses, on: true }] : []),
+    // Cada ajuste muestra SIEMPRE su estado: lo activado en normal y lo que está por defecto (sin límite, sin fecha) en gris, para que se sepa qué pasa si no se toca nada.
+    ratingOn && ratingVal ? { text: `${l.chipRating} ${ratingVal}`, on: true } : { text: l.chipRatingNone, on: false },
+    ...(showTeam ? [teamOn && teamVal ? { text: `${l.chipTeam} ${teamVal}`, on: true } : { text: l.chipTeamNone, on: false }] : []),
+    opensMode === "day" ? { text: l.chipOpens, on: true } : { text: l.chipOpensNone, on: false },
+    closeMode === "event" ? { text: l.chipCloseEvent, on: true } : closeMode === "day" ? { text: l.chipCloses, on: true } : { text: l.chipClosesNone, on: false },
   ];
   // KIN-777: las rondas son el TOTAL e incluyen el short-go (3 con short-go = 2 normales + 1 short-go); aquí se ve el resultado en palabras.
   const roundsNum = /^[0-9]+$/.test(roundsVal) ? Number(roundsVal) : 0;

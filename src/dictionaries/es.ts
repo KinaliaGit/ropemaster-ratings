@@ -237,7 +237,7 @@ export const es = {
       costLabel: "Costo de inscripción (MXN)", costPackageLabel: "Costo por paquete (MXN)", costFree: "Pon 0 si es gratis.",
       capGroup: "Cupo", capLimit: "Limitar el cupo", capLimitHint: "Cuando se llena un lado, quien quiera entrar de ese lado pasa a la lista de espera.",
       ratingGroup: "Rating", ratingLimit: "Limitar el rating para inscribirse", teamLimit: "Limitar el rating por equipo", regGroup: "Inscripciones",
-      chipCapNone: "Cupo sin límite", chipCap: "Cupo", chipCapEach: "Cupo {n} por lado", chipCapSides: "Cupo {h} cab. / {p} pial.",
+      chipCapNone: "Cupo sin límite", chipRatingNone: "Rating sin límite", chipTeamNone: "Equipo sin límite", chipOpensNone: "Abren al publicar", chipClosesNone: "Sin fecha de cierre", chipCap: "Cupo", chipCapEach: "Cupo {n} por lado", chipCapSides: "Cupo {h} cab. / {p} pial.",
       capTotal: "Cupo total", capEach: "Cupo por lado", capHeaders: "Cabeceros", capHeelers: "Pialadores", capModeTotal: "Total", capModeEach: "Igual por lado", capModePer: "Por lado",
       capSummary: "{h} cabeceros + {p} pialadores = cupo total de {t}", chipRating: "Rating máx.", chipTeam: "Equipo máx.", chipOpens: "Apertura programada", chipCloses: "Cierre programado",
       error: "Revisa los campos: faltan datos o hay valores inválidos.", title: "Nuevo evento individual", blurb: "Un evento suelto, que no pertenece a ninguna serie. Al publicarlo aparece en la web y tu app Rope Master lo descarga al sincronizar.", seriesHint: "¿Tienes varias fechas en la temporada?", seriesLink: "Crea una serie", name: "Nombre del evento", date: "Fecha", capacity: "Cupo", venue: "Sede", city: "Ciudad",

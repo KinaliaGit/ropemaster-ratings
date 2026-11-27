@@ -237,7 +237,7 @@ export const en: Dict = {
       costLabel: "Registration fee (MXN)", costPackageLabel: "Fee per package (MXN)", costFree: "Enter 0 if it is free.",
       capGroup: "Capacity", capLimit: "Limit the capacity", capLimitHint: "When one side fills up, anyone who wants in on that side goes on the waitlist.",
       ratingGroup: "Rating", ratingLimit: "Limit the rating to register", teamLimit: "Limit the team rating", regGroup: "Registration",
-      chipCapNone: "No capacity limit", chipCap: "Capacity", chipCapEach: "Capacity {n} per side", chipCapSides: "Capacity {h} headers / {p} heelers",
+      chipCapNone: "No capacity limit", chipRatingNone: "No rating limit", chipTeamNone: "No team limit", chipOpensNone: "Opens when published", chipClosesNone: "No deadline", chipCap: "Capacity", chipCapEach: "Capacity {n} per side", chipCapSides: "Capacity {h} headers / {p} heelers",
       capTotal: "Total capacity", capEach: "Capacity per side", capHeaders: "Headers", capHeelers: "Heelers", capModeTotal: "Total", capModeEach: "Same per side", capModePer: "Per side",
       capSummary: "{h} headers + {p} heelers = total capacity of {t}", chipRating: "Max rating", chipTeam: "Max team", chipOpens: "Opening scheduled", chipCloses: "Deadline scheduled",
       error: "Please check the fields: something is missing or invalid.", title: "New individual event", blurb: "A standalone event that does not belong to any series. Once published it appears on the website and your Rope Master app downloads it when it syncs.", seriesHint: "Do you have several dates in the season?", seriesLink: "Create a series", name: "Event name", date: "Date", capacity: "Capacity", venue: "Venue", city: "City",

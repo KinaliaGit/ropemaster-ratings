@@ -9,7 +9,7 @@ import { listOrganizerEvents, listPublicEvents } from "@/lib/data/events";
 export type SeriesItem = {
   id: string; uuid: string; organizerId: string; organizer: string; name: string; description: string; startDate: string; endDate: string; timezone: string;
 };
-export type SeriesTemplate = { arenaId: string | null; city: string; venue: string; capacity: number | null; disciplines: string[]; categories: { name: string; fee: number }[]; paymentInfo: string };
+export type SeriesTemplate = { arenaId: string | null; city: string; venue: string; capacity: number | null; capacityHeaders: number | null; capacityHeelers: number | null; disciplines: string[]; categories: { name: string; fee: number }[]; paymentInfo: string };
 
 const COLUMNS = "id, slug, organizer_id, organizer_name, name, description, start_date, end_date, timezone";
 type Row = { id: string; slug: string; organizer_id: string; organizer_name: string | null; name: string; description: string; start_date: string; end_date: string; timezone: string };
@@ -52,13 +52,13 @@ export async function getOrganizerSeries(organizerId: string, slug: string): Pro
   if (!data) return null;
   const row = data as Row;
   const [{ data: tpl }, events] = await Promise.all([
-    supabase.from("event_series_template").select("arena_id, city, venue, capacity, disciplines, categories, payment_info").eq("series_id", row.id).maybeSingle(),
+    supabase.from("event_series_template").select("arena_id, city, venue, capacity, capacity_headers, capacity_heelers, disciplines, categories, payment_info").eq("series_id", row.id).maybeSingle(),
     listOrganizerEvents(organizerId),
   ]);
-  const t = tpl as { arena_id: string | null; city: string; venue: string; capacity: number | null; disciplines: string[]; categories: { name: string; fee_cents: number }[]; payment_info: string } | null;
+  const t = tpl as { arena_id: string | null; city: string; venue: string; capacity: number | null; capacity_headers: number | null; capacity_heelers: number | null; disciplines: string[]; categories: { name: string; fee_cents: number }[]; payment_info: string } | null;
   return {
     series: toItem(row),
-    template: { arenaId: t?.arena_id ?? null, city: t?.city ?? "", venue: t?.venue ?? "", capacity: t?.capacity ?? null, disciplines: t?.disciplines ?? [], categories: (t?.categories ?? []).map((c) => ({ name: c.name, fee: Math.round(c.fee_cents / 100) })), paymentInfo: t?.payment_info ?? "" },
+    template: { arenaId: t?.arena_id ?? null, city: t?.city ?? "", venue: t?.venue ?? "", capacity: t?.capacity ?? null, capacityHeaders: t?.capacity_headers ?? null, capacityHeelers: t?.capacity_heelers ?? null, disciplines: t?.disciplines ?? [], categories: (t?.categories ?? []).map((c) => ({ name: c.name, fee: Math.round(c.fee_cents / 100) })), paymentInfo: t?.payment_info ?? "" },
     events: events.filter((e) => e.series?.slug === slug).sort(byDate),
   };
 }

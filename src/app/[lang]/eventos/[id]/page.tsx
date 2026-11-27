@@ -2,11 +2,13 @@ import { connection } from "next/server";
 import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getPublicEvent } from "@/lib/data/events";
-import { getEventRegistrants, getEventWaitlistCount } from "@/lib/data/registrations";
+import { getEventForViewer, getPublicEvent } from "@/lib/data/events";
+import { getEventRegistrants, getEventRegistrantsForViewer, getEventWaitlistCount, getEventWaitlistCountForViewer } from "@/lib/data/registrations";
 import { ACTIVE_DISCIPLINES, DEFAULT_DISCIPLINE, type DisciplineId } from "@/lib/disciplines";
 import { toEnrolledItem } from "@/lib/enrolled-view";
 import { fmtDate, mxn, type Lang } from "@/lib/format";
+import { formatRounds } from "@/lib/event-rounds";
+import { fmtEnrolled, isFull } from "@/lib/event-capacity";
 import { fmtDeadline, isLiveToday, isNotOpenYet, isRegistrationOpen, statusByDate } from "@/lib/event-time";
 import { LIVE_VIEW } from "@/lib/flags";
 import Image from "next/image";
@@ -18,8 +20,8 @@ import { getDictionary, resolveLang } from "@/lib/i18n";
 import type { Dict } from "@/dictionaries/es";
 
 // Lista de inscritos: va aparte para que el cartel, las categorías y el botón de inscribirse salgan sin esperarla (KIN-612 y KIN-611).
-async function Enrolled({ slug, uuid, discipline, lang, t }: { slug: string; uuid: string; discipline: string; lang: Lang; t: Dict }) {
-  const page = await getEventRegistrants(uuid, discipline);
+async function Enrolled({ slug, uuid, discipline, lang, t, viewer }: { slug: string; uuid: string; discipline: string; lang: Lang; t: Dict; viewer: boolean }) {
+  const page = viewer ? await getEventRegistrantsForViewer(uuid, discipline) : await getEventRegistrants(uuid, discipline);
   if (page.rows.length === 0) return <p className="mt-3 text-muted">{t.event.noEnrolled}</p>;
   return (
     <EnrolledList
@@ -35,21 +37,24 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   const lang = await resolveLang(params);
   const { id } = await params;
   const t = getDictionary(lang);
-  const found = await getPublicEvent(id);
+  // Un evento privado no sale en la lectura pública: se prueba con la sesión de quien visita (su organizador, o quien está inscrito o en espera, sí lo ve; KIN-769).
+  let found = await getPublicEvent(id);
+  let viewer = false;
+  if (!found) { found = await getEventForViewer(id); viewer = found !== null; }
   if (!found) notFound();
   const e = { ...found, status: statusByDate(found) }; // KIN-656: con la fecha pasada se muestra como finalizado y sin inscripción
   const regOpen = isRegistrationOpen({ opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
   const notYet = e.status === "publicado" && !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt }); // apertura programada: aún no abre
-  const open = e.status === "publicado" && e.enrolled < e.capacity && regOpen;
+  const open = e.status === "publicado" && !isFull(e.enrolled, e.capacity) && regOpen;
   // KIN-726: con el cupo lleno y las inscripciones abiertas, el botón pasa a "Entrar a lista de espera" (la base decide si de verdad está lleno).
-  const canWait = e.status === "publicado" && e.enrolled >= e.capacity && regOpen;
-  const waiting = canWait && e.uuid ? await getEventWaitlistCount(e.uuid) : 0;
+  const canWait = e.status === "publicado" && isFull(e.enrolled, e.capacity) && regOpen;
+  const waiting = canWait && e.uuid ? await (viewer ? getEventWaitlistCountForViewer(e.uuid) : getEventWaitlistCount(e.uuid)) : 0;
   const closesLine = e.status === "publicado" && regOpen && e.registrationClosesAt ? `${t.event.closesOn} ${fmtDeadline(e.registrationClosesAt, e.timezone, lang)}` : null;
   const resultDisciplines: DisciplineId[] = ACTIVE_DISCIPLINES.filter((d) => e.disciplines.includes(d.id)).map((d) => d.id);
   if (resultDisciplines.length === 0) resultDisciplines.push(DEFAULT_DISCIPLINE);
   const gallery = e.photos.filter((p) => p.url !== e.cover); // el flyer de portada ya se ve arriba
   const fromFee = e.categories.length ? Math.min(...e.categories.map((c) => c.fee)) : 0;
-  const meta = [e.date ? fmtDate(e.date, lang) : "", [e.venue, e.city].filter(Boolean).join(", ")].filter(Boolean);
+  const meta = [e.date ? [fmtDate(e.date, lang), e.time].filter(Boolean).join(" · ") : "", [e.venue, e.city].filter(Boolean).join(", ")].filter(Boolean);
   return (
     <div className="page">
       {/* Celular: barra fija abajo con el botón de inscripción siempre a la mano (a todo el ancho; el selector de idioma en celular va en el pie). */}
@@ -84,7 +89,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
           <p className="mt-2 text-muted">{meta.join(" · ")}</p>
           <p className="mt-1 text-sm font-medium" data-testid="draw-type">
             {t.event.drawType}: {e.drawType === "lazada_sorteada" ? t.event.lazadaSorteada : t.event.roundRobin}
-            {e.rounds !== null && <span className="font-normal text-muted"> · {e.rounds} {t.event.roundsWord}</span>}
+            {e.rounds !== null && <span className="font-normal text-muted"> · {formatRounds(e.rounds, e.shortGo, t.event.roundsWord, t.org.form.shortGoWord)}</span>}
             {e.drawType === "lazada_sorteada" && e.lazadaShotsPerPackage !== null && <span className="font-normal text-muted"> · {e.lazadaShotsPerPackage} {t.event.shotsPerPackage.toLowerCase()}</span>}
           </p>
           <p className="mt-1 text-sm text-muted">{t.event.organizedBy} {e.organizer}</p>
@@ -96,7 +101,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
               {e.categories.map((c) => <li key={c.id} className="flex justify-between border-b border-line py-3 text-sm last:border-0"><span>{c.name}</span><span className="tabular-nums">{mxn(c.fee, lang)}</span></li>)}
             </ul>
             {e.maxRoperRating !== null && <p className="mt-3 text-xs text-muted">{t.event.maxRating}: <span className="tabular-nums">{e.maxRoperRating.toFixed(1)}</span></p>}
-            {e.maxTeamRating !== null && <p className="mt-1 text-xs text-muted">{t.event.maxTeamRating}: <span className="tabular-nums">{e.maxTeamRating.toFixed(1)}</span></p>}
+            {e.drawType === "lazada_sorteada" && e.maxTeamRating !== null && <p className="mt-1 text-xs text-muted">{t.event.maxTeamRating}: <span className="tabular-nums">{e.maxTeamRating.toFixed(1)}</span></p>}
             {e.drawType === "lazada_sorteada" && <p className="mt-1 text-xs text-muted">{t.event.packageFee}</p>}
             {open
               ? <Link href={`/${lang}/eventos/${e.id}/inscribirse`} className="mt-4 block rounded-full bg-ink py-3 text-center text-sm font-medium text-white transition hover:bg-brand-hot">{t.event.enroll}</Link>
@@ -128,10 +133,10 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
             </>
           )}
 
-          <h2 className="mt-12 text-xl font-semibold">{t.event.enrolled} <span className="font-normal text-muted">{e.enrolled}/{e.capacity}</span></h2>
+          <h2 className="mt-12 text-xl font-semibold">{t.event.enrolled} <span className="font-normal text-muted">{fmtEnrolled(e.enrolled, e.capacity)}</span></h2>
           <div className="mt-2">
             {e.uuid
-              ? <Suspense fallback={<EnrolledSkeleton />}><Enrolled slug={e.id} uuid={e.uuid} discipline={e.disciplines[0] ?? DEFAULT_DISCIPLINE} lang={lang} t={t} /></Suspense>
+              ? <Suspense fallback={<EnrolledSkeleton />}><Enrolled slug={e.id} uuid={e.uuid} discipline={e.disciplines[0] ?? DEFAULT_DISCIPLINE} lang={lang} t={t} viewer={viewer} /></Suspense>
               : <p className="mt-3 text-muted">{t.event.noEnrolled}</p>}
           </div>
 

@@ -10,7 +10,6 @@ import { getDictionary, resolveLang } from "@/lib/i18n";
 
 async function Page({ props }: { props: PageProps<"/[lang]/organizador/eventos/nuevo"> }) {
   const lang = await resolveLang(props.params);
-  const sp = await props.searchParams;
   const t = getDictionary(lang);
   const f = t.org.form;
   return (
@@ -25,8 +24,9 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/eventos/n
             <p className="mt-1 text-sm text-muted">{f.blurb}</p>
             <p className="mt-1 text-sm text-muted" data-testid="new-event-series-hint">{f.seriesHint} <Link href={`/${lang}/organizador/series/nueva`} className="font-medium text-brand-hot hover:underline">{f.seriesLink}</Link></p>
             <EventForm
-              lang={lang} error={typeof sp.error === "string" ? sp.error : undefined}
+              lang={lang}
               labels={f} arenas={arenas} arenaLabels={t.org.arenas.picker}
+              photoLabels={{ add: t.uploader.add, hint: t.uploader.hint, cover: t.uploader.cover, makeCover: t.uploader.makeCover, remove: t.uploader.remove, uploading: t.uploader.uploading, tooBig: t.uploader.tooBig, invalid: t.uploader.invalid, limit: t.uploader.limit }}
               disciplines={ACTIVE_DISCIPLINES.map((d) => ({ id: d.id, label: t.disc[d.id].label }))}
             />
           </div>

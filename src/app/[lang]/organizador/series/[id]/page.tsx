@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { PageSkeleton } from "@/components/PageSkeleton";
+import { fmtEnrolled } from "@/lib/event-capacity";
 import { Gate } from "@/components/Gate";
 import { CopyLink } from "@/components/CopyLink";
 import { PhaseBadge } from "@/components/PhaseBadge";
@@ -18,7 +19,7 @@ import type { Session } from "@/lib/session";
 import type { Dict } from "@/dictionaries/es";
 import type { Lang } from "@/lib/format";
 
-type Flags = { nueva: boolean; editada: boolean; agregados: number; borrado: boolean; publicados: boolean; incompletos: number; error: string | null; borrarError: string | null };
+type Flags = { nueva: boolean; editada: boolean; evento: boolean; agregados: number; borrado: boolean; publicados: boolean; incompletos: number; error: string | null; borrarError: string | null };
 
 async function Manage({ s, id, lang, t, flags, shareUrl }: { s: Session; id: string; lang: Lang; t: Dict; flags: Flags; shareUrl: string }) {
   // Un organizador solo gestiona sus propias series (la base además lo impone).
@@ -50,6 +51,7 @@ async function Manage({ s, id, lang, t, flags, shareUrl }: { s: Session; id: str
         </div>
         {flags.nueva && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{m.created}</p>}
         {flags.editada && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{m.saved}</p>}
+        {flags.evento && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{ev.msg.eventoGuardado}</p>}
         {flags.agregados > 0 && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{ev.msg.agregados} {flags.agregados} {ev.msg.agregadosEnd}</p>}
         {flags.borrado && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{ev.msg.borrado}</p>}
         {flags.publicados && <p role="status" className="mt-6 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{ev.msg.publicados}</p>}
@@ -84,7 +86,7 @@ async function Manage({ s, id, lang, t, flags, shareUrl }: { s: Session; id: str
                     <p className="text-sm tabular-nums text-muted">{e.date ? fmtDate(e.date, lang) : "–"}</p>
                     <p className="font-semibold leading-snug">{e.name}</p>
                     <p className="mt-1 text-sm text-muted">
-                      {ev.enrolled} <span className="tabular-nums">{e.enrolled}/{e.capacity}</span>
+                      {ev.enrolled} <span className="tabular-nums">{fmtEnrolled(e.enrolled, e.capacity)}</span>
                       {" · "}{e.registrationOpensAt ? `${ev.opensOn} ${fmtDeadline(e.registrationOpensAt, e.timezone, lang)}` : ev.opensNow}
                       {e.registrationClosesAt && <>{" · "}{ev.closesOn} {fmtDeadline(e.registrationClosesAt, e.timezone, lang)}</>}
                     </p>
@@ -146,7 +148,7 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/organizador/serie
   const { id } = await props.params;
   const sp = await props.searchParams;
   const flags: Flags = {
-    nueva: sp.nueva === "1", editada: sp.editada === "1", agregados: Math.max(0, Math.floor(Number(sp.agregados)) || 0),
+    nueva: sp.nueva === "1", editada: sp.editada === "1", evento: sp.evento === "1", agregados: Math.max(0, Math.floor(Number(sp.agregados)) || 0),
     borrado: sp.borrado === "1", publicados: sp.publicados === "1", incompletos: Math.max(0, Math.floor(Number(sp.incompletos)) || 0), error: typeof sp.error === "string" ? sp.error : null, borrarError: typeof sp.borrarError === "string" ? sp.borrarError : null,
   };
   // Enlace sin idioma: cada persona que lo abra llega a su idioma (el proxy elige es/en por su navegador).

@@ -5,6 +5,7 @@ import "../globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { LangSwitch } from "@/components/LangSwitch";
+import { PhotoUploadToast } from "@/components/PhotoUploadToast";
 import { LOCALES, getDictionary, hasLocale } from "@/lib/i18n";
 
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
@@ -31,6 +32,7 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
         <main className="flex-1 pt-16">{children}</main>
         <Footer t={t} lang={lang} />
         <LangSwitch lang={lang} label={t.nav.language} />
+        <PhotoUploadToast labels={{ uploading: t.uploader.toastUploading, done: t.uploader.toastDone, failed: t.uploader.toastFailed, close: t.uploader.toastClose }} />
       </body>
     </html>
   );

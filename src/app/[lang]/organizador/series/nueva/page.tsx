@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Gate } from "@/components/Gate";
 import { SeriesForm } from "@/components/SeriesForm";
-import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
+import { pickCapacityLabels } from "@/lib/capacity-labels";
 import { listArenas } from "@/lib/data/arenas";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
@@ -25,7 +25,7 @@ async function Page({ props }: { props: PageProps<"/[lang]/organizador/series/nu
               <h1 className="mt-2 text-3xl font-semibold">{f.newTitle}</h1>
               <p className="mt-1 text-sm text-muted">{f.newBlurb}</p>
               {sp.primero === "1" && <p role="status" data-testid="series-first" className="mt-4 rounded-2xl bg-brand-soft p-4 text-sm font-medium">{f.firstSeries}</p>}
-              <SeriesForm lang={lang} error={typeof sp.error === "string" ? sp.error : undefined} labels={f} arenas={arenas} arenaLabels={t.org.arenas.picker} disciplines={ACTIVE_DISCIPLINES.map((d) => ({ id: d.id, label: t.disc[d.id].label }))} />
+              <SeriesForm lang={lang} labels={{ ...f, errors: { ...t.org.form.errors, ...f.errors } }} capLabels={pickCapacityLabels(t.org.form)} arenas={arenas} arenaLabels={t.org.arenas.picker} />
             </div>
           </>
         );

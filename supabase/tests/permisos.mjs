@@ -2551,5 +2551,23 @@ console.log("- Hora del evento (0060, KIN-778)");
   await check("los eventos que ya existían quedan sin hora (null)", sinHora.rows[0].n === 0);
 }
 
+console.log("- Short-go del evento (0061, KIN-777)");
+{
+  const SG = "e0000000-0000-0000-0000-0000000000c7";
+  await db.exec(`insert into events (id, name, organizer_id, status, slug) values ('${SG}', 'Con short-go', '${A}', 'borrador', 'con-short-go')`);
+  const def = await db.query(`select short_go from events where id = '${SG}'`);
+  await check("un evento trae short-go activo por defecto (como la app): los que ya existían no cambian", def.rows[0].short_go === true);
+  await as("authenticated", A, `update events set rounds = 3, short_go = false where id = '${SG}'`, "el organizador dueño SÍ cambia las rondas y el short-go", "some");
+  await as("authenticated", B, `update events set short_go = true where id = '${SG}'`, "otro organizador NO cambia el short-go", "deny");
+  await as("authenticated", C, `update events set short_go = true where id = '${SG}'`, "un participante NO cambia el short-go", "deny");
+  await as("anon", null, `update events set short_go = true where id = '${SG}'`, "anónimo NO cambia el short-go", "deny");
+  await as("authenticated", A, `update events set short_go = null where id = '${SG}'`, "el short-go no acepta null", "deny");
+  await as("anon", null, "select short_go from events where status = 'publicado'", "anónimo SÍ lee el short-go de los eventos públicos", "some");
+  await db.exec(`insert into event_results (id, event_id, participant_name, discipline, time_ms, penalty_ms, disqualified) values (gen_random_uuid(), '${SG}', 'Sin lazador', 'lazo', 9000, 0, false)`);
+  await as("authenticated", A, `update events set short_go = true where id = '${SG}'`, "con resultados NO se cambia el short-go", "deny");
+  await as("authenticated", A, `update events set rounds = 4 where id = '${SG}'`, "con resultados siguen sin cambiarse las rondas", "deny");
+  await as("authenticated", A, `update events set short_go = false where id = '${SG}'`, "guardar el mismo short-go (sin cambio) no estorba", "some");
+}
+
 console.log(failures ? `\n${failures} comprobación(es) FALLARON` : "\nTodas las comprobaciones de permisos pasan");
 process.exit(failures ? 1 : 0);

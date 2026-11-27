@@ -7,6 +7,7 @@ import { getEventRegistrants, getEventWaitlistCount } from "@/lib/data/registrat
 import { ACTIVE_DISCIPLINES, DEFAULT_DISCIPLINE, type DisciplineId } from "@/lib/disciplines";
 import { toEnrolledItem } from "@/lib/enrolled-view";
 import { fmtDate, mxn, type Lang } from "@/lib/format";
+import { formatRounds } from "@/lib/event-rounds";
 import { fmtDeadline, isNotOpenYet, isRegistrationOpen, statusByDate } from "@/lib/event-time";
 import Image from "next/image";
 import { EnrolledList } from "@/components/EnrolledList";
@@ -78,7 +79,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
           <p className="mt-2 text-muted">{meta.join(" · ")}</p>
           <p className="mt-1 text-sm font-medium" data-testid="draw-type">
             {t.event.drawType}: {e.drawType === "lazada_sorteada" ? t.event.lazadaSorteada : t.event.roundRobin}
-            {e.rounds !== null && <span className="font-normal text-muted"> · {e.rounds} {t.event.roundsWord}</span>}
+            {e.rounds !== null && <span className="font-normal text-muted"> · {formatRounds(e.rounds, e.shortGo, t.event.roundsWord, t.org.form.shortGoWord)}</span>}
             {e.drawType === "lazada_sorteada" && e.lazadaShotsPerPackage !== null && <span className="font-normal text-muted"> · {e.lazadaShotsPerPackage} {t.event.shotsPerPackage.toLowerCase()}</span>}
           </p>
           <p className="mt-1 text-sm text-muted">{t.event.organizedBy} {e.organizer}</p>

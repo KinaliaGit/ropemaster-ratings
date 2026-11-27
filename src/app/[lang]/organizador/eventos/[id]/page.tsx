@@ -24,6 +24,7 @@ import type { Session } from "@/lib/session";
 import type { Dict } from "@/dictionaries/es";
 import type { Lang } from "@/lib/format";
 import { fmtDate, mxn } from "@/lib/format";
+import { formatRounds } from "@/lib/event-rounds";
 import { getDictionary, resolveLang } from "@/lib/i18n";
 
 type ManageProps = { s: Session; id: string; lang: Lang; t: Dict; justCreated: "publicado" | "borrador" | null; justCreatedPrivate: boolean; justEdited: boolean; pagoError: boolean; manual: string | null; sacado: string | null; espera: string | null; missing: MissingField[]; borrarError: string | null; shareUrl: string; stateLabel: Record<string, string> };
@@ -89,7 +90,7 @@ async function Manage({ s, id, lang, t, justCreated, justCreatedPrivate, justEdi
                   <p className="text-muted">{e.date ? [fmtDate(e.date, lang), e.time].filter(Boolean).join(" · ") : "–"} · {e.venue}, {e.city}</p>
                   <p className="mt-1 text-sm text-muted" data-testid="org-draw-type">
                     {t.event.drawType}: {e.drawType === "lazada_sorteada" ? t.event.lazadaSorteada : t.event.roundRobin}
-                    {e.rounds !== null && ` · ${e.rounds} ${t.event.roundsWord}`}
+                    {e.rounds !== null && ` · ${formatRounds(e.rounds, e.shortGo, t.event.roundsWord, t.org.form.shortGoWord)}`}
                     {e.drawType === "lazada_sorteada" && e.lazadaShotsPerPackage !== null && ` · ${e.lazadaShotsPerPackage} ${t.event.shotsPerPackage.toLowerCase()}`}
                   </p>
                   {e.series && <p className="mt-1 text-sm"><Link href={`/${lang}/organizador/series/${e.series.slug}`} className="font-medium text-brand-hot hover:underline">{t.org.ev.partOfSeries}: {e.series.name} →</Link></p>}

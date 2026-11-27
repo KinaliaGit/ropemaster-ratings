@@ -7,17 +7,18 @@ import { fieldForError, firstValue, focusSelector, INITIAL_EVENT_FORM_STATE, typ
 import { ArenaFields, type ArenaChoice, type ArenaLabels } from "@/components/ArenaFields";
 import { PublishDialog, type VisibilityLabels } from "@/components/PublishDialog";
 import { teamLimitApplies } from "@/lib/rating-limits";
+import { formatRounds, MAX_ROUNDS, MIN_ROUNDS_WITH_SHORT_GO } from "@/lib/event-rounds";
 
 type Labels = {
   visibility: VisibilityLabels;
   name: string; date: string; capacity: string; disciplines: string; costLabel: string; costPackageLabel: string; costFree: string; maxRoperRating: string; maxRoperRatingHint: string;
   error: string; description: string; saveDraft: string; publish: string; photosLater: string; save: string; errors: Record<string, string>; paymentInfo: string; paymentInfoHint: string; paymentInfoPlaceholder: string;
   opens: string; opensHint: string; closes: string; closesHint: string; opensPublish: string; opensDay: string; closeNone: string; closeEvent: string; closeDay: string; eventTime: string;
-  drawType: string; drawTypeHint: string; drawLocked: string; roundRobin: string; lazadaSorteada: string; shotsPerPackage: string; shotsPerPackageHint: string; maxTeamRating: string; maxTeamRatingHint: string; rounds: string; roundsHint: string;
+  drawType: string; drawTypeHint: string; drawLocked: string; roundRobin: string; lazadaSorteada: string; shotsPerPackage: string; shotsPerPackageHint: string; maxTeamRating: string; maxTeamRatingHint: string; rounds: string; roundsHint: string; shortGo: string; roundsWord: string; shortGoWord: string;
   advanced: string; required: string; optional: string; capGroup: string; capLimit: string; capLimitHint: string; ratingGroup: string; ratingLimit: string; teamLimit: string; regGroup: string;
   chipCapNone: string; chipCap: string; chipRating: string; chipTeam: string; chipOpens: string; chipCloses: string; chipCloseEvent: string;
 };
-export type EventInitial = { arenaId?: string | null; slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; paymentInfo: string; eventTime: string; opensMode: "publish" | "day"; opensOn: string; closeMode: CloseMode; closesOn: string; disciplines: string[]; maxRoperRating: number | null; drawType: "round_robin" | "lazada_sorteada"; shotsPerPackage: number | null; maxTeamRating: number | null; rounds: number | null; drawLocked: boolean; cats: { id: string; name: string; fee: number }[] };
+export type EventInitial = { arenaId?: string | null; slug: string; name: string; date: string; capacity: number; venue: string; city: string; description: string; paymentInfo: string; eventTime: string; opensMode: "publish" | "day"; opensOn: string; closeMode: CloseMode; closesOn: string; disciplines: string[]; maxRoperRating: number | null; drawType: "round_robin" | "lazada_sorteada"; shotsPerPackage: number | null; maxTeamRating: number | null; rounds: number | null; shortGo: boolean; drawLocked: boolean; cats: { id: string; name: string; fee: number }[] };
 
 type Cat = { id: string; name: string; fee: number };
 type DrawType = "round_robin" | "lazada_sorteada";
@@ -108,6 +109,8 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
   const wasOn = (name: string, hasValue: boolean) => (values ? values[name] !== undefined : hasValue);
 
   const [drawType, setDrawType] = useState<DrawType>(() => (v("drawType", initial?.drawType ?? "round_robin") === "lazada_sorteada" ? "lazada_sorteada" : "round_robin"));
+  const [roundsVal, setRoundsVal] = useState(() => v("rounds", initial?.rounds));
+  const [shortGo, setShortGo] = useState(() => v("shortGo", String(initial?.shortGo ?? true)) !== "false");
   const [capOn, setCapOn] = useState(() => wasOn("capacity", (initial?.capacity ?? 0) > 0));
   const [capVal, setCapVal] = useState(() => v("capacity", initial?.capacity || ""));
   const [ratingOn, setRatingOn] = useState(() => wasOn("maxRoperRating", initial?.maxRoperRating != null));
@@ -162,6 +165,9 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
     ...(closeMode === "event" ? [{ text: l.chipCloseEvent, on: true }] : closeMode === "day" ? [{ text: l.chipCloses, on: true }] : []),
   ];
   const group = "border-t border-line pt-4 first:border-0 first:pt-0";
+  // KIN-777: las rondas son el TOTAL e incluyen el short-go (3 con short-go = 2 normales + 1 short-go); aquí se ve el resultado en palabras.
+  const roundsNum = /^[0-9]+$/.test(roundsVal) ? Number(roundsVal) : 0;
+  const roundsSummary = roundsNum >= 1 && roundsNum <= MAX_ROUNDS ? formatRounds(roundsNum, shortGo, l.roundsWord, l.shortGoWord) : "";
 
   return (
     <>
@@ -212,11 +218,15 @@ function EventFields({ l, disciplines, initial, arenas, arenaLabels, values, inv
           <input required name="catFee" type="number" min={0} inputMode="numeric" defaultValue={costDefault} {...a("catFee")} />
           <span className="mt-1 block text-xs font-normal text-muted">{l.costFree}</span>
         </label>
-        <label className="block text-sm font-medium">{l.rounds}{opt}
-          <input name="rounds" type="number" min={1} max={10} step={1} inputMode="numeric" defaultValue={v("rounds", initial?.rounds)} {...a("rounds")} />
-          <span className="mt-1 block text-xs font-normal text-muted">{l.roundsHint}</span>
+        <div>
+          <label className="block text-sm font-medium">{l.rounds}{opt}
+            <input name="rounds" type="number" min={shortGo ? MIN_ROUNDS_WITH_SHORT_GO : 1} max={MAX_ROUNDS} step={1} inputMode="numeric" value={roundsVal} onChange={(e) => setRoundsVal(e.target.value)} {...a("rounds")} />
+          </label>
+          <div className="mt-2 flex items-center justify-between gap-3 text-sm"><span>{l.shortGo}</span><Switch on={shortGo} onChange={setShortGo} label={l.shortGo} /></div>
+          <input type="hidden" name="shortGo" value={String(shortGo)} />
+          <p className="mt-1 text-xs text-muted">{roundsSummary || l.roundsHint}</p>
           {msg("rounds")}
-        </label>
+        </div>
       </div>
       {cats.slice(1).map((c, i) => (
         <span key={i} hidden>

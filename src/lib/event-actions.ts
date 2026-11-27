@@ -14,6 +14,7 @@ import { visibilityForCreate } from "@/lib/event-visibility";
 import { serializeFormValues, type EventFormState } from "@/lib/event-form-state";
 import { parseCapacity } from "@/lib/event-capacity";
 import { teamLimitApplies } from "@/lib/rating-limits";
+import { parseRounds } from "@/lib/event-rounds";
 
 const lang = (v: FormDataEntryValue | null) => (v === "en" ? "en" : "es");
 const text = (v: FormDataEntryValue | null, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -31,8 +32,8 @@ function ratingLimit(v: FormDataEntryValue | null): number | null | "invalid" {
 // Tipo de sorteo (KIN-648): hoy solo round_robin y lazada_sorteada. En Lazada Sorteada, los tiros por paquete (entero de 1 a 999) son obligatorios
 // y el tope por equipo (0 a 20, un decimal) es opcional. Devuelve "invalid" si algo no cumple. La base lo vuelve a comprobar y no deja cambiar
 // el tipo ni los tiros con inscritos o resultados.
-type DrawFields = { drawType: "round_robin" | "lazada_sorteada"; shots: number | null; teamLimit: number | null; rounds: number | null };
-function drawFields(formData: FormData): DrawFields | "invalid" | "invalidShots" | "invalidTeamLimit" | "invalidRounds" {
+type DrawFields = { drawType: "round_robin" | "lazada_sorteada"; shots: number | null; teamLimit: number | null; rounds: number | null; shortGo: boolean };
+function drawFields(formData: FormData): DrawFields | "invalid" | "invalidShots" | "invalidTeamLimit" | "invalidRounds" | "shortGoMin" {
   const drawType = formData.get("drawType") === "lazada_sorteada" ? "lazada_sorteada" : formData.get("drawType") === "round_robin" ? "round_robin" : null;
   if (!drawType) return "invalid";
   // KIN-776: el tope por equipo solo existe en Lazada Sorteada. En otro tipo se ignora aunque llegue un valor (nunca limita ni se guarda).
@@ -43,18 +44,14 @@ function drawFields(formData: FormData): DrawFields | "invalid" | "invalidShots"
     if (!Number.isFinite(n) || n < 0 || n > 20) return "invalidTeamLimit";
     teamLimit = Math.round(n * 10) / 10;
   }
-  // Rondas (KIN-655): opcional; entero de 1 a 10. Vacío = sin definir (la app usa su valor por defecto).
-  const rawRounds = typeof formData.get("rounds") === "string" ? String(formData.get("rounds")).trim() : "";
-  let rounds: number | null = null;
-  if (rawRounds !== "") {
-    const n = Number(rawRounds);
-    if (!Number.isInteger(n) || n < 1 || n > 10) return "invalidRounds";
-    rounds = n;
-  }
-  if (drawType === "round_robin") return { drawType, shots: null, teamLimit, rounds };
+  // Rondas (KIN-655, KIN-777): opcional; entero de 1 a 10, el TOTAL e incluye el short-go (3 con short-go = 2 normales + 1 short-go). Vacío = sin definir (la app usa su valor por defecto).
+  const parsed = parseRounds(formData.get("rounds"), formData.get("shortGo"));
+  if (!parsed.ok) return parsed.error;
+  const { rounds, shortGo } = parsed;
+  if (drawType === "round_robin") return { drawType, shots: null, teamLimit, rounds, shortGo };
   const shots = Number(typeof formData.get("shotsPerPackage") === "string" ? String(formData.get("shotsPerPackage")).trim() : "");
   if (!Number.isInteger(shots) || shots < 1 || shots > 999) return "invalidShots";
-  return { drawType, shots, teamLimit, rounds };
+  return { drawType, shots, teamLimit, rounds, shortGo };
 }
 
 type CloseError = "closeInvalid" | "closeAfterEvent" | "opensInvalid" | "opensAfterEvent" | "opensAfterClose";
@@ -131,7 +128,7 @@ export async function createEvent(prev: EventFormState, formData: FormData): Pro
   const { error } = await supabase.from("events").insert({
     ...(visibility === "privado" ? { visibility } : {}),
     id, slug: eventSlug, name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, disciplines, status, max_roper_rating: limit,
-    draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds,
+    draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds, short_go: draw.shortGo,
     description: text(formData.get("description"), 1000), organizer_id: session.id, organizer_name: session.name,
     event_time: eventTime, timezone: DEFAULT_TIMEZONE, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt,
   });
@@ -212,7 +209,7 @@ export async function updateEvent(prev: EventFormState, formData: FormData): Pro
 
   const arena = await resolveArena(supabase, session.id, formData);
   if (!arena) return back("arena");
-  const { error } = await supabase.from("events").update({ name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, disciplines, max_roper_rating: limit, draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds, description: text(formData.get("description"), 1000), event_time: eventTime, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt }).eq("id", ev.id);
+  const { error } = await supabase.from("events").update({ name, event_date: date, city: arena.city || city, venue: arena.name, arena_id: arena.id, capacity, disciplines, max_roper_rating: limit, draw_type: draw.drawType, lazada_shots_per_package: draw.shots, max_team_rating: draw.teamLimit, rounds: draw.rounds, short_go: draw.shortGo, description: text(formData.get("description"), 1000), event_time: eventTime, registration_opens_at: close.opensAt, registration_closes_at: close.closesAt }).eq("id", ev.id);
   // Un evento de una serie debe seguir dentro de las fechas de su serie (la base lo exige).
   if (error) return back(error.message.includes("draw_type_locked") ? "drawLocked" : error.message.includes("rounds_locked") ? "roundsLocked" : error.message.includes("outside_series") ? "outsideSeries" : error.message.includes("open_after") ? "opensAfterClose" : "1");
   for (const r of rows) {

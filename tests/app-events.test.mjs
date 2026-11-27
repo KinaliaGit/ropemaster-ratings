@@ -13,7 +13,7 @@ const EVENT = "e0000000-0000-0000-0000-0000000000e1";
 // Las filas tal como las entrega la función de la base (app_organizer_events): de aquí sale el ejemplo del contrato.
 const dbRow = () => ({
   id: EVENT, slug: "rodeo-norte-2026", name: "Rodeo Norte 2026", event_date: "2026-12-06", city: "Monterrey", venue: "Lienzo Charro del Norte",
-  description: "Rodeo de fin de año, lazo en equipo.", disciplines: ["lazo"], capacity: 100, max_roper_rating: 6.5, draw_type: "lazada_sorteada", lazada_shots_per_package: 3, max_team_rating: 12.5, rounds: 4, event_time: "10:00:00", series: example.events[0].series, arena: example.events[0].arena, status: "publicado", changed_at: "2026-11-05T18:30:00+00:00",
+  description: "Rodeo de fin de año, lazo en equipo.", disciplines: ["lazo"], capacity: 100, max_roper_rating: 6.5, draw_type: "lazada_sorteada", lazada_shots_per_package: 3, max_team_rating: 12.5, rounds: 4, short_go: true, event_time: "10:00:00", series: example.events[0].series, arena: example.events[0].arena, status: "publicado", changed_at: "2026-11-05T18:30:00+00:00",
   categories: example.events[0].categories,
   registrations: example.events[0].registrations,
   waitlist: example.events[0].waitlist.map((w) => { const row = { ...w }; delete row.position; return row; }), // la ruta la agrega; `position` lo calcula buildEventsPage

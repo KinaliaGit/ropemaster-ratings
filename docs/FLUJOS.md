@@ -38,6 +38,8 @@ recargando, volviendo atrás y abriendo el enlace dos veces.
 |---|---|
 | Inscribirse (`/eventos/<slug>/inscribirse`) | `/mi-cuenta?inscrito=1` |
 | Inscribirse a un evento cerrado, lleno, pasado o del que lo sacaron | La misma pantalla con el mensaje (`?error=registration_closed`, `full`, `removed`…) |
+| Abrir la página de un evento en el que ya estás inscrito o en espera | En lugar de «Inscribirme» ves «Ya estás inscrito» (o tu lugar en la lista de espera) con tu rol y categoría, el pago y «Cómo pagar». `/eventos/<slug>/inscribirse` por enlace directo te devuelve a la página del evento |
+| Cambiar de rol (botón «Cambiar a Pialador/Cabecero», en la página del evento y en las tarjetas de «Mi cuenta») | Pide confirmación en una ventana. Cualquier inscrito puede, mientras las inscripciones estén abiertas, no tenga ya el otro rol en esa categoría y el lado de destino tenga lugar (`events_role_room`, 0066); si no, el botón no sale. Vuelve a la página desde donde se pidió (`?rolInscripcion=ok` o `?error=…`) |
 | Cancelar inscripción | `/mi-cuenta?cancelado=1` |
 | Pagar en línea | Stripe y de regreso a `/mi-cuenta?pago=ok` |
 | Avisos (campana o banner) | `/notificaciones` |

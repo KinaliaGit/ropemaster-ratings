@@ -2,8 +2,9 @@ import { BackLink } from "@/components/BackLink";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/PageSkeleton";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getPublicEvent } from "@/lib/data/events";
+import { listMyRegistrations, listMyWaitlist } from "@/lib/data/registrations";
 import { mxn, type Lang } from "@/lib/format";
 import { fmtDeadline, isNotOpenYet, isRegistrationOpen, statusByDate } from "@/lib/event-time";
 import { Gate } from "@/components/Gate";
@@ -27,7 +28,12 @@ async function Resolver({ props }: { props: PageProps<"/[lang]/eventos/[id]/insc
   const notYet = !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt });
   return (
     <Gate lang={lang} role="any" next={`/${lang}/eventos/${id}/inscribirse`}>
-      {(s) => {
+      {async (s) => {
+        // Quien ya está inscrito (o en la lista de espera) de este evento no vuelve a inscribirse: se le lleva a la página del evento, donde ve su rol y puede cambiarlo.
+        if (s.roperId && e.uuid) {
+          const [mine, waiting] = await Promise.all([listMyRegistrations(s.roperId), listMyWaitlist()]);
+          if (mine.some((r) => r.event?.uuid === e.uuid) || waiting.some((w) => w.event?.slug === e.id)) redirect(`/${lang}/eventos/${e.id}`);
+        }
         // KIN-793: en Lazada Sorteada TODOS eligen su rol y sus paquetes juntos, sea cual sea el rol de su perfil (viene marcado el del perfil, o el
         // favorito si es "Ambos"): con un solo rol, un número de paquetes; con "los dos", los paquetes de cada lado por separado.
         const pickRoleAndPackages = e.drawType === "lazada_sorteada";

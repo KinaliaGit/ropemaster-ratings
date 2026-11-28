@@ -137,10 +137,13 @@ export async function changeRegistrationRole(formData: FormData) {
   const l = lang(formData.get("lang"));
   const id = String(formData.get("id") ?? "");
   const role = String(formData.get("role") ?? "");
-  if (!UUID.test(id) || !["header", "heeler"].includes(role)) redirect(`/${l}/mi-cuenta`);
+  // `back` (opcional): el slug del evento desde cuya página se pidió el cambio; ahí se vuelve. Sin él (o con algo que no es un slug) se vuelve a Mi cuenta.
+  const backSlug = String(formData.get("back") ?? "");
+  const home = /^[a-z0-9-]{1,120}$/.test(backSlug) ? `/${l}/eventos/${backSlug}` : `/${l}/mi-cuenta`;
+  if (!UUID.test(id) || !["header", "heeler"].includes(role)) redirect(home);
   const { error } = await (await createServerSupabase()).rpc("change_registration_role", { p_registration: id, p_role: role });
   if (!error) updateTag("registrations");
-  redirect(`/${l}/mi-cuenta?${error ? `error=${codeOf(error.message)}` : "rolInscripcion=ok"}`);
+  redirect(`${home}?${error ? `error=${codeOf(error.message)}` : "rolInscripcion=ok"}`);
 }
 
 // El organizador inscribe a un participante por su correo en un evento propio, también después del cierre de inscripciones (KIN-626).

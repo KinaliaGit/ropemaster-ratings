@@ -6,7 +6,7 @@ import { Gate } from "@/components/Gate";
 import { AccountEventCard } from "@/components/AccountEventCard";
 import { AvatarUploader } from "@/components/AvatarUploader";
 import { fmtRating, initials, publicAvatarUrl } from "@/lib/people";
-import { listMyRegistrations, listMyRemovals, listMyWaitlist } from "@/lib/data/registrations";
+import { getEventsRoleRoom, listMyRegistrations, listMyRemovals, listMyWaitlist } from "@/lib/data/registrations";
 import { cancelRegistration, changeRegistrationRole, leaveWaitlist } from "@/lib/registration-actions";
 import { hasEventPassed, isRegistrationOpen } from "@/lib/event-time";
 import { mergeUpcoming } from "@/lib/upcoming";
@@ -18,8 +18,11 @@ import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { createMyRoperProfile, setMyRole } from "@/lib/profile-actions";
 import { RoleFields } from "@/components/RoleFields";
 import { RoleBadgeDialog } from "@/components/RoleBadgeDialog";
-import { canChangeRole, roleText } from "@/lib/roles";
-import { PayButton } from "@/components/PayButton";
+import { roleText } from "@/lib/roles";
+import { roleSwitchTarget } from "@/lib/registration-role";
+import { ChangeRoleDialog } from "@/components/ChangeRoleDialog";
+import { RegActions } from "@/components/RegActions";
+import { PayInstructions } from "@/components/PayInstructions";
 import { fmtDeadline } from "@/lib/event-time";
 import { STRIPE_ENABLED } from "@/lib/flags";
 import { fmtDate, mxn } from "@/lib/format";
@@ -58,6 +61,8 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
         const isPast = (m: (typeof mine)[number]) => !!m.event && (m.event.status === "finalizado" || hasEventPassed({ date: m.event.date ?? "", timezone: m.event.timezone }));
         const upcoming = mine.filter((m) => !isPast(m));
         const pastRegs = mine.filter(isPast);
+        // Cambiar de rol (0066): se ofrece solo si el lado de destino tiene lugar. Un sí o no por lado y por evento, de una sola consulta.
+        const rooms = await getEventsRoleRoom(upcoming.flatMap((m) => (m.event?.uuid ? [m.event.uuid] : [])));
         const unpaid = upcoming.filter((m) => m.paymentStatus === "pendiente");
         const unpaidCents = unpaid.reduce((n, m) => n + m.amountCents, 0);
         const modes = ACTIVE_DISCIPLINES.filter((d) => me?.stats[d.id]);
@@ -128,24 +133,16 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                 const m = entry.item;
                 const paid = m.paymentStatus === "pagado";
                 const pending = m.paymentStatus === "pendiente";
-                const canSwitch = s.roleChoice?.role === "both" && canChangeRole(m, mine) && !!m.event && m.event.status === "publicado" && isRegistrationOpen({ closesAt: m.event.closesAt, closed: m.event.registrationClosed });
+                const eventUuid = m.event?.uuid;
+                const open = !!m.event && m.event.status === "publicado" && isRegistrationOpen({ closesAt: m.event.closesAt, closed: m.event.registrationClosed });
+                const to = roleSwitchTarget(m, mine.filter((o) => o.event?.uuid === eventUuid), eventUuid ? rooms[eventUuid] : undefined, open);
                 const closes = m.event?.closesAt ? `${Date.parse(m.event.closesAt) > Date.now() ? t.event.closesOn : t.org.ev.closesAtPast} ${fmtDeadline(m.event.closesAt, m.event.timezone, lang)}` : null;
                 return (
                   <AccountEventCard key={m.id} date={m.event?.date} lang={lang} name={m.event?.name ?? "—"} href={href} meta={meta} menuLabel={t.account.moreOptions}
                     status={<span className={`${pill} ${paid ? "bg-emerald-50 text-emerald-800" : pending ? "bg-amber-50 text-amber-900" : "bg-sand text-muted"}`}>{paid ? `✓ ${t.account.paid}${m.paymentMethod ? ` · ${t.pay.method[m.paymentMethod as "efectivo" | "transferencia" | "stripe"]}` : ""}` : pending ? `${t.account.pending} · ${mxn(m.amountCents / 100, lang)}` : t.account.refunded}</span>}
-                    menu={!paid || canSwitch || closes ? (
+                    menu={!paid || closes ? (
                       <>
                         {closes && <p className="text-muted">{closes}</p>}
-                        {canSwitch && (
-                          <form action={changeRegistrationRole} className="flex flex-wrap items-center gap-2">
-                            <input type="hidden" name="lang" value={lang} /><input type="hidden" name="id" value={m.id} />
-                            <label htmlFor={`role-${m.id}`} className="text-muted">{t.account.regRole}</label>
-                            <select id={`role-${m.id}`} name="role" defaultValue={m.role ?? s.roleChoice?.favorite ?? "header"} className="min-h-11 rounded-xl border border-line bg-white px-3 text-sm">
-                              <option value="header">{t.roles.header}</option><option value="heeler">{t.roles.heeler}</option>
-                            </select>
-                            <button className="min-h-11 rounded-full border border-line px-4 text-sm font-medium hover:border-ink">{t.account.changeRole}</button>
-                          </form>
-                        )}
                         {!paid && (
                           <form action={cancelRegistration}>
                             <input type="hidden" name="lang" value={lang} /><input type="hidden" name="id" value={m.id} />
@@ -154,16 +151,14 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                         )}
                       </>
                     ) : undefined}>
-                    {pending && (
-                      <details className="mt-2">
-                        <summary className="inline-flex min-h-11 cursor-pointer list-none items-center rounded-full border border-line px-4 text-sm font-medium hover:border-ink [&::-webkit-details-marker]:hidden">{t.pay.howTitle}</summary>
-                        <div className="mt-2 rounded-xl bg-sand p-3 text-sm">
-                          {stripeOn && <div className="mb-3 max-w-xs"><PayButton registrationId={m.id} lang={lang} label={`${t.pay.online} · ${mxn(m.amountCents / 100, lang)}`} busyLabel={t.pay.onlineBusy} errors={t.pay.errors} /><p className="mt-1.5 text-xs text-muted">{t.pay.onlineHint}</p></div>}
-                          {stripeOn && <p className="text-muted">{t.pay.offlineHint}</p>}
-                          {m.event?.paymentInfo ? <p className="whitespace-pre-line break-words">{m.event.paymentInfo}</p> : <p className="text-muted">{t.pay.noInstructions}</p>}
-                        </div>
-                      </details>
-                    )}
+                    {/* «Cómo pagar» y, enseguida, «Cambiar a …» (con ventana de confirmación). */}
+                    <RegActions payLabel={pending ? t.pay.howTitle : null}
+                      panel={pending ? <PayInstructions registrationId={m.id} amountCents={m.amountCents} paymentInfo={m.event?.paymentInfo ?? null} stripeOn={stripeOn} lang={lang} t={t} /> : null}
+                      roleSlot={to && (m.role === "header" || m.role === "heeler") ? (
+                        <ChangeRoleDialog action={changeRegistrationRole} lang={lang} id={m.id} to={to}
+                          className="inline-flex min-h-11 items-center rounded-full border border-line px-4 text-sm font-medium hover:border-ink"
+                          l={{ button: t.account.changeRoleTo(t.roles[to]), title: t.account.changeRoleTitle, body: t.account.changeRoleBody(m.event?.name ?? "", t.roles[m.role], t.roles[to]), confirm: t.account.changeRoleConfirm, cancel: t.account.changeRoleCancel }} />
+                      ) : null} />
                   </AccountEventCard>
                 );
               })}

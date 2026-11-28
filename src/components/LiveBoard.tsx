@@ -33,7 +33,7 @@ export function LiveBoard({ data, labels: l }: { data: LiveSnapshot; labels: Lab
               <span className="grid size-12 place-items-center rounded-full bg-white text-sm font-semibold tabular-nums">{pct}%</span>
             </div>
             <div>
-              <p className="font-semibold">{fill(l.round, { a: data.round, b: data.rounds })}</p>
+              <p className="font-semibold">{fill(data.shortGo ? l.shortGoRound : l.round, { a: data.round, b: data.rounds })}</p>
               <p className="text-sm text-muted">{fill(l.teams, { a: data.done, b: data.total, c: data.total - data.done })}</p>
             </div>
           </section>

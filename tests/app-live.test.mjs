@@ -1,11 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { CONTRACT_VERSION, etagMatches, liveEtag, liveResponse, parseLiveBody, toLiveSnapshot } from "../src/lib/app-live.ts";
+import { CONTRACT_VERSION, etagMatches, isPublishingLive, liveEtag, liveResponse, parseLiveBody, toLiveSnapshot } from "../src/lib/app-live.ts";
 
 const team = (n, extra = {}) => ({ n, header: `Cabecero ${n}`, heeler: `Pialador ${n}`, total_ms: null, ...extra });
 const body = (over = {}) => JSON.stringify({
   contract_version: CONTRACT_VERSION, revision: 7, round: 2, rounds: 3, total: 4, done: 2,
   current: team(3), pending: [team(4)], standings: [team(1, { total_ms: 8200 }), team(2, { total_ms: 9100 })], ...over,
+});
+
+test("KIN-787: short_go solo se guarda cuando es verdadero y debe ser booleano", () => {
+  assert.equal(parseLiveBody(body({ short_go: true })).snapshot.shortGo, true);
+  assert.equal("shortGo" in parseLiveBody(body({ short_go: false })).snapshot, false);
+  assert.equal("shortGo" in parseLiveBody(body()).snapshot, false, "una app anterior no lo manda");
+  assert.equal(parseLiveBody(body({ short_go: "si" })).ok, false);
 });
 
 test("KIN-787: una foto completa se acepta y se guarda sin el nombre del evento", () => {
@@ -75,4 +82,11 @@ test("el ETag es la revisión y el navegador lo reconoce solo si no cambió", ()
   assert.equal(etagMatches("*", liveEtag(7)), true);
   assert.equal(etagMatches('"live-6"', liveEtag(7)), false);
   assert.equal(etagMatches(null, liveEtag(7)), false);
+});
+
+test("KIN-787: la ficha del evento muestra «ver resultados en vivo» solo si la app ya publicó una foto", () => {
+  assert.equal(isPublishingLive([{ revision: 3, snapshot: {} }]), true);
+  assert.equal(isPublishingLive([]), false, "sin foto: el evento aún no empieza");
+  assert.equal(isPublishingLive(null), false);
+  assert.equal(isPublishingLive(undefined), false);
 });

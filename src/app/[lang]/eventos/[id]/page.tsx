@@ -9,8 +9,10 @@ import { toEnrolledItem } from "@/lib/enrolled-view";
 import { fmtDate, mxn, type Lang } from "@/lib/format";
 import { formatRounds } from "@/lib/event-rounds";
 import { fmtEnrolled, isFull } from "@/lib/event-capacity";
-import { fmtDeadline, isLiveToday, isNotOpenYet, isRegistrationOpen, statusByDate } from "@/lib/event-time";
+import { fmtDeadline, isNotOpenYet, isRegistrationOpen, statusByDate } from "@/lib/event-time";
 import { LIVE_VIEW } from "@/lib/flags";
+import { isPublishingLive } from "@/lib/app-live";
+import { adminClient } from "@/lib/supabase/admin";
 import Image from "next/image";
 import { EnrolledList } from "@/components/EnrolledList";
 import { EventResultsSection } from "@/components/EventResultsSection";
@@ -50,6 +52,8 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   const canWait = e.status === "publicado" && isFull(e.enrolled, e.capacity) && regOpen;
   const waiting = canWait && e.uuid ? await (viewer ? getEventWaitlistCountForViewer(e.uuid) : getEventWaitlistCount(e.uuid)) : 0;
   const closesLine = e.status === "publicado" && regOpen && e.registrationClosesAt ? `${t.event.closesOn} ${fmtDeadline(e.registrationClosesAt, e.timezone, lang)}` : null;
+  // KIN-787: el botón de «ver resultados en vivo» sale cuando la app del organizador ya publica la ronda (hay foto en vivo del evento).
+  const publishingLive = LIVE_VIEW && e.uuid ? isPublishingLive((await adminClient()?.rpc("get_live_snapshot", { p_event: e.uuid }))?.data) : false;
   const resultDisciplines: DisciplineId[] = ACTIVE_DISCIPLINES.filter((d) => e.disciplines.includes(d.id)).map((d) => d.id);
   if (resultDisciplines.length === 0) resultDisciplines.push(DEFAULT_DISCIPLINE);
   const gallery = e.photos.filter((p) => p.url !== e.cover); // el flyer de portada ya se ve arriba
@@ -81,8 +85,8 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
 
         <div>
           <h1 className="text-3xl font-semibold sm:text-4xl">{e.name}</h1>
-          {LIVE_VIEW && isLiveToday(found) && (
-            <Link href={`/${lang}/eventos/${e.id}/en-vivo`} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-full bg-red-600 px-5 text-sm font-medium text-white hover:bg-red-700">
+          {publishingLive && (
+            <Link href={`/${lang}/eventos/${e.id}/en-vivo`} data-testid="live-results-link" className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-full bg-red-600 px-5 text-sm font-medium text-white hover:bg-red-700">
               <span aria-hidden className="size-2 animate-pulse rounded-full bg-white motion-reduce:animate-none" />{t.live.watch}
             </Link>
           )}

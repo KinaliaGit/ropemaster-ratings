@@ -8,6 +8,8 @@ export type LiveSnapshot = {
   venue: string;
   round: number;
   rounds: number;
+  /** `true` cuando la ronda que se corre es el short-go (la última, con short-go). Ausente = una ronda normal (app anterior). */
+  shortGo?: boolean;
   /** Equipos de la ronda y cuántos ya pasaron. */
   total: number;
   done: number;

@@ -276,10 +276,10 @@ export const en: Dict = {
     win: (n: number): string => (n === 1 ? "win" : "wins"),
   },
   live: {
-    live: "Live", updated: "{a}s ago", progress: "Round progress", round: "Round {a} of {b}", teams: "{a} of {b} teams done · {c} to go",
+    live: "Live", updated: "{a}s ago", progress: "Round progress", round: "Round {a} of {b}", shortGoRound: "Short Go (round {a} of {b})", teams: "{a} of {b} teams done · {c} to go",
     onDeck: "Up now · team {a}", accumulated: "total", next: "Next", waiting: "The round has not started yet.", roundOver: "The round is over.",
     standings: "Standings", showAll: "See all", showLess: "See less", noTimes: "No times yet.",
     search: "Find my name or turn", noMatch: "We could not find that name or turn in this round.", nowShort: "Up now", turn: "Turn {a}", turns: "Turns:", isNext: "Next", ahead: "{a} to go",
-    demo: "Demo: turns and times are made up.", noData: "The event hasn't started yet. Once it does, you'll see the turns and standings here; this screen updates by itself.", offline: "Offline. Still trying…", watch: "Watch live", details: "Event details and sign-up",
+    demo: "Demo: turns and times are made up.", noData: "The event hasn't started yet. Once it does, you'll see the turns and standings here; this screen updates by itself.", offline: "Offline. Still trying…", watch: "See live results", details: "Event details and sign-up",
   },
 };

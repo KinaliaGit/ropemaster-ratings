@@ -3,6 +3,7 @@
   "revision": 1764212345678,
   "round": 2,
   "rounds": 3,
+  "short_go": false,
   "total": 4,
   "done": 2,
   "current": { "n": 3, "header": "Diego Mora", "heeler": "Pablo Cano", "total_ms": null },

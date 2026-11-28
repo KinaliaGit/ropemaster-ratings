@@ -79,7 +79,10 @@ export function parseLiveBody(text: string): LiveBody | LiveFailure {
   const standings = parseTeams(data.standings, "standings");
   if (!Array.isArray(standings)) return standings;
 
-  return { ok: true, revision: data.revision, snapshot: { round: data.round, rounds: data.rounds, total: data.total, done: data.done, current, pending, standings } };
+  if (data.short_go !== undefined && typeof data.short_go !== "boolean") return fail(400, "invalid_field", "short_go debe ser verdadero o falso.");
+  // Solo se guarda cuando es verdad: una app anterior no lo manda y la ronda se muestra como una normal.
+  const shortGo = data.short_go === true ? { shortGo: true } : {};
+  return { ok: true, revision: data.revision, snapshot: { round: data.round, rounds: data.rounds, ...shortGo, total: data.total, done: data.done, current, pending, standings } };
 }
 
 /** Respuesta HTTP de guardar la foto, según lo que contestó `app_put_live_snapshot`. */
@@ -97,6 +100,9 @@ export function liveResponse(outcome: string, eventId: string, revision: number 
 
 /** Lo que devuelve `get_live_snapshot`. */
 export type LiveRow = { revision: number | string; snapshot: StoredLive; updated_at: string; event_name: string; venue: string | null; city: string | null };
+
+/** ¿La app está publicando resultados en vivo de este evento? (`get_live_snapshot` solo contesta con foto para eventos publicados o finalizados y públicos.) */
+export const isPublishingLive = (data: unknown): boolean => Array.isArray(data) && data.length > 0;
 
 /** La foto lista para la pantalla (`LiveBoard`): le agrega el nombre y la arena reales del evento y la hora del último cambio. */
 export function toLiveSnapshot(row: LiveRow): LiveSnapshot {

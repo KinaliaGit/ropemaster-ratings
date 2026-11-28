@@ -516,6 +516,7 @@ El evento debe estar publicado o finalizado y ser del organizador. Ejemplo: `doc
 | `contract_version` | entero | `1` |
 | `revision` | entero ≥ 1 | Solo sube. La app puede usar la hora en milisegundos. Reenviar la misma es inofensivo; una menor no pisa a una mayor |
 | `round`, `rounds` | enteros | Ronda actual (1…`rounds`) y total de rondas. `rounds` incluye el Short Go, igual que `event.rounds` |
+| `short_go` | booleano, opcional | `true` si la ronda que se corre es el short-go (la última de `rounds`, en un evento con short-go). Ausente o `false` = ronda normal (una app anterior no lo manda). La pantalla pública dice «Short-go» en lugar de «Ronda N de N» |
 | `total`, `done` | enteros | Equipos de la ronda y cuántos ya pasaron (`0 ≤ done ≤ total`) |
 | `current` | equipo o `null` | Quien está lazando; `null` antes de empezar y al terminar la ronda |
 | `pending` | arreglo de equipos | **Todos** los que faltan, en orden de turno (cada quien necesita ver sus turnos aunque estén lejos) |

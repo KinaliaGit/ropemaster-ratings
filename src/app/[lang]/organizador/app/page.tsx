@@ -59,6 +59,7 @@ async function Page({ params }: { params: PageProps<"/[lang]/organizador/app">["
             </ol>
 
             <DevicesSection organizer={s.id} lang={lang} />
+            <p className="mt-8 text-sm text-muted">{a.links.moved}</p>
           </div>
         </>
       )}

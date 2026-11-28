@@ -1,4 +1,5 @@
 import { organizerFromRequest } from "@/lib/app-auth";
+import { guardEvent, guardScope } from "@/lib/app-connection";
 import { adminClient } from "@/lib/supabase/admin";
 import { ACTIVE_DISCIPLINES } from "@/lib/disciplines";
 import { INITIAL_RATING } from "@/lib/rating";
@@ -17,12 +18,16 @@ const headers = { "Cache-Control": "no-store" };
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers });
 
 export async function GET(request: Request) {
-  const auth = await organizerFromRequest(request);
+  const auth = await organizerFromRequest(request, { eventToken: true });
   if (auth instanceof Response) return auth;
+  const noScope = guardScope(auth.grant, "event:read");
+  if (noScope) return noScope;
 
   const parsed = parseParticipantsQuery(new URL(request.url));
   if (!parsed.ok) return json({ error: parsed.error }, 400);
   const { eventId, since, cursor } = parsed.value;
+  const otherEvent = guardEvent(auth.grant, eventId); // un token de evento solo lee a los inscritos de su evento
+  if (otherEvent) return otherEvent;
 
   const db = adminClient();
   if (!db) return json({ error: "Servicio no disponible" }, 503);

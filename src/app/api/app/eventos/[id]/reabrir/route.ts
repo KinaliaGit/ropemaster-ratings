@@ -1,4 +1,5 @@
 import { organizerFromRequest } from "@/lib/app-auth";
+import { guardEvent, guardScope } from "@/lib/app-connection";
 import { adminClient } from "@/lib/supabase/admin";
 import { checkActiveOrganizer } from "@/lib/app-organizer";
 import { isUuid, parseReopenBody, reopenResponse } from "@/lib/app-results";
@@ -12,11 +13,15 @@ const headers = { "Cache-Control": "no-store" };
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers });
 
 export async function POST(request: Request, ctx: RouteContext<"/api/app/eventos/[id]/reabrir">) {
-  const auth = await organizerFromRequest(request);
+  const auth = await organizerFromRequest(request, { eventToken: true });
   if (auth instanceof Response) return auth;
+  const noScope = guardScope(auth.grant, "results:write");
+  if (noScope) return noScope;
 
   const { id } = await ctx.params;
   if (!isUuid(id)) return json({ error: "El id del evento no es válido." }, 400);
+  const otherEvent = guardEvent(auth.grant, id);
+  if (otherEvent) return otherEvent;
   const parsed = parseReopenBody(await request.text());
   if (!parsed.ok) return json({ code: parsed.code, error: parsed.error }, parsed.status);
 

@@ -1,4 +1,5 @@
 import { organizerFromRequest } from "@/lib/app-auth";
+import { guardScope } from "@/lib/app-connection";
 import { adminClient } from "@/lib/supabase/admin";
 import { checkActiveOrganizer } from "@/lib/app-organizer";
 import { MAX_BYTES, buildUploadEventResponse, dbFailure, parseUploadEventBody, type UploadEventRow } from "@/lib/app-event-upload";
@@ -12,13 +13,16 @@ import { PAGE_SIZE, buildEventsPage, checkVersion, parseEventsQuery, type EventA
 // que cambió llega completo, con la lista vigente de inscritos. Guardar `generated_at` para el siguiente `since`.
 // Orden de las comprobaciones: token de la sesión (401/429), versión y parámetros (400/426), organizador activo (403).
 // Los borradores no se envían. NUNCA se registran los nombres de los inscritos en logs.
+// Con un token de evento (enlace privado, KIN-783) solo llega ese evento. POST (crear eventos y series) es solo con correo y contraseña.
 const headers = { "Cache-Control": "no-store" };
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers });
 const unavailable = () => json({ code: "service_unavailable", error: "Servicio no disponible" }, 503);
 
 export async function GET(request: Request) {
-  const auth = await organizerFromRequest(request);
+  const auth = await organizerFromRequest(request, { eventToken: true });
   if (auth instanceof Response) return auth;
+  const denied = guardScope(auth.grant, "event:read");
+  if (denied) return denied;
 
   const version = checkVersion(request.headers.get("x-contract-version"));
   if (version) return json({ code: version.code, error: version.error }, version.status);
@@ -44,6 +48,7 @@ export async function GET(request: Request) {
       p_after_changed: cursor?.changedAt ?? null,
       p_after_id: cursor?.id ?? null,
       p_limit: PAGE_SIZE + 1, // uno de más para saber si hay otra página
+      p_event: auth.grant?.eventId ?? null, // un token de evento solo descarga SU evento (KIN-783)
     });
     if (error) return unavailable();
 

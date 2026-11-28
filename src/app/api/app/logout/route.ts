@@ -1,4 +1,6 @@
 import { revokeTokenByToken } from "@/lib/sync-tokens";
+import { revokeEventTokenByToken } from "@/lib/event-connections";
+import { isEventToken } from "@/lib/app-connection";
 
 // Cierre de sesión de la app (KIN-606): revoca el token con el que se llama, y solo ese equipo. Contrato en docs/SYNC_API.md.
 //   POST /api/app/logout   (Authorization: Bearer <token>)  ->  200 { ok: true, revoked: boolean }
@@ -12,7 +14,8 @@ export async function POST(request: Request) {
   const given = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() ?? "";
   if (!given) return json({ code: "invalid_token", error: "Token inválido" }, 401);
   try {
-    return json({ ok: true, revoked: await revokeTokenByToken(given) });
+    // Un token de evento (rme_…) revoca solo su enlace; uno de correo y contraseña, solo su equipo.
+    return json({ ok: true, revoked: isEventToken(given) ? await revokeEventTokenByToken(given) : await revokeTokenByToken(given) });
   } catch {
     return json({ code: "service_unavailable", error: "Servicio no disponible" }, 503);
   }

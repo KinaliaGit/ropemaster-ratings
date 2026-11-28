@@ -5,6 +5,9 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { CopyLink } from "@/components/CopyLink";
+import { EventLinkCreate } from "@/components/EventLinkCreate";
+import { EventLinkRevoke } from "@/components/EventLinkRevoke";
+import { listEventConnections } from "@/lib/event-connections";
 import { parseMissing, type MissingField } from "@/lib/event-publish";
 import { deleteEvent, setEventStatus, setRegistrationOpen } from "@/lib/event-actions";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
@@ -63,7 +66,11 @@ async function Manage({ s, id, lang, t, justCreated, justCreatedPrivate, justEdi
   // Un organizador solo gestiona sus propios eventos (la base además lo impone).
   const e = await getOrganizerEvent(s.id, id);
   if (!e) notFound();
-  const [rows, removals, waitlist] = await Promise.all([listEventRegistrations(e.uuid!), listEventRemovals(e.uuid!), listEventWaitlist(e.uuid!)]);
+  const [rows, removals, waitlist, allLinks] = await Promise.all([listEventRegistrations(e.uuid!), listEventRemovals(e.uuid!), listEventWaitlist(e.uuid!), listEventConnections(s.id).catch(() => [])]);
+  const links = allLinks.filter((l) => l.eventId === e.uuid);
+  const ln = t.org.app.links;
+  const linkDay = (iso: string) => fmtDate(iso.slice(0, 10), lang);
+  const canText = (scopes: string[]) => [ln.canRead, ...(scopes.includes("results:write") ? [ln.canResults] : []), ...(scopes.includes("payments:write") ? [ln.canPayments] : [])].join(", ");
   const rm = t.org.ev.remove;
   const wl = t.org.ev.waitlist;
   const espMsg = espera ? (wl.msg as Record<string, string>)[espera] ?? wl.msg.failed : null;
@@ -120,10 +127,44 @@ async function Manage({ s, id, lang, t, justCreated, justCreatedPrivate, justEdi
               <section aria-labelledby="share" className={`mt-6 rounded-2xl p-5 ${justCreated === "publicado" ? "bg-brand-soft" : "card"}`}>
                 {justCreated === "publicado" && <><h2 className="text-lg font-semibold">{t.org.share.publishedTitle}</h2><p className="mt-1 text-sm" data-testid={justCreatedPrivate ? "published-private" : undefined}>{justCreatedPrivate ? t.org.share.publishedPrivateText : t.org.share.publishedText}</p></>}
                 {justCreated === "borrador" && <><h2 className="text-lg font-semibold">{t.org.share.draftTitle}</h2><p className="mt-1 text-sm">{t.org.share.draftText}</p></>}
-                <h3 id="share" className={`font-semibold ${justCreated ? "mt-4 text-sm" : "text-base"}`}>{t.org.share.title}</h3>
-                {!justCreated && <p className="mt-0.5 text-sm text-muted">{t.org.share.hint}</p>}
-                <CopyLink url={shareUrl} copy={t.org.share.copy} copied={t.org.share.copied} whatsappLabel={t.org.share.whatsapp} whatsappText={t.org.share.whatsappText} />
-                {e.status === "borrador" && <p className="mt-2 text-xs text-muted">{t.org.share.draftLink}</p>}
+                <details open className="group" data-testid="event-links">
+                  <summary className={`flex cursor-pointer list-none items-center justify-between gap-3 font-semibold ${justCreated ? "mt-4 text-sm" : "text-base"}`}>
+                    <h3 id="share">{ln.title}</h3>
+                    <span aria-hidden className="text-muted transition group-open:rotate-180">⌄</span>
+                  </summary>
+                  <div className="mt-3">
+                    <h4 className="text-sm font-semibold">{ln.playersTitle}</h4>
+                    {!justCreated && <p className="mt-0.5 text-sm text-muted">{ln.playersHint}</p>}
+                    <CopyLink url={shareUrl} copy={t.org.share.copy} copied={t.org.share.copied} whatsappLabel={t.org.share.whatsapp} whatsappText={t.org.share.whatsappText} />
+                    {e.status === "borrador" && <p className="mt-2 text-xs text-muted">{t.org.share.draftLink}</p>}
+                  </div>
+                  <div className="mt-6 border-t border-line pt-5" data-testid="event-local-link">
+                    <h4 className="text-sm font-semibold">{ln.localTitle}</h4>
+                    <p className="mt-0.5 text-sm text-muted">{ln.localHint}</p>
+                    {e.status === "borrador" || !e.uuid ? <p className="mt-3 text-sm text-muted">{ln.needsPublished}</p> : (
+                      <EventLinkCreate eventId={e.uuid} l={{ defaultLabel: ln.defaultLabel, create: ln.create, creating: ln.creating, created: ln.created, code: ln.code, copy: ln.copy, copied: ln.copied, codeHint: ln.codeHint, another: ln.another, errors: ln.errors }} />
+                    )}
+                    <h5 className="mt-5 text-xs font-semibold uppercase tracking-wider text-muted">{ln.active}</h5>
+                    {links.length === 0 ? <p className="mt-2 text-sm text-muted">{ln.none}</p> : (
+                      <ul className="mt-2 divide-y divide-line">
+                        {links.map((link) => (
+                          <li key={link.id} className="flex items-start justify-between gap-3 py-3">
+                            <div className="min-w-0">
+                              <p className="truncate font-medium">{link.label}</p>
+                              <p className="mt-0.5 text-sm text-muted">
+                                {ln.can}: {canText(link.scopes)}.{" "}
+                                {link.state === "invited"
+                                  ? `${ln.invited} ${linkDay(link.inviteExpiresAt)}.`
+                                  : `${ln.connected}: ${link.deviceName ?? ln.device}. ${ln.lastUsed}: ${link.lastUsedAt ? linkDay(link.lastUsedAt) : ln.neverUsed}. ${ln.expires} ${linkDay(link.expiresAt ?? link.inviteExpiresAt)}.`}
+                              </p>
+                            </div>
+                            <EventLinkRevoke id={link.id} l={{ revoke: ln.revoke, revokeConfirm: ln.revokeConfirm, revokeError: ln.revokeError }} />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </details>
               </section>
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{fmtEnrolled(e.enrolled, e.capacity)}</p><p className="label mt-1">{t.org.enrolled}</p></div>

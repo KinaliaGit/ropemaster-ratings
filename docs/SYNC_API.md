@@ -35,8 +35,40 @@ La contraseña se recorta y se corta a 100 caracteres, igual que en el formulari
 | `429` | `rate_limited` | Demasiados intentos fallidos (20 por IP o 10 por correo en 5 minutos; solo cuentan los fallos). Trae `Retry-After` | sí, tras la espera |
 | `503` | `service_unavailable` | Falla temporal de la web o de Supabase | sí |
 
+## Enlace privado por evento: `POST /api/app/conexion` (KIN-783)
+Convive con el login: con correo y contraseña la app ve **todo** el organizador; con un enlace privado ve y escribe en **un solo evento**, sin la
+contraseña (por ejemplo, la persona que captura en la arena). Decisiones en KIN-782.
+
+1. El organizador crea el enlace en el panel (*App local → Enlaces por evento*): elige el evento (solo `publicado` o `finalizado`), para quién es y los permisos.
+   La web entrega una **invitación** (`rmi_…`) que se muestra una sola vez. Es de un solo uso y **vence a las 72 h**. En la base solo queda su hash.
+2. La app (o el operador) la canjea sin `Authorization`: `POST /api/app/conexion` con `{ contract_version, invite, device_name? }`
+   (ejemplos: `sync-examples/conexion.request.json` y `conexion.response.json`). Responde el **token del evento** (`rme_…`, también una sola vez), el evento,
+   los `scopes` y `expires_at`. Con ese token se usa `Authorization: Bearer <token>` como siempre.
+3. Permisos (`scopes`): `event:read` (siempre: ver el evento, sus inscritos y quién ya pagó), `results:write` (subir resultados, cerrar y reabrir)
+   y `payments:write` (subir pagos, por ejemplo en efectivo). **Solo puede haber un enlace con `results:write` por evento** y hasta 5 enlaces activos por evento.
+4. Vigencia: el token vence a los **30 días sin usarse** y, a más tardar, a los **7 días de la fecha del evento**. Cada uso reinicia el plazo de inactividad.
+   El organizador lo revoca al instante desde su panel, o la app con `POST /api/app/logout` (revoca solo ese enlace). Si el evento deja de estar publicado, responde `404`.
+5. Mientras haya un enlace con `results:write` activo y los resultados estén abiertos, la web **no deja borrar resultados** del evento (error `connected_event`
+   en la base): ciérralos, o revoca el enlace de escritura. Hoy la web no tiene un botón para borrarlos; el candado cubre cualquier otro camino.
+
+Qué responde cada endpoint con un token de evento:
+
+| Endpoint | Con token de evento |
+|---|---|
+| `GET /api/app/eventos` | Solo ese evento (mismo formato, misma paginación y `since`). Requiere `event:read`. |
+| `GET /api/app/participantes` | Solo si `event_id` es su evento; otro evento: `404 event_not_found`. |
+| `POST /api/app/resultados` | Requiere `results:write`. Si **algún** resultado del lote es de otro evento (o no trae `event_id`) se rechaza todo el lote con `404 event_not_found`. |
+| `POST /api/app/pagos` | Requiere `payments:write`; mismo criterio del lote. |
+| `POST /api/app/eventos/<id>/cierre` y `/reabrir` | Requieren `results:write` y que `<id>` sea su evento. |
+| `POST /api/app/eventos` (crear eventos y series), `POST /api/app/login` | Solo con correo y contraseña: `403 scope_denied`. |
+
+Códigos nuevos: `403 scope_denied` (el token no tiene el permiso o la ruta no admite enlaces) y `404 event_not_found` (otro evento, uno inexistente o
+uno que dejó de ser público: no se distinguen). Al canjear: `401 invalid_invite` cuando la invitación no existe, ya se usó, venció, se revocó o su evento ya no está publicado
+(todos se ven igual y gastan el límite de intentos: 20 por IP en 5 minutos, `429 rate_limited` con `Retry-After`); además `400`, `413` (más de 4 KB) y `426` como en el login.
+La respuesta 200 incluye `organizer` (id y nombre del dueño del evento).
+
 ## `POST /api/app/logout`
-`Authorization: Bearer <token>`. Revoca **solo** el token con el que se llama (ese equipo). Siempre responde `200 { "ok": true, "revoked": <boolean> }`:
+`Authorization: Bearer <token>`. Revoca **solo** el token con el que se llama (ese equipo, o ese enlace si es un token de evento). Siempre responde `200 { "ok": true, "revoked": <boolean> }`:
 un token que ya estaba revocado, vencido o que no existe da `revoked: false`, así la app puede olvidar su token local sin distinguir. Sin internet la app
 solo lo olvida; la web lo deja vencer a los 30 días sin uso o el organizador lo revoca en su panel. Sin encabezado `Authorization`: `401 invalid_token`.
 
@@ -467,6 +499,67 @@ Revisado contra el esquema de la web (`supabase/migrations`) y el de la app (`ro
 3. **Límites** de 200 resultados y 256 KB: razonables para un evento típico, confirmar con un evento grande real.
 4. **Autenticación:** este contrato asume el token de sesión por equipo (KIN-606). El valor fijo `APP_SYNC_TOKEN` solo
    debe existir en desarrollo.
+
+## Resultados en vivo (KIN-787, H13.6)
+
+La app manda la **foto completa** de la ronda que se está corriendo; la web la guarda (una fila por evento, cada foto reemplaza a la anterior) y la sirve a la
+página pública, que la sondea cada 10–15 s (decisión 7 de KIN-782). No es un segundo sistema de resultados: los resultados siguen viajando por
+`POST /api/app/resultados`; esto solo describe el avance de la ronda (turnos, quién lazó, quién falta). Todo aditivo: no sube `contract_version`.
+
+### `POST /api/app/eventos/<event_id>/en-vivo`
+
+Autenticación: sesión de la app. Con un token de evento (`rme_…`) necesita `results:write` y el evento debe ser el suyo (otro evento: `404`).
+El evento debe estar publicado o finalizado y ser del organizador. Ejemplo: `docs/sync-examples/en-vivo.request.json` y `.response.json`.
+
+| Campo | Tipo | Significado |
+|---|---|---|
+| `contract_version` | entero | `1` |
+| `revision` | entero ≥ 1 | Solo sube. La app puede usar la hora en milisegundos. Reenviar la misma es inofensivo; una menor no pisa a una mayor |
+| `round`, `rounds` | enteros | Ronda actual (1…`rounds`) y total de rondas. `rounds` incluye el Short Go, igual que `event.rounds` |
+| `short_go` | booleano, opcional | `true` si la ronda que se corre es el short-go (la última de `rounds`, en un evento con short-go). Ausente o `false` = ronda normal (una app anterior no lo manda). La pantalla pública dice «Short-go» en lugar de «Ronda N de N» |
+| `total`, `done` | enteros | Equipos de la ronda y cuántos ya pasaron (`0 ≤ done ≤ total`) |
+| `current` | equipo o `null` | Quien está lazando; `null` antes de empezar y al terminar la ronda |
+| `pending` | arreglo de equipos | **Todos** los que faltan, en orden de turno (cada quien necesita ver sus turnos aunque estén lejos) |
+| `standings` | arreglo de equipos | Los que ya pasaron, de la mejor posición a la peor (sin tiempo, al final), ya ordenados por la app: la web no los reordena |
+| `last` | corrida o `null`, opcional | La corrida capturada **más recientemente** (también una corrección): `{ n, header, heeler, round, time_ms, status, total_ms }`. La pantalla la muestra junto al equipo en turno. Ausente = una app anterior |
+| `results` | arreglo de rondas, opcional | Lo capturado en cada ronda, de la primera a la última: `{ round, short_go, runs: [{ n, header, heeler, time_ms, status }] }`, `runs` en orden de turno y solo con lo ya capturado. La pantalla lo muestra como «Tiempos por ronda». Si la foto pasara de ~200 KB la app lo omite antes que dejar de publicar |
+
+`time_ms` es el tiempo de ESA corrida (no el acumulado; incluye penalizaciones). `status`: `ok`, `no_time` o `dq` (con `time_ms: null`).
+
+Un equipo es `{ "n": 3, "header": "…", "heeler": "…", "total_ms": 8200 | null }`: `n` es el turno (≥ 1), `total_ms` el tiempo acumulado en milisegundos
+(`null` si aún no tiene). Los nombres se limpian (espacios y caracteres de control) y se recortan a 80 caracteres. **No viaja nada privado**: ni correos, ni
+celulares, ni pagos. Límites: 256 KB por envío y 1000 equipos por lista.
+
+| Respuesta | Cuándo |
+|---|---|
+| `200 { contract_version, event_id, revision, unchanged }` | Guardada (`unchanged: true` si ya tenía esa misma revisión) |
+| `409 { code: "stale_revision", revision }` | La web ya tiene una más nueva (`revision` es la suya). La app deja de reintentar esa foto y manda la siguiente |
+| `400` / `413` / `426` | Cuerpo inválido, demasiado grande o versión del contrato no soportada |
+| `403 scope_denied` / `404` | Sin `results:write`; evento ajeno, inexistente o borrador |
+
+### `POST /api/app/eventos/<event_id>/en-vivo/retirar`
+
+La app lo llama cuando el organizador **apaga «En vivo web»** del evento (la publicación en vivo es opcional y viene apagada de fábrica; los resultados finales
+siguen subiendo por `POST /api/app/resultados`). La web borra la foto del evento, así la página pública vuelve a decir que el evento aún no empieza y la ficha
+deja de ofrecer «Ver resultados en vivo». Mismos permisos que el envío (`results:write`, evento propio). Sin cuerpo necesario.
+
+| Respuesta | Cuándo |
+|---|---|
+| `200 { contract_version, event_id, removed }` | Hecho (`removed: false` si no había foto: inofensivo) |
+| `403 scope_denied` / `404` | Sin `results:write`; evento ajeno o inexistente |
+
+Si la app no tiene internet al apagar, queda pendiente y lo reintenta sola. Al volver a encender manda la foto completa otra vez.
+
+### `GET /api/eventos/<event_id>/en-vivo` (público)
+
+Sin autenticación. Devuelve la foto lista para la pantalla (`LiveSnapshot` de `src/lib/live.ts`): lo mismo que se mandó, más `name`, `venue` (arena y ciudad
+del evento) y `updatedAt` (cuándo cambió por última vez). Responde con `ETag` (la revisión); con `If-None-Match` igual contesta `304` sin cuerpo.
+`Cache-Control: public, s-maxage=5, stale-while-revalidate=10`, así que el costo no crece con los espectadores. `404` si el evento no tiene foto, es un
+borrador, es privado o no existe (no se distinguen). `src/components/LiveView.tsx` es el consumo de referencia: sondea cada 5 s mientras la pestaña está
+a la vista, conserva la última foto y avisa si se cae la conexión.
+
+La página `/{lang}/eventos/{evento}/en-vivo` se enciende en producción con `LIVE_ENABLED=true`; en desarrollo siempre está encendida y, sin datos reales, muestra
+la demostración.
 
 ## Subida de pagos (KIN-706)
 

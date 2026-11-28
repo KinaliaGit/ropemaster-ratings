@@ -253,12 +253,36 @@ export const es = {
         none: "Aún no has conectado ningún equipo.", since: "Conectado el", lastUsed: "Último uso", neverUsed: "Aún no se ha usado", expires: "Vence el", expired: "Vencido: vuelve a entrar desde la app",
         revoke: "Revocar", revokeConfirm: "Si lo revocas, ese equipo deja de sincronizar al instante y tendrá que volver a entrar con tu contraseña. ¿Revocar el equipo?", revokeError: "No se pudo revocar el equipo. Intenta de nuevo.",
       },
+      links: {
+        title: "Enlaces", playersTitle: "Enlace para compartir a los lazadores", playersHint: "Cualquiera con este enlace puede ver el evento e inscribirse. Se abre en su idioma.",
+        localTitle: "Enlace para la app local", localHint: "Para conectar la app de una computadora (por ejemplo, la de quien captura en la arena) a ESTE evento sin darle tu contraseña. Siempre trae los tres permisos: ver inscritos y quién ya pagó, capturar y subir resultados, y registrar pagos (por ejemplo, en efectivo). Lo puedes revocar cuando quieras.",
+        needsPublished: "Publica el evento para generar el enlace de la app local.", defaultLabel: "App local",
+        create: "Generar enlace", creating: "Generando…", created: "Enlace generado. Cópialo ahora: por seguridad no se vuelve a mostrar.", code: "Código de conexión", copy: "Copiar", copied: "Copiado",
+        codeHint: "Pégalo en la app (Ajustes → Cuenta web → Conectar con un enlace). Se usa una sola vez y vence en 72 horas.", another: "Generar otro enlace",
+        active: "Enlaces activos de este evento", none: "No hay enlaces activos de este evento.", invited: "Esperando que se use. La invitación vence el", connected: "Conectado", device: "Equipo", lastUsed: "Último uso", neverUsed: "Aún no se ha usado", expires: "Vence el",
+        canRead: "ver", canResults: "resultados", canPayments: "pagos", can: "Puede",
+        revoke: "Revocar", revokeConfirm: "Si lo revocas, quien tenga este enlace pierde el acceso al instante. ¿Revocar el enlace?", revokeError: "No se pudo revocar el enlace. Intenta de nuevo.",
+        moved: "Para conectar la app a UN evento sin tu contraseña, abre el evento y usa la sección Enlaces.",
+        errors: {
+          unauthorized: "Inicia sesión como organizador.", not_active: "Tu cuenta de organizador no está activa.", invalid_event: "Elige un evento.", invalid_scopes: "Los permisos no son válidos.", not_found: "No encontramos ese evento.",
+          not_published: "Solo se pueden conectar eventos publicados.", limit: "Este evento ya tiene 5 enlaces activos. Revoca uno para generar otro.",
+          writer_exists: "Este evento ya tiene un enlace que escribe resultados. Solo puede haber uno: revócalo para generar otro.", failed: "No se pudo generar el enlace. Intenta de nuevo.",
+        },
+      },
     },
   },
   uploader: { eventPhotos: "Fotos del evento", add: "Agregar fotos", hint: `JPG, PNG o WebP, hasta ${MAX_UPLOAD_MB} MB cada una. La primera es la portada.`, cover: "Portada", makeCover: "Hacer portada", remove: "Eliminar", confirmRemove: "¿Eliminar esta foto?", uploading: "Subiendo…", empty: "Aún no hay fotos. La primera que subas será la portada.", tooBig: `Alguna foto pesa más de ${MAX_UPLOAD_MB} MB y no se agregó.`, invalid: "Alguno de los archivos no es una imagen válida (JPG, PNG o WebP).", limit: "Llegaste al máximo de 20 fotos.", failed: "No se pudo subir alguna foto. Intenta de nuevo.", toastUploading: "Subiendo fotos {d} de {t}…", toastDone: "Fotos subidas.", toastFailed: "{n} foto(s) no se subieron. Puedes agregarlas desde la página del evento.", toastClose: "Cerrar" },
   plural: {
     event: (n: number): string => (n === 1 ? "evento" : "eventos"),
     win: (n: number): string => (n === 1 ? "victoria" : "victorias"),
+  },
+  live: {
+    live: "En vivo", updated: "hace {a} s", progress: "Avance de la ronda", round: "Ronda {a} de {b}", shortGoRound: "Short-go (ronda {a} de {b})", teams: "Van {a} de {b} equipos · faltan {c}",
+    onDeck: "En turno · equipo {a}", accumulated: "acumulado", next: "Siguen", waiting: "La ronda todavía no empieza.", roundOver: "Terminó la ronda.",
+    standings: "Posiciones", showAll: "Ver todas", showLess: "Ver menos", noTimes: "Todavía no hay tiempos.",
+    search: "Buscar mi nombre o turno", noMatch: "No encontramos ese nombre o turno en esta ronda.", nowShort: "En turno", turn: "Turno {a}", turns: "Turnos:", isNext: "Sigue", ahead: "Faltan {a}",
+    lastTime: "Último tiempo", lastTimeMeta: "Turno {a} · ronda {b}", lastTimeShort: "Turno {a} · short-go", byRound: "Tiempos por ronda", roundTimes: "Ronda {a}", shortGoTimes: "Short-go", noTimeShort: "Sin tiempo", dqShort: "Descalificado", noRoundTimes: "Todavía no hay tiempos capturados.", roundCount: "{a} equipos",
+    demo: "Demostración: los turnos y tiempos son inventados.", noData: "El evento aún no empieza. Cuando arranque verás aquí los turnos y las posiciones; esta pantalla se actualiza sola.", offline: "Sin conexión. Seguimos intentando…", watch: "Ver resultados en vivo", details: "Detalles del evento e inscripción",
   },
 };
 export type Dict = typeof es;

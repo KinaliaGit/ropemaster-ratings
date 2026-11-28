@@ -2535,6 +2535,218 @@ console.log("- Pagos que sube la app (0053)");
   await check("el servidor SÍ ejecuta la función", (await pay(A, [request.payments[0]])).length === 1);
 }
 
+console.log("— Enlace privado por evento (0059, KIN-783)");
+{
+  const O1 = "f5600000-0000-0000-0000-0000000000a1", O2 = "f5600000-0000-0000-0000-0000000000b1";
+  const EVN = "e5600000-0000-0000-0000-000000000001", EVN2 = "e5600000-0000-0000-0000-000000000002", EVB = "e5600000-0000-0000-0000-000000000003", EVO = "e5600000-0000-0000-0000-000000000004";
+  const RP = (n) => `a5600000-0000-0000-0000-00000000010${n}`;
+  await db.exec(`
+    insert into auth.users (id, email, email_confirmed_at) values ('${O1}','o1-56@x.com',now()), ('${O2}','o2-56@x.com',now());
+    insert into profiles (user_id, role, display_name, organizer_verified) values ('${O1}','organizador','Org 56 A',true), ('${O2}','organizador','Org 56 B',true);
+    insert into events (id, name, organizer_id, status, slug, event_date) values
+      ('${EVN}','Enlace uno','${O1}','publicado','e56-1', current_date + 10),
+      ('${EVN2}','Enlace dos','${O1}','publicado','e56-2', current_date + 20),
+      ('${EVB}','Enlace borrador','${O1}','borrador','e56-3', current_date + 10),
+      ('${EVO}','Enlace de otro','${O2}','publicado','e56-4', current_date + 10);
+    insert into ropers (id, full_name) values ('${RP(1)}','Lazador 1'), ('${RP(2)}','Lazador 2'), ('${RP(3)}','Lazador 3');
+  `);
+  const svc = async (sql, params = []) => { await db.exec("reset role; set role service_role"); try { return (await db.query(sql, params)).rows; } finally { await db.exec("reset role"); } };
+  const fails = async (sql, params, code) => { try { await svc(sql, params); return false; } catch (e) { return String(e.message ?? e).includes(code); } };
+  const arr = (scopes) => `{${scopes.join(",")}}`;
+  const create = async (org, ev, hash, scopes = ["event:read"], label = "Mesa 1") =>
+    (await svc("select public.create_event_connection($1, $2, $3, $4, $5::text[]) as id", [org, ev, hash, label, arr(scopes)]))[0].id;
+  const failCreate = (org, ev, hash, scopes, code) => fails("select public.create_event_connection($1, $2, $3, 'x', $4::text[])", [org, ev, hash, arr(scopes)], code);
+  const redeem = async (invite, token, device = "Laptop") => (await svc("select * from public.redeem_event_connection($1, $2, $3)", [invite, token, device]));
+  const verify = async (hash) => (await svc("select * from public.verify_event_token($1)", [hash]));
+  const W = ["event:read", "results:write", "payments:write"];
+
+  // --- crear
+  const w1 = await create(O1, EVN, "inv-w1", W);
+  await check("el organizador dueño crea la invitación de un evento publicado", !!w1);
+  await check("los permisos incluyen siempre event:read", (await db.query(`select scopes from event_connections where id = '${w1}'`)).rows[0].scopes.includes("event:read"));
+  await check("sin pedir permisos, el enlace queda con event:read", (await db.query(`select scopes from event_connections where id = '${await create(O1, EVN2, "inv-solo-lectura", [])}'`)).rows[0].scopes.join() === "event:read");
+  await check("un borrador NO tiene enlace (not_published)", await failCreate(O1, EVB, "inv-b", ["event:read"], "not_published"));
+  await check("un evento ajeno NO tiene enlace (not_found)", await failCreate(O1, EVO, "inv-o", ["event:read"], "not_found"));
+  await check("permisos desconocidos se rechazan (invalid_scopes)", await failCreate(O1, EVN, "inv-s", ["event:read", "pagos:todo"], "invalid_scopes"));
+  await check("un solo escritor por evento: el segundo con results:write NO se crea (writer_exists)", await failCreate(O1, EVN, "inv-w2", ["results:write"], "writer_exists"));
+  await check("sí caben enlaces de solo lectura junto al escritor", !!(await create(O1, EVN, "inv-r1")) && !!(await create(O1, EVN, "inv-r2")));
+  await check("el límite es de 5 enlaces activos por evento", !!(await create(O1, EVN, "inv-r3")) && !!(await create(O1, EVN, "inv-r4"))
+    && await failCreate(O1, EVN, "inv-r5", ["event:read"], "limit"));
+  await check("otro evento del mismo organizador tiene su propio escritor", !!(await create(O1, EVN2, "inv-w-evn2", ["results:write"])));
+  await check("la invitación dura 72 horas", (await db.query("select (invite_expires_at - created_at) = interval '72 hours' as ok from event_connections where invite_hash = 'inv-r2'")).rows[0].ok === true);
+
+  // --- canjear
+  const rw = await redeem("inv-w1", "tok-w1", "  Laptop de la mesa  ");
+  await check("canjear devuelve el evento, el organizador y los permisos", rw.length === 1 && rw[0].event_id === EVN && rw[0].organizer_id === O1 && rw[0].scopes.join() === "event:read,payments:write,results:write");
+  await check("el nombre del equipo se limpia y se guarda", (await db.query("select device_name from event_connections where token_hash = 'tok-w1'")).rows[0].device_name === "Laptop de la mesa");
+  await check("la invitación es de un solo uso: canjearla otra vez no devuelve nada", (await redeem("inv-w1", "tok-otro")).length === 0);
+  await check("una invitación desconocida no se canjea", (await redeem("no-existe", "tok-x")).length === 0);
+  await redeem("inv-r3", "tok-r3");
+  await db.exec("update event_connections set invite_expires_at = now() - interval '1 minute' where invite_hash = 'inv-r1'");
+  await check("una invitación vencida (72 h) no se canjea", (await redeem("inv-r1", "tok-r1")).length === 0);
+  await db.exec("update event_connections set invite_expires_at = now() - interval '1 minute' where invite_hash = 'inv-w-evn2'");
+  await check("la invitación vencida del escritor libera su lugar: otro escritor ya cabe", !!(await create(O1, EVN2, "inv-w-evn2-b", ["results:write"])));
+
+  // --- verificar
+  const v = await verify("tok-w1");
+  await check("el token canjeado se verifica: organizador dueño, evento, permisos y estado del evento",
+    v.length === 1 && v[0].organizer_id === O1 && v[0].event_id === EVN && v[0].event_status === "publicado" && v[0].scopes.includes("results:write"));
+  await check("un token desconocido o una invitación sin canjear NO sirven como token", (await verify("nada")).length === 0 && (await verify("inv-r2")).length === 0);
+  const before = (await db.query("select last_used_at::text as t from event_connections where token_hash = 'tok-w1'")).rows[0].t;
+  await verify("tok-w1");
+  await check("last_used_at se escribe como máximo una vez por minuto", (await db.query("select last_used_at::text as t from event_connections where token_hash = 'tok-w1'")).rows[0].t === before);
+  await db.exec("update event_connections set last_used_at = now() - interval '31 days', created_at = now() - interval '40 days' where token_hash = 'tok-w1'");
+  await check("a los 31 días sin uso el token vence", (await verify("tok-w1")).length === 0);
+  await db.exec("update event_connections set last_used_at = now() - interval '29 days' where token_hash = 'tok-w1'");
+  await check("a los 29 días sigue sirviendo y ese uso reinicia el plazo", (await verify("tok-w1")).length === 1
+    && (await db.query("select last_used_at > now() - interval '1 minute' as fresh from event_connections where token_hash = 'tok-w1'")).rows[0].fresh === true);
+  await db.exec(`update events set event_date = current_date - 7 where id = '${EVN}'`);
+  await check("hasta 7 días después de la fecha del evento el token sigue sirviendo", (await verify("tok-w1")).length === 1);
+  await db.exec(`update events set event_date = current_date - 8 where id = '${EVN}'`);
+  await check("a los 8 días de la fecha del evento el token vence aunque se haya usado hoy", (await verify("tok-w1")).length === 0);
+  await db.exec(`update events set event_date = current_date + 10 where id = '${EVN}'`);
+  await db.exec(`update events set status = 'borrador' where id = '${EVN}'`);
+  await check("si el evento vuelve a borrador, el token se reconoce pero avisa el estado (la ruta responde 404)", (await verify("tok-w1"))[0]?.event_status === "borrador");
+  await check("un evento en borrador ya no canjea invitaciones", (await redeem("inv-r4", "tok-r4")).length === 0);
+  await db.exec(`update events set status = 'publicado' where id = '${EVN}'`);
+
+  // --- un solo escritor y revocación
+  await check("otro organizador NO puede revocar un enlace ajeno", (await svc("select public.revoke_event_connection($1, $2) as ok", [O2, w1]))[0].ok === false && (await verify("tok-w1")).length === 1);
+  await check("revocar libera el lugar del escritor y el token deja de servir al instante",
+    (await svc("select public.revoke_event_connection($1, $2) as ok", [O1, w1]))[0].ok === true && (await verify("tok-w1")).length === 0 && !!(await create(O1, EVN, "inv-w3", ["results:write"], "Mesa 2")));
+  await check("revocar dos veces devuelve false, sin error", (await svc("select public.revoke_event_connection($1, $2) as ok", [O1, w1]))[0].ok === false);
+  await redeem("inv-w3", "tok-w3");
+  await check("cerrar sesión con el token revoca solo ese enlace", (await svc("select public.revoke_event_connection_by_token($1) as ok", ["tok-w3"]))[0].ok === true
+    && (await verify("tok-w3")).length === 0 && (await verify("tok-r3")).length === 1);
+  await check("cerrar sesión con un token que ya no existe devuelve false", (await svc("select public.revoke_event_connection_by_token($1) as ok", ["tok-w3"]))[0].ok === false);
+
+  // --- un token de evento solo descarga su evento
+  const only = await svc("select id from public.app_organizer_events($1, null, now() + interval '1 hour', null, null, 50, $2)", [O1, EVN]);
+  await check("app_organizer_events con un evento devuelve solo ese evento", only.length === 1 && only[0].id === EVN);
+  const all = await svc("select id from public.app_organizer_events($1, null, now() + interval '1 hour', null, null, 50)", [O1]);
+  await check("sin evento devuelve todos los publicados del organizador, como antes", all.some((r) => r.id === EVN) && all.some((r) => r.id === EVN2) && !all.some((r) => r.id === EVB));
+  await check("pedir un evento ajeno devuelve vacío (no revela nada)", (await svc("select id from public.app_organizer_events($1, null, now() + interval '1 hour', null, null, 50, $2)", [O1, EVO])).length === 0);
+
+  // --- candado: con un escritor activo y resultados abiertos no se borran resultados
+  const RES = (n) => `e5600000-0000-0000-0000-0000000001${String(n).padStart(2, "0")}`;
+  const insertResult = (n) => db.exec(`insert into event_results (id, event_id, roper_id, discipline, disqualified) values ('${RES(n)}', '${EVN}', '${RP(n)}', 'lazo', false)`);
+  const gone = async (n) => (await db.query(`select count(*)::int as n from event_results where id = '${RES(n)}'`)).rows[0].n === 0;
+  await insertResult(1);
+  await db.exec(`delete from event_results where id = '${RES(1)}'`); // todavía no hay escritor activo
+  await check("sin escritor activo se pueden borrar resultados como siempre", await gone(1));
+  await create(O1, EVN, "inv-w4", ["results:write"], "Mesa 3");
+  await insertResult(2);
+  await check("con un escritor activo y el evento abierto NO se borran resultados (connected_event)", await (async () => { try { await db.exec(`delete from event_results where id = '${RES(2)}'`); return false; } catch (e) { return String(e.message ?? e).includes("connected_event"); } })());
+  await db.exec(`update events set results_closed_at = now() where id = '${EVN}'`);
+  await db.exec(`delete from event_results where id = '${RES(2)}'`);
+  await check("con los resultados cerrados el candado no aplica", await gone(2));
+  await db.exec(`update events set results_closed_at = null where id = '${EVN}'`);
+  await insertResult(3);
+  await db.exec("update event_connections set revoked_at = now() where invite_hash = 'inv-w4'");
+  await db.exec(`delete from event_results where id = '${RES(3)}'`);
+  await check("al revocar el enlace de escritura el candado se levanta", await gone(3));
+
+  // --- permisos: solo el servidor
+  for (const [fn, args] of [
+    ["create_event_connection", `'${O1}', '${EVN2}', 'x-perm', 'x', array['event:read']`], ["redeem_event_connection", `'x', 'x', 'x'`],
+    ["verify_event_token", `'x'`], ["revoke_event_connection", `'${O1}', '${w1}'`], ["revoke_event_connection_by_token", `'x'`],
+  ]) {
+    await as("anon", null, `select public.${fn}(${args})`, `anónimo NO ejecuta ${fn}`, "deny");
+    await as("authenticated", O1, `select public.${fn}(${args})`, `un organizador NO ejecuta ${fn}`, "deny");
+  }
+  await as("authenticated", O1, `select id, event_id, label, scopes, invite_expires_at, redeemed_at, created_at, last_used_at, revoked_at from event_connections where organizer_id = '${O1}'`, "el organizador ve sus enlaces (sin los secretos)", "some");
+  await as("authenticated", O1, "select invite_hash from event_connections", "NO ve el hash de la invitación", "deny");
+  await as("authenticated", O1, "select token_hash from event_connections", "NO ve el hash del token", "deny");
+  await as("authenticated", O2, `select id from event_connections where organizer_id = '${O1}'`, "NO ve los enlaces de otro organizador", "deny");
+  await as("authenticated", O1, `insert into event_connections (event_id, organizer_id, invite_hash, invite_expires_at) values ('${EVN2}', '${O1}', 'directo', now() + interval '1 day')`, "NO crea enlaces directo (se saltaría el límite)", "deny");
+  await as("authenticated", O1, `update event_connections set revoked_at = null, scopes = array['event:read','results:write'] where organizer_id = '${O1}'`, "NO reactiva ni amplía un enlace directo", "deny");
+  await as("anon", null, "select id from event_connections", "anónimo NO ve enlaces", "deny");
+}
+
+console.log("— Resultados en vivo (0063, KIN-787)");
+{
+  const OL = "f6300000-0000-0000-0000-0000000000a1", OL2 = "f6300000-0000-0000-0000-0000000000b1";
+  const EP = "e6300000-0000-0000-0000-000000000001", EPRIV = "e6300000-0000-0000-0000-000000000002", EBOR = "e6300000-0000-0000-0000-000000000003", EAJ = "e6300000-0000-0000-0000-000000000004", EFIN = "e6300000-0000-0000-0000-000000000005";
+  await db.exec(`
+    insert into auth.users (id, email, email_confirmed_at) values ('${OL}','ol-63@x.com',now()), ('${OL2}','ol2-63@x.com',now());
+    insert into profiles (user_id, role, display_name, organizer_verified) values ('${OL}','organizador','Org 63 A',true), ('${OL2}','organizador','Org 63 B',true);
+    insert into events (id, name, organizer_id, status, slug, venue, city, event_date, visibility) values
+      ('${EP}','En vivo público','${OL}','publicado','e63-1','Arena Uno','Monterrey', current_date, 'publico'),
+      ('${EPRIV}','En vivo privado','${OL}','publicado','e63-2','Arena Dos','Saltillo', current_date, 'privado'),
+      ('${EBOR}','En vivo borrador','${OL}','borrador','e63-3',null,null, current_date, 'publico'),
+      ('${EAJ}','En vivo de otro','${OL2}','publicado','e63-4',null,null, current_date, 'publico'),
+      ('${EFIN}','En vivo finalizado','${OL}','finalizado','e63-5',null,null, current_date - 3, 'publico');
+  `);
+  const svc = async (sql, params = []) => { await db.exec("reset role; set role service_role"); try { return (await db.query(sql, params)).rows; } finally { await db.exec("reset role"); } };
+  const put = async (org, ev, rev, snap = { round: 1, rounds: 3, total: 2, done: 1, current: null, pending: [], standings: [] }) =>
+    (await svc("select * from public.app_put_live_snapshot($1, $2, $3, $4::jsonb)", [org, ev, rev, JSON.stringify(snap)]))[0];
+  const fails = async (sql, params, code) => { try { await svc(sql, params); return false; } catch (e) { return String(e.message ?? e).includes(code); } };
+  const snapOf = (round) => ({ round, rounds: 3, total: 2, done: 1, current: null, pending: [], standings: [] });
+
+  // --- guardar
+  const first = await put(OL, EP, 5, snapOf(1));
+  await check("la primera foto de un evento publicado se guarda", first.outcome === "stored" && Number(first.revision) === 5);
+  const again = await put(OL, EP, 5, snapOf(1));
+  await check("reenviar la misma revisión es inofensivo (unchanged)", again.outcome === "unchanged");
+  const stale = await put(OL, EP, 4, snapOf(9));
+  await check("una revisión más vieja NO pisa a la nueva (stale) y avisa la que tiene", stale.outcome === "stale" && Number(stale.revision) === 5);
+  await check("la foto vieja no cambió nada", (await db.query(`select (snapshot->>'round')::int as r from event_live_snapshots where event_id = '${EP}'`)).rows[0].r === 1);
+  const newer = await put(OL, EP, 6, snapOf(2));
+  await check("una revisión mayor reemplaza la foto (una sola fila por evento)", newer.outcome === "stored"
+    && (await db.query(`select count(*)::int as n, max((snapshot->>'round')::int) as r from event_live_snapshots where event_id = '${EP}'`)).rows[0].n === 1
+    && (await db.query(`select (snapshot->>'round')::int as r from event_live_snapshots where event_id = '${EP}'`)).rows[0].r === 2);
+  await check("un borrador NO guarda foto (not_found)", (await put(OL, EBOR, 1)).outcome === "not_found");
+  await check("un evento de otro organizador NO guarda foto (not_found)", (await put(OL, EAJ, 1)).outcome === "not_found");
+  await check("un evento inexistente NO guarda foto (not_found)", (await put(OL, "e6300000-0000-0000-0000-0000000000ff", 1)).outcome === "not_found");
+  await check("un evento finalizado sí guarda su última foto", (await put(OL, EFIN, 1)).outcome === "stored");
+  await check("un evento privado guarda foto, aunque nadie la lea en público", (await put(OL, EPRIV, 1)).outcome === "stored");
+  await check("una revisión en cero se rechaza", await fails("select * from public.app_put_live_snapshot($1, $2, 0, '{}'::jsonb)", [OL, EP], "inválida"));
+  await check("una foto que no es objeto se rechaza", await fails("select * from public.app_put_live_snapshot($1, $2, 9, '[]'::jsonb)", [OL, EP], "inválida"));
+
+  // --- leer: solo eventos públicos publicados o finalizados
+  await as("anon", null, `select revision, snapshot, event_name, venue, city from public.get_live_snapshot('${EP}')`, "anónimo lee la foto de un evento público", "some");
+  const read = (await svc("select * from public.get_live_snapshot($1)", [EP]))[0];
+  await check("la lectura trae el nombre y la arena reales del evento", read.event_name === "En vivo público" && read.venue === "Arena Uno" && read.city === "Monterrey");
+  await check("la lectura trae la revisión para el ETag", Number(read.revision) === 6);
+  await as("anon", null, `select * from public.get_live_snapshot('${EFIN}')`, "anónimo lee la foto de un evento finalizado", "some");
+  await as("anon", null, `select * from public.get_live_snapshot('${EPRIV}')`, "anónimo NO lee la foto de un evento privado", "deny");
+  await as("authenticated", OL2, `select * from public.get_live_snapshot('${EPRIV}')`, "otro organizador NO lee la foto de un evento privado", "deny");
+  await as("anon", null, `select * from public.get_live_snapshot('${EBOR}')`, "anónimo NO lee la foto de un borrador", "deny");
+  await as("anon", null, "select * from public.get_live_snapshot('e6300000-0000-0000-0000-0000000000ff')", "un evento sin foto o inexistente contesta vacío", "deny");
+  await db.exec(`update events set status = 'borrador' where id = '${EP}'`);
+  await as("anon", null, `select * from public.get_live_snapshot('${EP}')`, "si el evento vuelve a borrador la foto deja de verse", "deny");
+  await db.exec(`update events set status = 'publicado' where id = '${EP}'`);
+  await check("la lectura pública no trae correos, celulares ni pagos", Object.keys(read).sort().join() === "city,event_name,revision,snapshot,updated_at,venue");
+
+  // --- permisos: la tabla y la escritura son solo del servidor
+  await as("anon", null, "select event_id from event_live_snapshots", "anónimo NO lee la tabla directo", "deny");
+  await as("authenticated", OL, "select event_id from event_live_snapshots", "un organizador NO lee la tabla directo", "deny");
+  await as("authenticated", OL, `insert into event_live_snapshots (event_id, revision, snapshot) values ('${EAJ}', 1, '{}')`, "un organizador NO escribe la tabla directo", "deny");
+  await as("authenticated", OL, `update event_live_snapshots set revision = 99 where event_id = '${EP}'`, "un organizador NO edita la tabla directo", "deny");
+  await as("anon", null, `select public.app_put_live_snapshot('${OL}', '${EP}', 50, '{}'::jsonb)`, "anónimo NO ejecuta app_put_live_snapshot", "deny");
+  await as("authenticated", OL, `select public.app_put_live_snapshot('${OL}', '${EP}', 50, '{}'::jsonb)`, "un organizador NO ejecuta app_put_live_snapshot", "deny");
+  // --- retirar la foto (0065): al apagar «En vivo web» en la app
+  const del = async (org, ev) => (await svc("select * from public.app_delete_live_snapshot($1, $2)", [org, ev]))[0].outcome;
+  await check("retirar la foto de un evento propio la borra (removed)", await (async () => {
+    return (await del(OL, EP)) === "removed" && (await db.query(`select count(*)::int as n from event_live_snapshots where event_id = '${EP}'`)).rows[0].n === 0;
+  })());
+  await as("anon", null, `select * from public.get_live_snapshot('${EP}')`, "retirada la foto, la página pública ya no tiene nada que mostrar", "deny");
+  await check("retirar otra vez es inofensivo (none)", (await del(OL, EP)) === "none");
+  await check("retirar la foto de un evento de otro organizador no hace nada (not_found)", (await del(OL, EAJ)) === "not_found");
+  await check("retirar de un evento inexistente contesta not_found", (await del(OL, "e6300000-0000-0000-0000-0000000000ff")) === "not_found");
+  await check("la foto de un evento ajeno no se borró por el intento", await (async () => {
+    await put(OL2, EAJ, 3);
+    await del(OL, EAJ);
+    return (await db.query(`select count(*)::int as n from event_live_snapshots where event_id = '${EAJ}'`)).rows[0].n === 1;
+  })());
+  await as("anon", null, `select public.app_delete_live_snapshot('${OL}', '${EP}')`, "anónimo NO ejecuta app_delete_live_snapshot", "deny");
+  await as("authenticated", OL, `select public.app_delete_live_snapshot('${OL}', '${EP}')`, "un organizador NO ejecuta app_delete_live_snapshot", "deny");
+  await check("borrar el evento borra su foto", await (async () => {
+    await db.exec(`delete from events where id = '${EFIN}'`);
+    return (await db.query(`select count(*)::int as n from event_live_snapshots where event_id = '${EFIN}'`)).rows[0].n === 0;
+  })());
+}
+
 console.log("- Hora del evento (0060, KIN-778)");
 {
   const EVT = "e0000000-0000-0000-0000-000000000002";

@@ -1341,7 +1341,9 @@ console.log("- Resultados de un evento (0030)");
   check("el rol de la inscripción cambió y el perfil no", await count(`id = '${U5reg}' and role = 'heeler'`) === 1 &&
     (await db.query(`select 1 from ropers where id = '${U5.roper}' and primary_role = 'both'`)).rows.length === 1);
   const U2reg = await regId(U2, "header");
-  await as("authenticated", U2.uid, `select public.change_registration_role('${U2reg}', 'heeler')`, "un perfil de un solo rol NO cambia el rol de su inscripción", "deny");
+  await as("authenticated", U2.uid, `select public.change_registration_role('${U2reg}', 'heeler')`, "un perfil de un solo rol SÍ cambia el rol de su inscripción (0066: el rol vive en la inscripción)", "some");
+  check("el rol de esa inscripción cambió y el perfil de un solo rol no", await count(`id = '${U2reg}' and role = 'heeler'`) === 1 &&
+    (await db.query(`select 1 from ropers where id = '${U2.roper}' and primary_role <> 'both'`)).rows.length === 1);
   await as("authenticated", A, `update events set registration_closed = true where id = '${EVL}'`, "el organizador cierra las inscripciones", "some");
   await as("authenticated", U5.uid, `select public.change_registration_role('${U5reg}', 'header')`, "con inscripciones cerradas NO se cambia el rol", "deny");
   await as("authenticated", A, `update events set registration_closed = false where id = '${EVL}'`, "el organizador reabre", "some");
@@ -2620,6 +2622,27 @@ console.log("- Cupo por lado (0062, KIN-775)");
   check("su inscripción sigue como cabecero", await n(`select count(*) n from registrations where event_id = '${E4}' and roper_id = '${R[4]}' and role = 'header'`) === 1);
   await as("authenticated", A, `update events set capacity_heelers = 3 where id = '${E4}'`, "el organizador abre cupo de pialadores", "some");
   await as("authenticated", U[4], `select public.change_registration_role((select id from registrations where event_id = '${E4}' and roper_id = '${R[4]}'), 'heeler')`, "con lugar en ese lado SÍ puede pasarse a pialador", "some");
+
+  // 0066: cualquier inscrito cambia de rol (aunque su perfil sea de un solo rol) y la web consulta si cabe en cada lado sin ver cuántos hay ni quiénes
+  await as("authenticated", U[2], `select public.change_registration_role((select id from registrations where event_id = '${E2}' and roper_id = '${R[2]}'), 'header')`, "un pialador de perfil de un solo rol NO puede pasarse a cabecero si ese lado tiene cupo 0", "deny");
+  await as("authenticated", A, `update events set capacity_headers = 2 where id = '${E2}'`, "el organizador abre cupo de cabeceros", "some");
+  await as("authenticated", U[2], `select public.change_registration_role((select id from registrations where event_id = '${E2}' and roper_id = '${R[2]}'), 'header')`, "con lugar en ese lado, un perfil de un solo rol SÍ se pasa a cabecero", "some");
+  check("su perfil no cambió (sigue siendo pialador) y su inscripción es de cabecero", await n(`select count(*) n from registrations where event_id = '${E2}' and roper_id = '${R[2]}' and role = 'header'`) === 1 &&
+    await n(`select count(*) n from ropers where id = '${R[2]}' and primary_role = 'heeler'`) === 1);
+  await as("anon", null, `select * from public.events_role_room(array['${E1}']::uuid[])`, "anónimo NO consulta el cupo por lado", "deny");
+  await as("authenticated", U[0], `select 1 from public.events_role_room(array['${E1}']::uuid[]) where side = 'header' and has_room`, "evento 1: el lado de cabeceros está lleno, no hay lugar", "deny");
+  await as("authenticated", U[0], `select 1 from public.events_role_room(array['${E1}']::uuid[]) where side = 'heeler' and not has_room`, "evento 1: el lado de pialadores también está lleno", "some");
+  await as("authenticated", U[0], `select 1 from public.events_role_room(array['${E3}']::uuid[]) where has_room`, "evento 3 (solo total): sin tope por lado, hay lugar en los dos lados", "some");
+  await as("authenticated", U[0], `select 1 from public.events_role_room(array['${E4}']::uuid[]) where side = 'heeler' and has_room`, "evento 4: tras abrir cupo de pialadores hay lugar", "some");
+  const EP = "11111111-dddd-0000-0000-0000000000e5", ED = "11111111-dddd-0000-0000-0000000000e6";
+  await db.exec(`
+    insert into events (id, name, organizer_id, status, slug, capacity, visibility) values ('${EP}','Privado 0066','${A}','publicado','privado-0066',10,'privado');
+    insert into events (id, name, organizer_id, status, slug, capacity) values ('${ED}','Borrador 0066','${A}','borrador','borrador-0066',10);
+  `);
+  await as("authenticated", U[0], `select 1 from public.events_role_room(array['${ED}']::uuid[])`, "un borrador NO se consulta (no se filtra su cupo)", "deny");
+  await as("authenticated", U[0], `select 1 from public.events_role_room(array['${EP}']::uuid[])`, "un evento privado NO se consulta si no tienes permiso", "deny");
+  await as("authenticated", A, `select 1 from public.events_role_room(array['${EP}']::uuid[])`, "el organizador SÍ consulta su evento privado", "some");
+  await as("authenticated", U[0], `select 1 from public.events_role_room(array['${E1}','${E3}','${E4}']::uuid[])`, "se pueden consultar varios eventos a la vez", "some");
 
   // Reglas de las columnas
   await as("authenticated", A, `update events set capacity_headers = 99 where id = '${E3}'`, "un cupo por lado mayor al total se rechaza", "deny");

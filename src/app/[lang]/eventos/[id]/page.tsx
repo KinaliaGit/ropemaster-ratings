@@ -3,7 +3,14 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getEventForViewer, getPublicEvent } from "@/lib/data/events";
-import { getEventRegistrants, getEventRegistrantsForViewer, getEventWaitlistCount, getEventWaitlistCountForViewer } from "@/lib/data/registrations";
+import { getEventRegistrants, getEventRegistrantsForViewer, getEventsRoleRoom, getEventWaitlistCount, getEventWaitlistCountForViewer, listMyRegistrations, listMyWaitlist } from "@/lib/data/registrations";
+import { getSession } from "@/lib/session";
+import { roleSwitchTarget } from "@/lib/registration-role";
+import { changeRegistrationRole } from "@/lib/registration-actions";
+import { ChangeRoleDialog } from "@/components/ChangeRoleDialog";
+import { RegActions } from "@/components/RegActions";
+import { PayInstructions } from "@/components/PayInstructions";
+import { STRIPE_ENABLED } from "@/lib/flags";
 import { ACTIVE_DISCIPLINES, DEFAULT_DISCIPLINE, type DisciplineId } from "@/lib/disciplines";
 import { toEnrolledItem } from "@/lib/enrolled-view";
 import { fmtDate, mxn, type Lang } from "@/lib/format";
@@ -30,7 +37,7 @@ async function Enrolled({ slug, uuid, discipline, lang, t, viewer }: { slug: str
   );
 }
 
-async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]">["params"] }) {
+async function EventoInner({ params, searchParams }: { params: PageProps<"/[lang]/eventos/[id]">["params"]; searchParams: PageProps<"/[lang]/eventos/[id]">["searchParams"] }) {
   // Los datos públicos se leen al atender la visita, no al compilar (así el build no necesita conectarse a la base).
   await connection();
   const lang = await resolveLang(params);
@@ -44,9 +51,19 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
   const e = { ...found, status: statusByDate(found) }; // KIN-656: con la fecha pasada se muestra como finalizado y sin inscripción
   const regOpen = isRegistrationOpen({ opensAt: e.registrationOpensAt, closesAt: e.registrationClosesAt, closed: e.registrationClosed });
   const notYet = e.status === "publicado" && !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt }); // apertura programada: aún no abre
-  const open = e.status === "publicado" && !isFull(e.enrolled, e.capacity) && regOpen;
+  // Lo que esta persona ya tiene en ESTE evento: inscripciones y, si no, su lugar en la lista de espera. Con eso no se ofrece inscribirse otra vez: se le dice dónde está.
+  const session = await getSession();
+  const [myRegs, myWait] = session?.roperId && found.uuid ? await Promise.all([listMyRegistrations(session.roperId), listMyWaitlist()]) : [[], []];
+  const here = myRegs.filter((r) => r.event?.uuid === found.uuid);
+  const waitHere = myWait.filter((w) => w.event?.slug === e.id);
+  const mineHere = here.length > 0 || waitHere.length > 0;
+  const roleRoom = here.length > 0 && found.uuid ? await getEventsRoleRoom([found.uuid]) : {};
+  const stripeOn = STRIPE_ENABLED && !!process.env.STRIPE_SECRET_KEY && !!process.env.STRIPE_TEST_CONNECTED_ACCOUNT; // el pago en línea solo se ofrece si Stripe está configurado
+  const sp = await searchParams;
+  const notice = sp.rolInscripcion === "ok" ? t.account.roleChanged : typeof sp.error === "string" ? (t.enroll.errors as Record<string, string>)[sp.error] ?? t.enroll.errors.failed : null;
+  const open = e.status === "publicado" && !isFull(e.enrolled, e.capacity) && regOpen && !mineHere;
   // KIN-726: con el cupo lleno y las inscripciones abiertas, el botón pasa a "Entrar a lista de espera" (la base decide si de verdad está lleno).
-  const canWait = e.status === "publicado" && isFull(e.enrolled, e.capacity) && regOpen;
+  const canWait = e.status === "publicado" && isFull(e.enrolled, e.capacity) && regOpen && !mineHere;
   const waiting = canWait && e.uuid ? await (viewer ? getEventWaitlistCountForViewer(e.uuid) : getEventWaitlistCount(e.uuid)) : 0;
   const closesLine = e.status === "publicado" && regOpen && e.registrationClosesAt ? `${t.event.closesOn} ${fmtDeadline(e.registrationClosesAt, e.timezone, lang)}` : null;
   const resultDisciplines: DisciplineId[] = ACTIVE_DISCIPLINES.filter((d) => e.disciplines.includes(d.id)).map((d) => d.id);
@@ -97,7 +114,43 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
             {e.maxRoperRating !== null && <p className="mt-3 text-xs text-muted">{t.event.maxRating}: <span className="tabular-nums">{e.maxRoperRating.toFixed(1)}</span></p>}
             {e.drawType === "lazada_sorteada" && e.maxTeamRating !== null && <p className="mt-1 text-xs text-muted">{t.event.maxTeamRating}: <span className="tabular-nums">{e.maxTeamRating.toFixed(1)}</span></p>}
             {e.drawType === "lazada_sorteada" && <p className="mt-1 text-xs text-muted">{t.event.packageFee}</p>}
-            {open
+            {notice && <p role="status" data-testid="enrollment-notice" className="mt-4 rounded-xl bg-sand p-3 text-sm font-medium">{notice}</p>}
+            {here.length > 0
+              ? (
+                <div className="mt-4 rounded-2xl bg-brand-soft p-4" data-testid="my-enrollment">
+                  <p className="font-semibold">✓ {t.event.youAreEnrolled}</p>
+                  <ul className="mt-3 space-y-4">
+                    {here.map((r) => {
+                      const paid = r.paymentStatus === "pagado";
+                      const pending = r.paymentStatus === "pendiente";
+                      const to = roleSwitchTarget(r, here, found.uuid ? roleRoom[found.uuid] : undefined, e.status === "publicado" && regOpen);
+                      const roleName = r.role === "header" || r.role === "heeler" ? t.roles[r.role] : t.account.noRole;
+                      return (
+                        <li key={r.id} data-testid="my-enrollment-row">
+                          <p className="text-sm font-medium">{roleName} · {r.category}</p>
+                          <p className={`mt-0.5 text-xs ${paid ? "text-emerald-800" : pending ? "text-amber-900" : "text-muted"}`}>{paid ? `✓ ${t.account.paid}` : pending ? `${t.account.pending} · ${mxn(r.amountCents / 100, lang)}` : t.account.refunded}</p>
+                          <RegActions payLabel={pending ? t.pay.howTitle : null}
+                            panel={pending ? <PayInstructions registrationId={r.id} amountCents={r.amountCents} paymentInfo={r.event?.paymentInfo ?? null} stripeOn={stripeOn} lang={lang} t={t} /> : null}
+                            roleSlot={to && (r.role === "header" || r.role === "heeler") ? (
+                              <ChangeRoleDialog action={changeRegistrationRole} lang={lang} id={r.id} to={to} back={e.id}
+                                className="inline-flex min-h-11 items-center rounded-full border border-line bg-white px-4 text-sm font-medium hover:border-ink"
+                                l={{ button: t.account.changeRoleTo(t.roles[to]), title: t.account.changeRoleTitle, body: t.account.changeRoleBody(e.name, t.roles[r.role], t.roles[to]), confirm: t.account.changeRoleConfirm, cancel: t.account.changeRoleCancel }} />
+                            ) : null} />
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <Link href={`/${lang}/mi-cuenta`} className="mt-3 inline-block text-sm font-medium text-brand-hot hover:underline">{t.event.seeMyAccount} →</Link>
+                </div>
+              )
+              : waitHere.length > 0
+              ? (
+                <div className="mt-4 rounded-2xl bg-sand p-4" data-testid="my-waitlist-state">
+                  <p className="font-semibold">{t.event.youAreWaiting} · {t.account.waitlistPlace(waitHere[0].place)}</p>
+                  <Link href={`/${lang}/mi-cuenta`} className="mt-2 inline-block text-sm font-medium text-brand-hot hover:underline">{t.event.seeMyAccount} →</Link>
+                </div>
+              )
+              : open
               ? <Link href={`/${lang}/eventos/${e.id}/inscribirse`} className="mt-4 block rounded-full bg-ink py-3 text-center text-sm font-medium text-white transition hover:bg-brand-hot">{t.event.enroll}</Link>
               : canWait
               ? <>
@@ -108,7 +161,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
               : <p className="mt-4 rounded-full bg-sand py-3 text-center text-sm text-muted">{e.status === "finalizado" ? t.event.eventFinished : notYet ? t.event.notYetOpen : !regOpen ? t.event.registrationClosed : t.event.full}</p>}
             {notYet && e.registrationOpensAt && <p className="mt-2 text-center text-xs font-medium text-muted">{t.event.opensOn} {fmtDeadline(e.registrationOpensAt, e.timezone, lang)}</p>}
             {closesLine && <p className="mt-2 text-center text-xs font-medium text-muted">{closesLine}</p>}
-            <p className="mt-3 text-center text-xs text-muted">{t.event.needAccount}</p>
+            {!mineHere && <p className="mt-3 text-center text-xs text-muted">{t.event.needAccount}</p>}
           </aside>
 
           {e.description && <p className="mt-8 max-w-2xl whitespace-pre-line text-lg">{e.description}</p>}
@@ -155,7 +208,7 @@ async function EventoInner({ params }: { params: PageProps<"/[lang]/eventos/[id]
 export default function Evento(props: PageProps<"/[lang]/eventos/[id]">) {
   return (
     <Suspense fallback={<EventSkeleton />}>
-      <EventoInner params={props.params} />
+      <EventoInner params={props.params} searchParams={props.searchParams} />
     </Suspense>
   );
 }

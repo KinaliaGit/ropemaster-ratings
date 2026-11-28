@@ -57,21 +57,39 @@ export async function getEventRegistrantsForViewer(eventUuid: string, discipline
 
 export type MyRegistration = {
   id: string; paymentStatus: string; paymentMethod: string | null; amountCents: number; category: string; role: string | null;
-  event: { slug: string | null; name: string; date: string | null; city: string | null; paymentInfo: string | null; closesAt: string | null; timezone: string; registrationClosed: boolean; status: string } | null;
+  event: { uuid: string; slug: string | null; name: string; date: string | null; city: string | null; paymentInfo: string | null; closesAt: string | null; timezone: string; registrationClosed: boolean; status: string } | null;
 };
 
 export async function listMyRegistrations(roperId: string): Promise<MyRegistration[]> {
   const { data, error } = await ownRows(await createServerSupabase(), "registrations",
-    "id, payment_status, payment_method, amount_cents, role, event_categories(name), events(slug, name, event_date, city, registration_closes_at, registration_closed, status, timezone, event_payment_info(instructions))",
+    "id, payment_status, payment_method, amount_cents, role, event_categories(name), events(id, slug, name, event_date, city, registration_closes_at, registration_closed, status, timezone, event_payment_info(instructions))",
     roperId, "created_at");
   if (error) throw new Error(`No se pudieron leer tus inscripciones: ${error.message}`);
   type Info = { instructions: string } | { instructions: string }[] | null;
-  type Row = { id: string; payment_status: string; payment_method: string | null; amount_cents: number; role: string | null; event_categories: { name: string } | null; events: { slug: string | null; name: string; event_date: string | null; city: string | null; registration_closes_at: string | null; registration_closed: boolean; status: string; timezone: string; event_payment_info: Info } | null };
+  type Row = { id: string; payment_status: string; payment_method: string | null; amount_cents: number; role: string | null; event_categories: { name: string } | null; events: { id: string; slug: string | null; name: string; event_date: string | null; city: string | null; registration_closes_at: string | null; registration_closed: boolean; status: string; timezone: string; event_payment_info: Info } | null };
   const info = (i: Info | undefined) => (Array.isArray(i) ? i[0]?.instructions : i?.instructions) ?? null; // solo lo ven los inscritos (la base lo decide)
   return (data as unknown as Row[]).map((r) => ({
     id: r.id, paymentStatus: r.payment_status, paymentMethod: r.payment_method, amountCents: r.amount_cents, category: r.event_categories?.name ?? "", role: r.role,
-    event: r.events ? { slug: r.events.slug, name: r.events.name, date: r.events.event_date, city: r.events.city, paymentInfo: info(r.events.event_payment_info), closesAt: r.events.registration_closes_at, timezone: r.events.timezone, registrationClosed: r.events.registration_closed, status: r.events.status } : null,
+    event: r.events ? { uuid: r.events.id, slug: r.events.slug, name: r.events.name, date: r.events.event_date, city: r.events.city, paymentInfo: info(r.events.event_payment_info), closesAt: r.events.registration_closes_at, timezone: r.events.timezone, registrationClosed: r.events.registration_closed, status: r.events.status } : null,
   }));
+}
+
+// ¿Cabe una inscripción más en cada lado (cabecero y pialador)? Solo sí o no por lado, nunca cuántos hay (0066, `events_role_room`): sirve para ofrecer «Cambiar rol» solo si el lado
+// de destino tiene lugar. Un evento que no se puede ver (borrador, privado ajeno) no aparece en el resultado. Hasta 50 eventos por llamada. Si la consulta falla, no se bloquea
+// nada: devuelve un mapa vacío y quien llama decide (la base vuelve a comprobar el cupo al cambiar).
+export type RoleRoom = { header: boolean; heeler: boolean };
+
+export async function getEventsRoleRoom(eventUuids: string[]): Promise<Record<string, RoleRoom>> {
+  const ids = [...new Set(eventUuids)].slice(0, 50);
+  if (ids.length === 0) return {};
+  const { data, error } = await (await createServerSupabase()).rpc("events_role_room", { p_events: ids });
+  if (error) return {};
+  const out: Record<string, RoleRoom> = {};
+  for (const r of (data ?? []) as { event_id: string; side: string; has_room: boolean }[]) {
+    out[r.event_id] ??= { header: false, heeler: false };
+    if (r.side === "header" || r.side === "heeler") out[r.event_id][r.side] = r.has_room;
+  }
+  return out;
 }
 
 export type EventRegistration = { id: string; roperId: string; name: string; category: string; role: string | null; paymentStatus: string; paymentMethod: string | null; amountCents: number; email: string | null };

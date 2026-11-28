@@ -144,9 +144,9 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                       <>
                         {closes && <p className="text-muted">{closes}</p>}
                         {!paid && (
-                          <form action={cancelRegistration}>
+                          <form action={cancelRegistration} className={closes ? "border-t border-line pt-3" : undefined}>
                             <input type="hidden" name="lang" value={lang} /><input type="hidden" name="id" value={m.id} />
-                            <button className="min-h-11 rounded-full border border-line px-4 text-sm font-medium text-red-700 hover:border-red-700">{t.account.cancel}</button>
+                            <button className="min-h-11 rounded-full px-1 text-sm font-medium text-red-700 hover:underline">{t.account.cancelRegistration}</button>
                           </form>
                         )}
                       </>

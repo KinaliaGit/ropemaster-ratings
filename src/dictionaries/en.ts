@@ -100,7 +100,7 @@ export const en: Dict = {
     photo: { add: "Add photo", change: "Change photo", remove: "Remove", saving: "Saving…", tooBig: `The photo is larger than ${MAX_UPLOAD_MB} MB. Choose a lighter one.`, error: "Couldn't save the photo. Use a JPG, PNG or WebP image." },
     type: "Participant account", roleTitle: "My role", roleUndefined: "You haven't chosen the role you compete in yet. Pick it so organizers can see it; nothing is blocked in the meantime.", roleSave: "Save role", roleCancel: "Cancel", roleChoose: "+ Choose role", roleEdit: "Change my role", roleSaved: "Done, we saved your role.", moreOptions: "More options", noUpcoming: "You have no upcoming events.", seeEvents: "See events", refunded: "Refunded", upcoming: "Upcoming events", ratingEvolution: "Rating evolution", noRatingChanges: "No rating changes yet. You will see how it evolves here once it changes.", afterEvent: "after", pastEvents: "Past events", noPast: "You have no past events yet.", pendingTotal: "to pay", currentRating: "Current rating", alreadyVerified: "Your account is already verified. Here is your space.", notFoundTitle: "We couldn't find that page", notFoundText: "The link may be misspelled or no longer exist.", notFoundBack: "Back to home", myRegistrations: "My registrations",
     
-    enrolledOk: "Done! Your spot is reserved. Below you can see how to pay.", regRole: "Role in this event:", changeRole: "Change role", roleChanged: "Done: we changed your registration role.",
+    enrolledOk: "Done! Your spot is reserved. Below you can see how to pay.", regRole: "Role in this event:", changeRole: "Change role", cancelRegistration: "Cancel registration", roleChanged: "Done: we changed your registration role.",
       changeRoleTo: (role: string) => `Switch to ${role}`, changeRoleTitle: "Change your role in this event?",
       changeRoleBody: (event: string, from: string, to: string) => `In “${event}” you will go from ${from} to ${to}. If that side fills up, you may not be able to switch back.`,
       changeRoleConfirm: "Yes, switch", changeRoleCancel: "Cancel", noRole: "Not set", canceledOk: "Registration canceled.", waitlistTitle: "On the waitlist", waitlistPlace: (n: number) => `Place ${n} in line`, waitlistHint: "You take no spot and pay nothing. If one opens, the organizer moves you to registered and we let you know.", waitlistLeave: "Leave the waitlist", waitlistJoined: "You are on the waitlist. We will let you know if a spot opens.", waitlistLeft: "You left the waitlist.", removedTitle: "Events you were removed from", removedOn: "Removed on", removedReason: "Reason:", removedRefund: "You had already paid: the organizer will refund you manually (refund pending).", removedRefundDone: "The organizer marked your refund as done.", removedCanReturn: "The organizer allows you to register again.", removedBlocked: "To register again, ask the organizer.", cancel: "Cancel",
@@ -217,6 +217,22 @@ export const en: Dict = {
       addConsent: "I have this person's permission to register their email.", addBtn: "Add", added: "Added:", duplicate: "That email is already registered to:",
       empty: "There are no participants in the directory yet.", errors: { unauthorized: "Only verified organizers can add participants.", invalid_name: "Enter the full name (2 to 80 characters).", invalid_email: "The email isn't valid.", consent: "You must confirm you have the person's permission.", failed: "Couldn't add them. Please try again." },
   },
+    // Event poster (KIN-767): the organizer panel (poster) and the texts printed on the image (image).
+    poster: {
+      title: "Event poster", hint: "A ready-to-share image with your event's details. It always uses the current information.",
+      generate: "Generate poster", draftHint: "Publish the event to generate its poster.",
+      dialogTitle: "Event poster", logoQuestion: "Do you want to include your logo?", withLogo: "With my logo", withoutLogo: "No logo",
+      logoPick: "Choose logo", logoChange: "Change logo", logoRemove: "Remove logo", logoAlt: "Your logo",
+      logoHint: "PNG, JPG or WebP. We don't store it on our servers: it's only used to build the poster, and this browser remembers it for next time.",
+      logoErrors: { invalid: "Choose a PNG, JPG or WebP image.", tooBig: "The image is too large. Choose one under 5 MB." },
+      make: "Generate", making: "Generating…", download: "Download", close: "Close", previewAlt: "Poster preview",
+      errors: { unauthorized: "Only the event's organizer can generate its poster.", notPublished: "Publish the event to generate its poster.", invalid_logo: "The logo isn't valid. Use a PNG or JPG.", failed: "Couldn't generate the poster. Please try again." },
+      image: {
+        organizer: "Hosted by", signUp: "Sign up on Rope Master", modality: "Discipline", format: "Format", registration: "Entry fee", capacity: "Spots",
+        seats: "spots", headers: "headers", heelers: "heelers", ratingMax: "Max rating", teamMax: "Team max", perPackage: "per package", free: "Free",
+        shotsPerPackage: "shots per package", closesOn: "Registration open until", more: (n: number) => `+${n} more`, qrLabel: "Event QR code", logoAlt: "Organizer logo",
+      },
+    },
     share: {
       title: "Share link", hint: "Anyone with this link can view the event and register. It opens in their language.", copy: "Copy link", copied: "Copied",
       whatsapp: "Share on WhatsApp", whatsappText: "Register for our event:", open: "Open",

@@ -37,3 +37,23 @@ async function shrink(canvas: HTMLCanvasElement, maxBytes: number): Promise<Blob
   }
   return blob;
 }
+
+// Logo del organizador para el póster (KIN-767): se reduce a un PNG (conserva la transparencia) con el lado largo limitado. Si aún pesa de más, se achica por pasos.
+export async function toLogoPng(file: File, maxSide: number, maxBytes: number): Promise<Blob> {
+  const bmp = await createImageBitmap(file);
+  try {
+    let side = maxSide;
+    for (;;) {
+      const k = Math.min(1, side / Math.max(bmp.width, bmp.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bmp.width * k));
+      canvas.height = Math.max(1, Math.round(bmp.height * k));
+      canvas.getContext("2d")!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+      const blob: Blob = await new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob"))), "image/png"));
+      if (blob.size <= maxBytes || side <= 64) return blob;
+      side = Math.round(side * 0.75);
+    }
+  } finally {
+    bmp.close();
+  }
+}

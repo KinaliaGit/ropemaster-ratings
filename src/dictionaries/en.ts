@@ -214,6 +214,22 @@ export const en: Dict = {
       addConsent: "I have this person's permission to register their email.", addBtn: "Add", added: "Added:", duplicate: "That email is already registered to:",
       empty: "There are no participants in the directory yet.", errors: { unauthorized: "Only verified organizers can add participants.", invalid_name: "Enter the full name (2 to 80 characters).", invalid_email: "The email isn't valid.", consent: "You must confirm you have the person's permission.", failed: "Couldn't add them. Please try again." },
   },
+    // Event poster (KIN-767): the organizer panel (poster) and the texts printed on the image (image).
+    poster: {
+      title: "Event poster", hint: "A ready-to-share image with your event's details. It always uses the current information.",
+      generate: "Generate poster", draftHint: "Publish the event to generate its poster.",
+      dialogTitle: "Event poster", logoQuestion: "Do you want to include your logo?", withLogo: "With my logo", withoutLogo: "No logo",
+      logoPick: "Choose logo", logoChange: "Change logo", logoRemove: "Remove logo", logoAlt: "Your logo",
+      logoHint: "PNG, JPG or WebP. We don't store it on our servers: it's only used to build the poster, and this browser remembers it for next time.",
+      logoErrors: { invalid: "Choose a PNG, JPG or WebP image.", tooBig: "The image is too large. Choose one under 5 MB." },
+      make: "Generate", making: "Generating…", download: "Download", close: "Close", previewAlt: "Poster preview",
+      errors: { unauthorized: "Only the event's organizer can generate its poster.", notPublished: "Publish the event to generate its poster.", invalid_logo: "The logo isn't valid. Use a PNG or JPG.", failed: "Couldn't generate the poster. Please try again." },
+      image: {
+        organizer: "Hosted by", signUp: "Sign up on Rope Master", modality: "Discipline", format: "Format", registration: "Entry fee", capacity: "Spots",
+        seats: "spots", headers: "headers", heelers: "heelers", ratingMax: "Max rating", teamMax: "Team max", perPackage: "per package", free: "Free",
+        shotsPerPackage: "shots per package", closesOn: "Registration open until", more: (n: number) => `+${n} more`, qrLabel: "Event QR code", logoAlt: "Organizer logo",
+      },
+    },
     share: {
       title: "Share link", hint: "Anyone with this link can view the event and register. It opens in their language.", copy: "Copy link", copied: "Copied",
       whatsapp: "Share on WhatsApp", whatsappText: "Register for our event:", open: "Open",

@@ -214,6 +214,22 @@ export const es = {
       addConsent: "Tengo autorización de esta persona para registrar su correo.", addBtn: "Agregar", added: "Agregado:", duplicate: "Ese correo ya está registrado a nombre de:",
       empty: "Aún no hay participantes en el directorio.", errors: { unauthorized: "Solo organizadores verificados pueden agregar participantes.", invalid_name: "Escribe el nombre completo (entre 2 y 80 caracteres).", invalid_email: "El correo no es válido.", consent: "Debes confirmar que tienes autorización de la persona.", failed: "No se pudo agregar. Intenta de nuevo." },
   },
+    // Póster del evento (KIN-767): el panel del organizador (poster) y los textos que lleva la imagen (image).
+    poster: {
+      title: "Póster del evento", hint: "Una imagen lista para compartir con los datos de tu evento. Siempre sale con la información actual.",
+      generate: "Generar póster", draftHint: "Publica el evento para poder generar su póster.",
+      dialogTitle: "Póster del evento", logoQuestion: "¿Quieres incluir tu logo?", withLogo: "Con mi logo", withoutLogo: "Sin logo",
+      logoPick: "Elegir logo", logoChange: "Cambiar logo", logoRemove: "Quitar logo", logoAlt: "Tu logo",
+      logoHint: "PNG, JPG o WebP. No lo guardamos en nuestros servidores: se usa solo para armar el póster y este navegador lo recuerda para la próxima vez.",
+      logoErrors: { invalid: "Elige una imagen PNG, JPG o WebP.", tooBig: "La imagen pesa demasiado. Elige una de menos de 5 MB." },
+      make: "Generar", making: "Generando…", download: "Descargar", close: "Cerrar", previewAlt: "Vista previa del póster",
+      errors: { unauthorized: "Solo el organizador del evento puede generar su póster.", notPublished: "Publica el evento para generar su póster.", invalid_logo: "El logo no es válido. Usa un PNG o JPG.", failed: "No se pudo generar el póster. Intenta de nuevo." },
+      image: {
+        organizer: "Organiza", signUp: "Inscríbete en Rope Master", modality: "Modalidad", format: "Formato", registration: "Inscripción", capacity: "Cupo",
+        seats: "lugares", headers: "cabeceros", heelers: "pialadores", ratingMax: "Rating máx.", teamMax: "Equipo máx.", perPackage: "por paquete", free: "Gratis",
+        shotsPerPackage: "tiros por paquete", closesOn: "Inscripciones hasta el", more: (n: number) => `+${n} más`, qrLabel: "Código QR del evento", logoAlt: "Logo del organizador",
+      },
+    },
     share: {
       title: "Enlace para compartir", hint: "Cualquiera con este enlace puede ver el evento e inscribirse. Se abre en su idioma.", copy: "Copiar enlace", copied: "Copiado",
       whatsapp: "Compartir por WhatsApp", whatsappText: "Inscríbete a nuestro evento:", open: "Abrir",

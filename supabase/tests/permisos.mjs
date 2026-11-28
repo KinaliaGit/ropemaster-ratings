@@ -2725,6 +2725,22 @@ console.log("— Resultados en vivo (0063, KIN-787)");
   await as("authenticated", OL, `update event_live_snapshots set revision = 99 where event_id = '${EP}'`, "un organizador NO edita la tabla directo", "deny");
   await as("anon", null, `select public.app_put_live_snapshot('${OL}', '${EP}', 50, '{}'::jsonb)`, "anónimo NO ejecuta app_put_live_snapshot", "deny");
   await as("authenticated", OL, `select public.app_put_live_snapshot('${OL}', '${EP}', 50, '{}'::jsonb)`, "un organizador NO ejecuta app_put_live_snapshot", "deny");
+  // --- retirar la foto (0065): al apagar «En vivo web» en la app
+  const del = async (org, ev) => (await svc("select * from public.app_delete_live_snapshot($1, $2)", [org, ev]))[0].outcome;
+  await check("retirar la foto de un evento propio la borra (removed)", await (async () => {
+    return (await del(OL, EP)) === "removed" && (await db.query(`select count(*)::int as n from event_live_snapshots where event_id = '${EP}'`)).rows[0].n === 0;
+  })());
+  await as("anon", null, `select * from public.get_live_snapshot('${EP}')`, "retirada la foto, la página pública ya no tiene nada que mostrar", "deny");
+  await check("retirar otra vez es inofensivo (none)", (await del(OL, EP)) === "none");
+  await check("retirar la foto de un evento de otro organizador no hace nada (not_found)", (await del(OL, EAJ)) === "not_found");
+  await check("retirar de un evento inexistente contesta not_found", (await del(OL, "e6300000-0000-0000-0000-0000000000ff")) === "not_found");
+  await check("la foto de un evento ajeno no se borró por el intento", await (async () => {
+    await put(OL2, EAJ, 3);
+    await del(OL, EAJ);
+    return (await db.query(`select count(*)::int as n from event_live_snapshots where event_id = '${EAJ}'`)).rows[0].n === 1;
+  })());
+  await as("anon", null, `select public.app_delete_live_snapshot('${OL}', '${EP}')`, "anónimo NO ejecuta app_delete_live_snapshot", "deny");
+  await as("authenticated", OL, `select public.app_delete_live_snapshot('${OL}', '${EP}')`, "un organizador NO ejecuta app_delete_live_snapshot", "deny");
   await check("borrar el evento borra su foto", await (async () => {
     await db.exec(`delete from events where id = '${EFIN}'`);
     return (await db.query(`select count(*)::int as n from event_live_snapshots where event_id = '${EFIN}'`)).rows[0].n === 0;

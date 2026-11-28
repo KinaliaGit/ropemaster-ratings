@@ -533,6 +533,19 @@ celulares, ni pagos. Límites: 256 KB por envío y 1000 equipos por lista.
 | `400` / `413` / `426` | Cuerpo inválido, demasiado grande o versión del contrato no soportada |
 | `403 scope_denied` / `404` | Sin `results:write`; evento ajeno, inexistente o borrador |
 
+### `POST /api/app/eventos/<event_id>/en-vivo/retirar`
+
+La app lo llama cuando el organizador **apaga «En vivo web»** del evento (la publicación en vivo es opcional y viene apagada de fábrica; los resultados finales
+siguen subiendo por `POST /api/app/resultados`). La web borra la foto del evento, así la página pública vuelve a decir que el evento aún no empieza y la ficha
+deja de ofrecer «Ver resultados en vivo». Mismos permisos que el envío (`results:write`, evento propio). Sin cuerpo necesario.
+
+| Respuesta | Cuándo |
+|---|---|
+| `200 { contract_version, event_id, removed }` | Hecho (`removed: false` si no había foto: inofensivo) |
+| `403 scope_denied` / `404` | Sin `results:write`; evento ajeno o inexistente |
+
+Si la app no tiene internet al apagar, queda pendiente y lo reintenta sola. Al volver a encender manda la foto completa otra vez.
+
 ### `GET /api/eventos/<event_id>/en-vivo` (público)
 
 Sin autenticación. Devuelve la foto lista para la pantalla (`LiveSnapshot` de `src/lib/live.ts`): lo mismo que se mandó, más `name`, `venue` (arena y ciudad

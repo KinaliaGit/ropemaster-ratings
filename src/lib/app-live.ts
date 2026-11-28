@@ -5,7 +5,7 @@
 // una `revision` que solo sube; reenviar la misma es inofensivo y una más vieja no pisa a una más nueva. Aquí NO viaja nada privado: solo números de turno,
 // nombres y tiempos, que ya son públicos en los resultados.
 
-import type { LiveSnapshot, LiveTeam } from "./live.ts";
+import type { LiveLast, LiveRound, LiveRun, LiveSnapshot, LiveTeam } from "./live.ts";
 
 export const CONTRACT_VERSION = 1;
 export const MAX_LIVE_BYTES = 256 * 1024;
@@ -53,6 +53,52 @@ function parseTeams(raw: unknown, where: string): LiveTeam[] | LiveFailure {
   return out;
 }
 
+const RUN_STATUS = ["ok", "no_time", "dq"] as const;
+
+function parseRun(raw: unknown, where: string): LiveRun | LiveFailure {
+  if (!isObject(raw)) return fail(400, "invalid_field", `${where}: cada corrida debe ser un objeto.`);
+  if (!isInt(raw.n, 1, 100000)) return fail(400, "invalid_field", `${where}: n (turno) debe ser un entero mayor o igual a 1.`);
+  const header = cleanName(raw.header);
+  const heeler = cleanName(raw.heeler);
+  if (!header || !heeler) return fail(400, "invalid_field", `${where}: header y heeler deben ser texto no vacío.`);
+  const time = raw.time_ms;
+  if (time !== null && time !== undefined && !isInt(time, 0, 3_600_000)) return fail(400, "invalid_field", `${where}: time_ms debe ser un entero en milisegundos o null.`);
+  const status = raw.status ?? (time === null || time === undefined ? "no_time" : "ok");
+  if (!(RUN_STATUS as readonly unknown[]).includes(status)) return fail(400, "invalid_field", `${where}: status debe ser ok, no_time o dq.`);
+  return { n: raw.n, header, heeler, timeMs: time ?? null, status: status as LiveRun["status"] };
+}
+
+function parseLast(raw: unknown): LiveLast | null | LiveFailure {
+  if (raw === null || raw === undefined) return null;
+  const run = parseRun(raw, "last");
+  if ("ok" in run) return run;
+  const data = raw as Record<string, unknown>;
+  if (!isInt(data.round, 1, MAX_ROUNDS)) return fail(400, "invalid_field", `last: round debe ser un entero de 1 a ${MAX_ROUNDS}.`);
+  if (data.total_ms !== null && data.total_ms !== undefined && !isInt(data.total_ms, 0, 3_600_000)) return fail(400, "invalid_field", "last: total_ms debe ser un entero en milisegundos o null.");
+  return { ...run, round: data.round, totalMs: (data.total_ms as number | null | undefined) ?? null };
+}
+
+function parseResults(raw: unknown): LiveRound[] | LiveFailure {
+  if (!Array.isArray(raw)) return fail(400, "invalid_field", "results debe ser un arreglo.");
+  if (raw.length > MAX_ROUNDS) return fail(400, "invalid_field", `results pasa de ${MAX_ROUNDS} rondas.`);
+  const out: LiveRound[] = [];
+  for (const item of raw) {
+    if (!isObject(item)) return fail(400, "invalid_field", "results: cada ronda debe ser un objeto.");
+    if (!isInt(item.round, 1, MAX_ROUNDS)) return fail(400, "invalid_field", `results: round debe ser un entero de 1 a ${MAX_ROUNDS}.`);
+    if (item.short_go !== undefined && typeof item.short_go !== "boolean") return fail(400, "invalid_field", "results: short_go debe ser verdadero o falso.");
+    if (!Array.isArray(item.runs)) return fail(400, "invalid_field", "results: runs debe ser un arreglo.");
+    if (item.runs.length > MAX_TEAMS) return fail(413, "payload_too_large", `results: una ronda pasa de ${MAX_TEAMS} corridas.`);
+    const runs: LiveRun[] = [];
+    for (const r of item.runs) {
+      const run = parseRun(r, `results[${item.round}]`);
+      if ("ok" in run) return run;
+      runs.push(run);
+    }
+    out.push({ round: item.round, ...(item.short_go === true ? { shortGo: true } : {}), runs });
+  }
+  return out;
+}
+
 /** Cuerpo de POST /api/app/eventos/<id>/en-vivo. */
 export function parseLiveBody(text: string): LiveBody | LiveFailure {
   if (new TextEncoder().encode(text).length > MAX_LIVE_BYTES) return fail(413, "payload_too_large", `El cuerpo pasa de ${MAX_LIVE_BYTES / 1024} KB.`);
@@ -82,7 +128,15 @@ export function parseLiveBody(text: string): LiveBody | LiveFailure {
   if (data.short_go !== undefined && typeof data.short_go !== "boolean") return fail(400, "invalid_field", "short_go debe ser verdadero o falso.");
   // Solo se guarda cuando es verdad: una app anterior no lo manda y la ronda se muestra como una normal.
   const shortGo = data.short_go === true ? { shortGo: true } : {};
-  return { ok: true, revision: data.revision, snapshot: { round: data.round, rounds: data.rounds, ...shortGo, total: data.total, done: data.done, current, pending, standings } };
+  // Opcionales (una app anterior no los manda): el último tiempo capturado y los tiempos de cada ronda.
+  const last = parseLast(data.last);
+  if (last !== null && "ok" in last) return last;
+  const results = data.results === undefined || data.results === null ? null : parseResults(data.results);
+  if (results !== null && !Array.isArray(results)) return results;
+  return {
+    ok: true, revision: data.revision,
+    snapshot: { round: data.round, rounds: data.rounds, ...shortGo, total: data.total, done: data.done, current, pending, standings, ...(last ? { last } : {}), ...(results ? { results } : {}) },
+  };
 }
 
 /** Respuesta HTTP de guardar la foto, según lo que contestó `app_put_live_snapshot`. */

@@ -281,6 +281,7 @@ export const en: Dict = {
     onDeck: "Up now · team {a}", accumulated: "total", next: "Next", waiting: "The round has not started yet.", roundOver: "The round is over.",
     standings: "Standings", showAll: "See all", showLess: "See less", noTimes: "No times yet.",
     search: "Find my name or turn", noMatch: "We could not find that name or turn in this round.", nowShort: "Up now", turn: "Turn {a}", turns: "Turns:", isNext: "Next", ahead: "{a} to go",
+    lastTime: "Latest time", lastTimeMeta: "Turn {a} · round {b}", lastTimeShort: "Turn {a} · short go", byRound: "Times by round", roundTimes: "Round {a}", shortGoTimes: "Short Go", noTimeShort: "No time", dqShort: "Disqualified", noRoundTimes: "No times captured yet.", roundCount: "{a} teams",
     demo: "Demo: turns and times are made up.", noData: "The event hasn't started yet. Once it does, you'll see the turns and standings here; this screen updates by itself.", offline: "Offline. Still trying…", watch: "See live results", details: "Event details and sign-up",
   },
 };

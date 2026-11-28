@@ -521,6 +521,10 @@ El evento debe estar publicado o finalizado y ser del organizador. Ejemplo: `doc
 | `current` | equipo o `null` | Quien está lazando; `null` antes de empezar y al terminar la ronda |
 | `pending` | arreglo de equipos | **Todos** los que faltan, en orden de turno (cada quien necesita ver sus turnos aunque estén lejos) |
 | `standings` | arreglo de equipos | Los que ya pasaron, de la mejor posición a la peor (sin tiempo, al final), ya ordenados por la app: la web no los reordena |
+| `last` | corrida o `null`, opcional | La corrida capturada **más recientemente** (también una corrección): `{ n, header, heeler, round, time_ms, status, total_ms }`. La pantalla la muestra junto al equipo en turno. Ausente = una app anterior |
+| `results` | arreglo de rondas, opcional | Lo capturado en cada ronda, de la primera a la última: `{ round, short_go, runs: [{ n, header, heeler, time_ms, status }] }`, `runs` en orden de turno y solo con lo ya capturado. La pantalla lo muestra como «Tiempos por ronda». Si la foto pasara de ~200 KB la app lo omite antes que dejar de publicar |
+
+`time_ms` es el tiempo de ESA corrida (no el acumulado; incluye penalizaciones). `status`: `ok`, `no_time` o `dq` (con `time_ms: null`).
 
 Un equipo es `{ "n": 3, "header": "…", "heeler": "…", "total_ms": 8200 | null }`: `n` es el turno (≥ 1), `total_ms` el tiempo acumulado en milisegundos
 (`null` si aún no tiene). Los nombres se limpian (espacios y caracteres de control) y se recortan a 80 caracteres. **No viaja nada privado**: ni correos, ni

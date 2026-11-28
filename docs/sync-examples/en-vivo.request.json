@@ -11,5 +11,17 @@
   "standings": [
     { "n": 1, "header": "Andrés Vega", "heeler": "Saúl Gil", "total_ms": 8200 },
     { "n": 2, "header": "Marco Ríos", "heeler": "Víctor Paz", "total_ms": 9100 }
+  ],
+  "last": { "n": 2, "header": "Marco Ríos", "heeler": "Víctor Paz", "round": 2, "time_ms": 9100, "status": "ok", "total_ms": 18400 },
+  "results": [
+    { "round": 1, "short_go": false, "runs": [
+      { "n": 1, "header": "Andrés Vega", "heeler": "Saúl Gil", "time_ms": 8200, "status": "ok" },
+      { "n": 2, "header": "Marco Ríos", "heeler": "Víctor Paz", "time_ms": 9300, "status": "ok" },
+      { "n": 3, "header": "Diego Mora", "heeler": "Pablo Cano", "time_ms": null, "status": "no_time" }
+    ] },
+    { "round": 2, "short_go": false, "runs": [
+      { "n": 1, "header": "Andrés Vega", "heeler": "Saúl Gil", "time_ms": 8000, "status": "ok" },
+      { "n": 2, "header": "Marco Ríos", "heeler": "Víctor Paz", "time_ms": 9100, "status": "ok" }
+    ] }
   ]
 }

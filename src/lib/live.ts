@@ -3,6 +3,13 @@
 /** Un equipo en la ronda: `n` es su número de turno; `totalMs`, su tiempo acumulado (null si aún no tiene). */
 export type LiveTeam = { n: number; header: string; heeler: string; totalMs: number | null };
 
+/** Un tiempo ya capturado. `timeMs` es el de ESA corrida (no el acumulado); sin tiempo (null) si fue No Time o descalificación (`status`). */
+export type LiveRun = { n: number; header: string; heeler: string; timeMs: number | null; status: "ok" | "no_time" | "dq" };
+/** La corrida capturada más recientemente: la ronda en que fue y lo que lleva acumulado el equipo. */
+export type LiveLast = LiveRun & { round: number; totalMs: number | null };
+/** Lo capturado en una ronda, en orden de turno. */
+export type LiveRound = { round: number; shortGo?: boolean; runs: LiveRun[] };
+
 export type LiveSnapshot = {
   name: string;
   venue: string;
@@ -19,6 +26,10 @@ export type LiveSnapshot = {
   pending: LiveTeam[];
   /** Los que ya pasaron, de la mejor posición a la peor (sin tiempo, al final), como las calcula quien manda los datos: la web no las reordena. */
   standings: LiveTeam[];
+  /** El último tiempo capturado (ausente en una app anterior o si aún no hay ninguno). */
+  last?: LiveLast | null;
+  /** Los tiempos de cada ronda por equipo, de la primera a la última (ausente en una app anterior). */
+  results?: LiveRound[];
   updatedAt: string;
 };
 

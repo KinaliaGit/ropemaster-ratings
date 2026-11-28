@@ -18,7 +18,9 @@ export function LiveView({ eventId, initial, demo, labels }: { eventId: string; 
   const refresh = useCallback(async () => {
     try {
       const res = await fetch(`/api/eventos/${eventId}/en-vivo`, { headers: etag.current ? { "If-None-Match": etag.current } : {}, cache: "no-store" });
-      if (res.status === 304 || res.status === 404) return setOffline(false);
+      if (res.status === 304) return setOffline(false);
+      // 404: no hay foto (el organizador apagó «En vivo web» o el evento aún no empieza). Se deja de mostrar la última que se tenía.
+      if (res.status === 404) { etag.current = null; setSnapshot(null); return setOffline(false); }
       if (!res.ok) return setOffline(true);
       etag.current = res.headers.get("ETag");
       setSnapshot((await res.json()) as LiveSnapshot);

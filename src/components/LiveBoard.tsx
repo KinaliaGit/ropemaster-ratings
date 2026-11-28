@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
-import { findTeams, progressPct, type LiveSnapshot, type LiveTeam } from "@/lib/live";
+import { findTeams, progressPct, type LiveRun, type LiveSnapshot, type LiveTeam } from "@/lib/live";
 import { fmtTime, initials } from "@/lib/people";
 import { matchesName } from "@/lib/search";
 import type { Dict } from "@/dictionaries/es";
 
 type Labels = Dict["live"];
 const fill = (text: string, values: Record<string, number>) => text.replace(/\{(\w+)\}/g, (_, k) => String(values[k]));
-const names = (t: LiveTeam) => `${t.header} + ${t.heeler}`;
+const names = (t: { header: string; heeler: string }) => `${t.header} + ${t.heeler}`;
 
 // KIN-558: vista pública de un evento en vivo (boceto «Podio»). Solo presenta lo que recibe; de dónde salen los datos lo decide quien la usa.
 export function LiveBoard({ data, labels: l }: { data: LiveSnapshot; labels: Labels }) {
@@ -37,6 +37,8 @@ export function LiveBoard({ data, labels: l }: { data: LiveSnapshot; labels: Lab
               <p className="text-sm text-muted">{fill(l.teams, { a: data.done, b: data.total, c: data.total - data.done })}</p>
             </div>
           </section>
+
+          {data.last && <LastTime last={data.last} shortGo={data.results?.find((r) => r.round === data.last!.round)?.shortGo === true} labels={l} />}
 
           <section className="card p-4" aria-live="polite">
             {data.current ? (
@@ -107,7 +109,64 @@ export function LiveBoard({ data, labels: l }: { data: LiveSnapshot; labels: Lab
           </div>
         </div>
       </div>
+
+      {data.results && <RoundTimes rounds={data.results} last={data.last ?? null} labels={l} />}
     </>
+  );
+}
+
+// El tiempo que se acaba de capturar: queda a la vista junto al equipo en turno para que quien va a correr vea el anterior.
+function LastTime({ last, shortGo, labels: l }: { last: NonNullable<LiveSnapshot["last"]>; shortGo: boolean; labels: Labels }) {
+  const value = last.status === "ok" ? fmtTime(last.timeMs) : last.status === "dq" ? l.dqShort : l.noTimeShort;
+  return (
+    <section className="card border-brand/30 bg-brand-soft p-4" aria-live="polite" data-testid="live-last">
+      <p className="text-xs font-semibold uppercase tracking-wide text-brand-hot">{l.lastTime}</p>
+      <div className="mt-2 flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="break-words font-semibold leading-snug">{last.header}<br />{last.heeler}</p>
+          <p className="mt-0.5 text-xs text-muted">{shortGo ? fill(l.lastTimeShort, { a: last.n }) : fill(l.lastTimeMeta, { a: last.n, b: last.round })}</p>
+        </div>
+        <p className="shrink-0 text-right">
+          <span className={`block font-semibold tabular-nums ${last.status === "ok" ? "text-2xl" : "text-base text-brand-hot"}`}>{value}</span>
+          {last.status === "ok" && last.totalMs !== null && last.totalMs !== last.timeMs && <span className="text-xs text-muted">{l.accumulated} {fmtTime(last.totalMs)}</span>}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+// Cómo le fue a cada equipo en cada ronda. La ronda más reciente va arriba y abierta; las anteriores se despliegan.
+function RoundTimes({ rounds, last, labels: l }: { rounds: NonNullable<LiveSnapshot["results"]>; last: LiveSnapshot["last"] | null; labels: Labels }) {
+  const ordered = [...rounds].sort((a, b) => b.round - a.round);
+  return (
+    <section className="mt-6" aria-labelledby="live-by-round">
+      <h2 id="live-by-round" className="text-lg font-semibold">{l.byRound}</h2>
+      {ordered.length === 0 ? <p className="mt-2 rounded-2xl bg-sand p-6 text-center text-muted">{l.noRoundTimes}</p> : (
+        <div className="mt-2 space-y-3">
+          {ordered.map((r, i) => (
+            <details key={r.round} open={i === 0} className="card group px-4" data-testid={`live-round-${r.round}`}>
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3">
+                <span className="font-semibold">{r.shortGo ? l.shortGoTimes : fill(l.roundTimes, { a: r.round })}</span>
+                <span className="flex items-center gap-3 text-sm text-muted"><span>{fill(l.roundCount, { a: r.runs.length })}</span><span aria-hidden className="transition group-open:rotate-180">⌄</span></span>
+              </summary>
+              <ol className="divide-y divide-line border-t border-line">
+                {r.runs.map((run) => <RunRow key={`${run.n}-${run.header}`} run={run} fresh={last?.round === r.round && last.n === run.n && last.header === run.header} labels={l} />)}
+              </ol>
+            </details>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function RunRow({ run, fresh, labels: l }: { run: LiveRun; fresh: boolean; labels: Labels }) {
+  return (
+    <li className={`flex items-center gap-3 py-2.5 text-sm ${fresh ? "-mx-2 rounded-xl bg-brand-soft px-2" : ""}`}>
+      <Turn n={run.n} label={l.turn} />
+      <span className="min-w-0 flex-1 break-words">{names(run)}</span>
+      <span className={`shrink-0 text-right font-semibold tabular-nums ${run.status === "ok" ? "" : "text-muted"}`}>{run.status === "ok" ? fmtTime(run.timeMs) : run.status === "dq" ? l.dqShort : l.noTimeShort}</span>
+    </li>
   );
 }
 

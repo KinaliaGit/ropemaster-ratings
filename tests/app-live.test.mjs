@@ -90,3 +90,30 @@ test("KIN-787: la ficha del evento muestra «ver resultados en vivo» solo si la
   assert.equal(isPublishingLive(null), false);
   assert.equal(isPublishingLive(undefined), false);
 });
+
+const run = (n, extra = {}) => ({ n, header: `Cabecero ${n}`, heeler: `Pialador ${n}`, time_ms: 8200, status: "ok", ...extra });
+
+test("KIN-787: el último tiempo y los tiempos de cada ronda son opcionales y se guardan limpios", () => {
+  const plain = parseLiveBody(body());
+  assert.equal("last" in plain.snapshot, false, "una app anterior no los manda");
+  assert.equal("results" in plain.snapshot, false);
+  const ok = parseLiveBody(body({
+    last: { ...run(2), round: 2, total_ms: 16400 },
+    results: [{ round: 1, short_go: false, runs: [run(1), run(2, { time_ms: null, status: "no_time" })] }, { round: 3, short_go: true, runs: [run(1, { status: "dq", time_ms: null })] }],
+  }));
+  assert.equal(ok.ok, true);
+  assert.deepEqual(ok.snapshot.last, { n: 2, header: "Cabecero 2", heeler: "Pialador 2", timeMs: 8200, status: "ok", round: 2, totalMs: 16400 });
+  assert.equal(ok.snapshot.results.length, 2);
+  assert.deepEqual(ok.snapshot.results[0].runs[1], { n: 2, header: "Cabecero 2", heeler: "Pialador 2", timeMs: null, status: "no_time" });
+  assert.equal(ok.snapshot.results[1].shortGo, true);
+  assert.equal("shortGo" in ok.snapshot.results[0], false, "short_go solo se guarda cuando es verdadero");
+});
+
+test("KIN-787: se rechazan tiempos mal formados", () => {
+  assert.equal(parseLiveBody(body({ last: { ...run(1), round: 0 } })).ok, false, "ronda inválida");
+  assert.equal(parseLiveBody(body({ last: { ...run(1), round: 1, status: "raro" } })).ok, false, "estado desconocido");
+  assert.equal(parseLiveBody(body({ results: "x" })).ok, false);
+  assert.equal(parseLiveBody(body({ results: [{ round: 1, runs: "x" }] })).ok, false);
+  assert.equal(parseLiveBody(body({ results: [{ round: 1, runs: [run(1, { time_ms: -5 })] }] })).ok, false, "tiempo negativo");
+  assert.equal(parseLiveBody(body({ results: [{ round: 1, runs: [run(1, { header: "" })] }] })).ok, false, "sin nombre");
+});

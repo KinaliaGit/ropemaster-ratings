@@ -281,6 +281,7 @@ export const es = {
     onDeck: "En turno · equipo {a}", accumulated: "acumulado", next: "Siguen", waiting: "La ronda todavía no empieza.", roundOver: "Terminó la ronda.",
     standings: "Posiciones", showAll: "Ver todas", showLess: "Ver menos", noTimes: "Todavía no hay tiempos.",
     search: "Buscar mi nombre o turno", noMatch: "No encontramos ese nombre o turno en esta ronda.", nowShort: "En turno", turn: "Turno {a}", turns: "Turnos:", isNext: "Sigue", ahead: "Faltan {a}",
+    lastTime: "Último tiempo", lastTimeMeta: "Turno {a} · ronda {b}", lastTimeShort: "Turno {a} · short-go", byRound: "Tiempos por ronda", roundTimes: "Ronda {a}", shortGoTimes: "Short-go", noTimeShort: "Sin tiempo", dqShort: "Descalificado", noRoundTimes: "Todavía no hay tiempos capturados.", roundCount: "{a} equipos",
     demo: "Demostración: los turnos y tiempos son inventados.", noData: "El evento aún no empieza. Cuando arranque verás aquí los turnos y las posiciones; esta pantalla se actualiza sola.", offline: "Sin conexión. Seguimos intentando…", watch: "Ver resultados en vivo", details: "Detalles del evento e inscripción",
   },
 };

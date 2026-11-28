@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { dateBlock } from "@/lib/upcoming";
 import type { Lang } from "@/lib/format";
+import { CardMenu } from "@/components/CardMenu";
 
 // KIN-770: un próximo evento de «Mi cuenta», para leerlo de un vistazo: fecha a la izquierda, nombre, estado y, en «⋯», las acciones poco
-// frecuentes. Los desplegables son <details>: funcionan sin JavaScript y con teclado.
+// frecuentes. El «⋯» es un <details> (CardMenu) que flota debajo del botón sin mover el resto de la tarjeta.
 export function AccountEventCard({ date, lang, name, href, meta, status, menu, menuLabel, testId, children }: {
   date: string | null | undefined; lang: Lang; name: string; href?: string; meta: string; status: React.ReactNode;
   menu?: React.ReactNode; menuLabel: string; testId?: string; children?: React.ReactNode;
@@ -19,12 +20,7 @@ export function AccountEventCard({ date, lang, name, href, meta, status, menu, m
         <div className="relative">
           <p className={`break-words font-medium ${menu ? "pr-11" : ""}`}>{href ? <Link href={href} className="-my-1.5 inline-block py-1.5 hover:text-brand-hot">{name}</Link> : name}</p>
           <p className={`break-words text-sm text-muted ${menu ? "pr-11" : ""}`}>{meta}</p>
-          {menu && (
-            <details className="group">
-              <summary aria-label={`${menuLabel}: ${name}`} className="absolute -right-1 -top-1 grid size-11 cursor-pointer list-none place-items-center rounded-full text-lg leading-none hover:bg-sand group-open:bg-sand [&::-webkit-details-marker]:hidden">⋯</summary>
-              <div className="mt-2 space-y-3 rounded-xl border border-line p-3 text-sm">{menu}</div>
-            </details>
-          )}
+          {menu && <CardMenu label={`${menuLabel}: ${name}`}>{menu}</CardMenu>}
         </div>
         <div className="mt-2">{status}</div>
         {children}

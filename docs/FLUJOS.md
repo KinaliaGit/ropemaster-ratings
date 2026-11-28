@@ -28,6 +28,7 @@ recargando, volviendo atrás y abriendo el enlace dos veces.
 | Editar | `/organizador/eventos/<slug>?editado=1` |
 | Marcar un pago desde la pestaña Pagos (`/organizador/pagos`, KIN-754) | La misma pantalla, con los mismos filtros (`?evento=…&estado=…&q=…`); si falla, `&pagoError=1`. El cambio es el de la inscripción: se ve igual en el evento y en la app |
 | Agregar, editar, unir o borrar una arena (`/organizador/arenas`, KIN-751) | La misma pantalla del catálogo (`?agregada=1`, `?borrada=1`) o la de la arena (`?guardada=1`, `?unida=1`); con error, `?error=…` (`duplicate`, `invalid`, `inUse`, `mergeFailed`) |
+| Generar el póster de un evento publicado (KIN-767) | Ventana en la misma pantalla del evento: pregunta si lleva su logo, pide `POST /api/organizador/eventos/<slug>/poster` (PNG 4:5, 1080 x 1350, en el idioma de la pantalla) y deja descargarlo. Se arma al momento y no se guarda nada: el logo opcional viaja en la petición y se descarta (el navegador lo recuerda). Un borrador no tiene póster (`409 not_published`); quien no es el organizador recibe `401` o `404`. El QR lleva a `/eventos/<slug>` |
 | Sacar a un inscrito | La pantalla del evento con el resultado (`?sacado=…`) |
 | Borrar evento | `/organizador?borrado=1`; con error, la pantalla del evento con el motivo (`?borrarError=…`) |
 | Borrar serie | `/organizador?ver=series&serieBorrada=1`; con eventos, la serie con «borra primero los eventos» |

@@ -137,19 +137,23 @@ async function Page({ props }: { props: PageProps<"/[lang]/mi-cuenta"> }) {
                       <>
                         {closes && <p className="text-muted">{closes}</p>}
                         {canSwitch && (
-                          <form action={changeRegistrationRole} className="flex flex-wrap items-center gap-2">
+                          <form action={changeRegistrationRole} className="space-y-1.5">
                             <input type="hidden" name="lang" value={lang} /><input type="hidden" name="id" value={m.id} />
-                            <label htmlFor={`role-${m.id}`} className="text-muted">{t.account.regRole}</label>
-                            <select id={`role-${m.id}`} name="role" defaultValue={m.role ?? s.roleChoice?.favorite ?? "header"} className="min-h-11 rounded-xl border border-line bg-white px-3 text-sm">
-                              <option value="header">{t.roles.header}</option><option value="heeler">{t.roles.heeler}</option>
-                            </select>
-                            <button className="min-h-11 rounded-full border border-line px-4 text-sm font-medium hover:border-ink">{t.account.changeRole}</button>
+                            <label htmlFor={`role-${m.id}`} className="block text-xs font-medium text-muted">{t.account.regRole}</label>
+                            <div className="flex gap-2">
+                              <select id={`role-${m.id}`} name="role" defaultValue={m.role ?? s.roleChoice?.favorite ?? "header"} className="min-h-11 min-w-0 flex-1 rounded-xl border border-line bg-white px-3 text-sm">
+                                <option value="header">{t.roles.header}</option><option value="heeler">{t.roles.heeler}</option>
+                              </select>
+                              <button className="min-h-11 shrink-0 rounded-full bg-ink px-4 text-sm font-medium text-white hover:bg-brand-hot">{t.account.changeRole}</button>
+                            </div>
                           </form>
                         )}
+                        {/* Quien compite con los dos roles y aquí no puede cambiar: se le dice, en vez de que solo aparezca «Cancelar» sin explicación. */}
+                        {!canSwitch && s.roleChoice?.role === "both" && <p className="text-xs text-muted">{t.account.roleLocked}</p>}
                         {!paid && (
-                          <form action={cancelRegistration}>
+                          <form action={cancelRegistration} className={canSwitch || closes ? "border-t border-line pt-3" : undefined}>
                             <input type="hidden" name="lang" value={lang} /><input type="hidden" name="id" value={m.id} />
-                            <button className="min-h-11 rounded-full border border-line px-4 text-sm font-medium text-red-700 hover:border-red-700">{t.account.cancel}</button>
+                            <button className="min-h-11 rounded-full px-1 text-sm font-medium text-red-700 hover:underline">{t.account.cancelRegistration}</button>
                           </form>
                         )}
                       </>

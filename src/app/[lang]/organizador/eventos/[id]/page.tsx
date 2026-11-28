@@ -5,6 +5,7 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { CopyLink } from "@/components/CopyLink";
+import { EventPoster } from "@/components/EventPoster";
 import { parseMissing, type MissingField } from "@/lib/event-publish";
 import { deleteEvent, setEventStatus, setRegistrationOpen } from "@/lib/event-actions";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
@@ -81,6 +82,8 @@ async function Manage({ s, id, lang, t, justCreated, justCreatedPrivate, justEdi
   const notYet = !e.registrationClosed && isNotOpenYet({ opensAt: e.registrationOpensAt }); // apertura programada: se abre sola, no hay nada que cerrar ni reabrir
   const manualMsg = manual ? (t.org.ev.manual as Record<string, string>)[manual] ?? t.org.ev.manual.failed : null;
   const field = "rounded-xl border border-line bg-white px-3 py-2 text-sm outline-none focus:border-ink";
+  // `image` (los textos que lleva el póster) tiene funciones y solo lo usa el servidor: al componente de cliente no se le puede pasar.
+  const posterLabels = Object.fromEntries(Object.entries(t.org.poster).filter(([k]) => k !== "image")) as Omit<typeof t.org.poster, "image">;
   return (
           <>
             <div className="page">
@@ -125,6 +128,17 @@ async function Manage({ s, id, lang, t, justCreated, justCreatedPrivate, justEdi
                 <CopyLink url={shareUrl} copy={t.org.share.copy} copied={t.org.share.copied} whatsappLabel={t.org.share.whatsapp} whatsappText={t.org.share.whatsappText} />
                 {e.status === "borrador" && <p className="mt-2 text-xs text-muted">{t.org.share.draftLink}</p>}
               </section>
+              {e.status !== "finalizado" && (
+                <section aria-labelledby="poster" className="card mt-6 p-5">
+                  <h3 id="poster" className="text-base font-semibold">{t.org.poster.title}</h3>
+                  <p className="mt-0.5 text-sm text-muted">{e.status === "publicado" ? t.org.poster.hint : t.org.poster.draftHint}</p>
+                  {e.status === "publicado" && (
+                    <div className="mt-3">
+                      <EventPoster eventSlug={e.id} lang={lang} organizerId={s.id} l={posterLabels} />
+                    </div>
+                  )}
+                </section>
+              )}
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{fmtEnrolled(e.enrolled, e.capacity)}</p><p className="label mt-1">{t.org.enrolled}</p></div>
                 <div className="card p-4"><p className="text-2xl font-semibold tabular-nums">{rows.filter((x) => x.paymentStatus === "pagado").length}</p><p className="label mt-1">{t.org.ev.paid}</p></div>
